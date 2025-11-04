@@ -89,9 +89,20 @@ O modelo de Gradient Boosting (`LightGBM`) se provou o campeão, explicando 64,4
 
 **Importância de Atributos (Feature Importance)**
 
-A análise do modelo vencedor (`LGBM`) validou a H2 e mostrou que, para a melhor previsão, todas as features do "passado" são necessárias em uma estratégia de "time" equilibrada.
+#### Diagnóstico 1: Random Forest (R² = 0.6225)
 
-(O `LightGBM` (vencedor) provou ser superior ao `RandomForest` (perdedor), que adotou uma estratégia "gananciosa" e superestimou o `EB_PAS2` (66.2% de importância), resultando em um R² menor.)
+O RandomForest (RF) adotou uma estratégia "gananciosa" (greedy), superestimando massivamente a feature **EB_PAS2** (responsável por 66.2% da importância).  
+Esta estratégia de "apostar tudo" em um preditor provou ser inferior na média.
+
+![Importância das Features - Random Forest](img/feature_importance_rf.png)
+
+#### Diagnóstico 2: LightGBM (R² = 0.6445)
+
+O LightGBM (o vencedor) usou uma estratégia de "time" equilibrada.  
+Ele aprendeu (corretamente) que, para a melhor previsão, um conjunto de features é necessário.  
+**EB_PAS1 (20.9%)**, **EB_PAS2 (19.6%)** e **Red_PAS2 (18.7%)** foram todas consideradas cruciais, validando a complexidade da **Hipótese H2**.
+
+![Importância das Features - LightGBM](img/feature_importance_lgbm.png)
 
 ### 5. Próximas Etapas (Fases 2 e 3)
 
