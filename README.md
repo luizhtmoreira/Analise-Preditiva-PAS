@@ -6,7 +6,7 @@
 
 ### 1. Resumo Executivo
 
-Este projeto é uma análise quantitativa de 7 anos de dados (2016-2024) do Programa de Avaliação Seriada (PAS) da Universidade de Brasília, compreendendo um dataset mestre de 48.758 alunos "sobreviventes" (não eliminados).
+Este projeto é uma análise quantitativa de 7 anos de dados (2016-2024) do Programa de Avaliação Seriada (PAS) da Universidade de Brasília, compreendendo um dataset mestre de 48.758 alunos.
 
 O objetivo é construir e validar (fazer o backtest) um pipeline de machine learning para prever o desempenho futuro de um aluno (`Escore_Bruto_PAS_3`) com base em seu histórico de desempenho (`PAS_1` e `PAS_2`).
 
@@ -26,7 +26,7 @@ Este projeto foi desenhado para testar as seguintes hipóteses:
 
 • **[H2] A Hipótese da "Dependência Temporal"**: Provar que o desempenho não é aleatório e que existe uma autocorrelação onde o desempenho no `PAS_1` e `PAS_2` influencia o `PAS_3`. (Foco da Fase 1 - PROVADA)
 
-• **[H3] A Hipótesse do "Enriquecimento de Habilidade"**: (Próxima Etapa) O poder do modelo aumentará se for enriquecido com proxies de habilidade (Exatas vs. Humanas) de datasets externos (ENEM).
+• **[H3] A Hipótesse do "Enriquecimento de Habilidade"**: (Próxima Etapa) O poder do modelo aumentará se for enriquecido com proxies de habilidade (Exatas vs. Humanas) de datasets externos (Vestibular tradicional/ENEM).
 
 • **[H4] A Hipótese do "Fator Socioeconômico"**: (Próxima Etapa) O proxy de "escola pública" (derivado das colunas de cotas) tem poder preditivo.
 
@@ -50,7 +50,7 @@ O split (`.split(' / ')`) é feito usando o caractere `/` como delimitador de al
 
 • **“Âncora” Robusta (Não-Mágica)**:
 O parser não usa índices de linha “mágicos” (ex: `[30:]`).
-Em vez disso, ele “caça” por âncoras de texto (como `ADMINISTRAÇÃO (BACHARELADO)` ou `1.1.1.1`) para encontrar o início dos dados, tornando-o robusto a cabeçalhos de tamanho variável (de 31 a 7097 linhas).
+Em vez disso, ele procura por âncoras de texto (como `ADMINISTRAÇÃO (BACHARELADO)` ou `1.1.1.1`) para encontrar o início dos dados, tornando-o robusto a cabeçalhos de tamanho variável (de 31 a 7097 linhas).
 
 • **“Padding” de Dados Irregulares**:
 Foi implementada uma lógica de “acolchoamento” para forçar todas as linhas de aluno a terem o mesmo comprimento (`max_cols`), tratando datasets irregulares antes de criar o DataFrame do Pandas.
@@ -108,7 +108,7 @@ Ele aprendeu (corretamente) que, para a melhor previsão, um conjunto de feature
 
 O trabalho de Fase 1 está completo. As próximas etapas focarão nas hipóteses de enriquecimento de dados.
 
-**Fase 2 (H3)**: Iniciar o pipeline de merge (cruzamento) com datasets externos (ENEM) para testar o poder preditivo de "Exatas" vs. "Humanas".
+**Fase 2 (H3)**: Iniciar o pipeline de merge (cruzamento) com datasets externos (Vestibular tradicional/ENEM) para testar o poder preditivo de "Exatas" vs. "Humanas".
 
 **Fase 3 (H4)**: Implementar o parser das colunas de cotas para testar o poder preditivo do fator socioeconômico.
 
