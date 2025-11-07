@@ -6,7 +6,7 @@
 
 ### 1. Resumo Executivo
 
-Este projeto é uma análise quantitativa de 7 anos de dados (2016-2024) do Programa de Avaliação Seriada (PAS) da Universidade de Brasília, compreendendo um dataset mestre de 48.758 alunos.
+Este projeto é uma análise quantitativa de 7 triênios de dados (2016-2024) do Programa de Avaliação Seriada (PAS) da Universidade de Brasília, compreendendo um dataset mestre de 48.758 alunos.
 
 O objetivo é construir e validar (fazer o backtest) um pipeline de machine learning para prever o desempenho futuro de um aluno (`Escore_Bruto_PAS_3`) com base em seu histórico de desempenho (`PAS_1` e `PAS_2`).
 
@@ -14,7 +14,7 @@ O objetivo é construir e validar (fazer o backtest) um pipeline de machine lear
 
 **1. Sinal Preditivo Forte**: O desempenho futuro (`Escore_Bruto_PAS_3`) é altamente previsível. O modelo campeão (`LightGBM`) alcançou um R² (R-Quadrado) de 0.6445 e um MAE (Erro Absoluto Médio) de 6.81 pontos em um dataset de teste cego de 9.752 amostras.
 
-**2. Validação da Hipótese H2**: A "dependência temporal" (histórico) é real. A análise de feature importance (importância de atributos) do modelo vencedor prova que `EB_PAS1` (20.9%) e `EB_PAS2` (19.6%) são os preditores mais significativos.
+**2. Validação da Hipótese H2**: A "dependência temporal" (histórico) é real. A análise de feature importance do modelo vencedor prova que `EB_PAS1` (20.9%) e `EB_PAS2` (19.6%) são os preditores mais significativos.
 
 **3. Comparação de Modelos**: Modelos de Gradient Boosting (`LGBM`) e Redes Neurais (`MLP`) superaram significativamente os baselines de `RandomForest` e `LinearRegression` em métricas de acurácia (R²) e erro (MAE).
 
@@ -63,9 +63,9 @@ Foi implementada uma lógica de “acolchoamento” para forçar todas as linhas
 
 Com o dataset mestre pronto, o pipeline de modelagem foi executado.
 
-• **Análise de Correlação (Heatmap)**: A análise em 48.758 alunos revelou um "sinal" muito mais forte do que o protótipo inicial (de 1 ano). A correlação entre `EB_PAS2` (passado) e `EB_PAS3` (futuro) é de 0.86.
+• **Análise de Correlação (Heatmap)**: A análise em 48.758 alunos revelou que a correlação entre `EB_PAS2` (passado) e `EB_PAS3` (futuro) é de 0.77, um sinal forte.
 
-• **Engenharia de Atributos (H2)**: Features (atributos) de "Escore Bruto" (`EB_PAS...`) e "Crescimento" (`Cresc_EB, Cresc_Red`) foram criadas para testar a H2.
+• **Engenharia de Atributos (H2)**: Features de "Escore Bruto" (`EB_PAS...`) e "Crescimento" (`Cresc_EB, Cresc_Red`) foram criadas para testar a H2.
 
 • **Pré-processamento**: O dataset foi dividido (80/20) e um `StandardScaler` (padronização Z-score) foi aplicado para preparar os dados para modelos sensíveis à escala (Linear/MLP).
 
@@ -91,7 +91,7 @@ O modelo de Gradient Boosting (`LightGBM`) se provou o campeão, explicando 64,4
 
 #### Diagnóstico 1: Random Forest (R² = 0.6225)
 
-O RandomForest (RF) adotou uma estratégia "gananciosa" (greedy), superestimando massivamente a feature **EB_PAS2** (responsável por 66.2% da importância).  
+O RandomForest (RF) adotou uma estratégia "gananciosa", superestimando massivamente a feature **EB_PAS2** (responsável por 66.2% da importância).  
 Esta estratégia de "apostar tudo" em um preditor provou ser inferior na média.
 
 ![Importância das Features - Random Forest](img/feature_importance_rf.png)
