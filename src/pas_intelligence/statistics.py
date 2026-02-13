@@ -38,7 +38,7 @@ def calculate_cohort_evolution_probability(
     Args:
         current_student_data: Dict com 'eb_pas1' e 'eb_pas2'
         target_arg: Argumento final necessário (meta)
-        historical_df: DataFrame com histórico (PAS_MESTRE_LIMPO_FINAL.csv)
+        historical_df: DataFrame com histórico (banco_alunos_pas_final.csv)
         tolerance_percent: Margem de tolerância para encontrar vizinhos (default 10%)
         
     Returns:

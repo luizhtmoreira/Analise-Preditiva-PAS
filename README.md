@@ -55,7 +55,7 @@ Em vez disso, ele procura por âncoras de texto (como `ADMINISTRAÇÃO (BACHAREL
 • **“Padding” de Dados Irregulares**:
 Foi implementada uma lógica de “acolchoamento” para forçar todas as linhas de aluno a terem o mesmo comprimento (`max_cols`), tratando datasets irregulares antes de criar o DataFrame do Pandas.
 
-**Resultado**: Um `DataFrame` 100% limpo, com 48.758 alunos (`/data/PAS_MESTRE_LIMPO_FINAL.csv`).
+**Resultado**: Um `DataFrame` 100% limpo, com 48.758 alunos (`/data/banco_alunos_pas_final.csv`).
 
 **Fase 1.B: EDA e Modelagem (O Backtest)**
 
@@ -120,4 +120,4 @@ O trabalho de Fase 1 está completo. As próximas etapas focarão nas hipóteses
 
 **3. Parser**: O `notebooks/01_Parser_PAS.ipynb` requer os PDFs originais do Cebraspe para ser executado.
 
-**4. Modelagem**: O `notebooks/02_EDA_e_Modelagem_FINAL.ipynb` pode ser rodado diretamente. Ele carrega o dataset mestre `data/PAS_MESTRE_LIMPO_FINAL.csv` (incluído neste repositório) e reproduz toda a análise.
+**4. Modelagem**: O `notebooks/02_EDA_e_Modelagem_FINAL.ipynb` pode ser rodado diretamente. Ele carrega o dataset mestre `data/banco_alunos_pas_final.csv` (incluído neste repositório) e reproduz toda a análise.
