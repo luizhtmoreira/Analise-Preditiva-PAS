@@ -122,7 +122,7 @@ class TargetCalculator:
                 red_pred = float(self.model_red.predict(df_input)[0])
                 
                 # Limites
-                p1_pred = max(0.0, min(20.0, p1_pred))
+                p1_pred = max(-20.0, min(20.0, p1_pred))
                 red_pred = max(0.0, min(10.0, red_pred))
                 
                 return {
@@ -136,7 +136,7 @@ class TargetCalculator:
         # Fallback: Média Ponderada
         # (p1_pas1 * 1 + p1_pas2 * 2) / 3
         p1_pred = (p1_pas1 * 1 + p1_pas2 * 2) / 3
-        p1_pred = max(0.0, min(20.0, p1_pred))
+        p1_pred = max(-20.0, min(20.0, p1_pred))
         
         red_pred = (red_pas1 * 1 + red_pas2 * 2) / 3
         red_pred = max(0.0, min(10.0, red_pred))
@@ -232,11 +232,11 @@ class TargetCalculator:
         if p2_necessario > 100:
             status = 'impossivel'
             mensagem = f"Nota necessária ({p2_necessario:.1f}) ultrapassa o máximo da prova (100 pts). Este curso pode ser estatisticamente inalcançável com seu histórico atual."
-        elif p2_necessario < 0:
+        elif p2_necessario < -100:
             status = 'garantido'
-            mensagem = f"🎉 Seu histórico já é suficiente! Com desempenho mínimo na P2, você provavelmente passará."
-            p2_necessario = 0.0
-            total_pas3 = p1_pred
+            mensagem = f"🎉 Seu histórico já é suficiente! Mesmo se você zerar ou tiver um desempenho extremamente baixo na P2, você provavelmente passará."
+            p2_necessario = -100.0
+            total_pas3 = p1_pred + p2_necessario
         elif p2_necessario > 80:
             status = 'improvavel'
             mensagem = f"Nota necessária ({p2_necessario:.1f}) é muito alta. Estatisticamente improvável, mas não impossível."
