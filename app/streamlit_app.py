@@ -36,6 +36,8 @@ import plotly.express as px # type: ignore
 import plotly.graph_objects as go # type: ignore
 from typing import Optional, Tuple # type: ignore
 import joblib # type: ignore
+import unicodedata
+
 
 # Imports do pacote pas_intelligence
 try:
@@ -43,7 +45,12 @@ try:
     from pas_intelligence.argument_calculator import (
         HistoricalStats,
         calculate_argument_final,
+        calculate_argument_etapa,
     )
+    import pdf_generator
+    import importlib
+    importlib.reload(pdf_generator)
+    from pdf_generator import PDFGenerator
 except ImportError as e:
     st.error(f"⚠️ Módulo pas_intelligence não encontrado: {e}")
     st.stop()
@@ -89,38 +96,79 @@ STATS_PAS3 = HistoricalStats(
 # =============================================================================
 # ESTATÍSTICAS DE CURSOS PARA RECOMENDAÇÃO
 # =============================================================================
+ARG_FINAL_MAE = 13.49 # Erro médio do modelo para cálculos de probabilidade
 
 @st.cache_data
-def load_course_stats(semester: int = 1):
+def find_best_course_match(input_name, course_list):
     """
-    Carrega estatísticas de nota de corte por curso do triênio 2022-2024.
+    Finds the best match for input_name in course_list using substring matching.
+    Returns the official course name if found, otherwise returns inputs name.
+    """
+    if not input_name or input_name == "nan": return "Não informado"
+    
+    normalized_input = unicodedata.normalize('NFKD', input_name).encode('ASCII', 'ignore').decode('utf-8').upper()
+    
+    # 1. Exact match (case insensitive)
+    for course in course_list:
+        if normalized_input == unicodedata.normalize('NFKD', course).encode('ASCII', 'ignore').decode('utf-8').upper():
+            return course
+            
+    # 2. Substring match
+    matches = []
+    for course in course_list:
+        normalized_course = unicodedata.normalize('NFKD', course).encode('ASCII', 'ignore').decode('utf-8').upper()
+        if normalized_input in normalized_course:
+            matches.append(course)
+    
+    # Return the shortest match (likely the most specific/correct root) or the first one
+    if matches:
+        # Sort by length to prefer concise matches or just pick first
+        # Example: "Direito" matches "Direito (Diurno)" and "Direito (Noturno)"
+        # Use first for now or specific logic? User asked for "contains"
+        return matches[0] 
+        
+    return input_name
+def load_course_stats(semester: int = 1, triennium: Optional[str] = None):
+    """
+    Carrega estatísticas de nota de corte por curso do triênio especificado.
     Lê de CSVs pré-processados para carregamento instantâneo.
     
     Args:
         semester: 1 para 1º semestre, 2 para 2º semestre
+        triennium: String do triênio (ex: "2022-2024"). Se None, usa o mais recente.
     """
     try:
         data_dir = Path(__file__).parent.parent / "data"
+        
+        # Prioridade 1: Arquivo Consolidado (Solicitado)
         csv_path = data_dir / "notas_corte_PAS_consolidado_v2.csv"
+        
+        # Prioridade 2: Arquivo Ordenado (Fallback)
+        if not csv_path.exists():
+            csv_path = data_dir / "notas_corte_PAS_ORDENADO.csv"
         
         if not csv_path.exists():
             return None
         
-        # Carrega CSV consolidado
+        # Carrega CSV encontrado
         stats = pd.read_csv(csv_path)
         
         # Filtra pelo semestre selecionado
         sem_str = "1º" if semester == 1 else "2º"
         stats = stats[stats['Semestre'] == sem_str]
+
+        # Filtra pelo Triênio (Se especificado)
+        if triennium:
+            stats = stats[stats['Trienio'] == triennium]
+        else:
+            # Fallback: Pega o triênio mais recente disponível no CSV se não especificado
+            if 'Trienio' in stats.columns and not stats.empty:
+                recent_triennium = stats['Trienio'].max()
+                stats = stats[stats['Trienio'] == recent_triennium]
         
-        # Corrige nome truncado do curso de Engenharias
-        stats['Curso'] = stats['Curso'].replace(
-            '(BACHARELADOS)**',
-            'ENGENHARIAS – AEROESPACIAL / AUTOMOTIVA / ELETRÔNICA / ENERGIA / SOFTWARE (BACHARELADOS)'
-        )
+
         
-        # Remove curso sob judice
-        stats = stats[~stats['Curso'].str.contains('JUDICE', case=False, na=False)]
+
         
         # Cria Ranking (Reset Index)
         stats = stats.sort_values('Min', ascending=False).reset_index(drop=True)
@@ -129,6 +177,7 @@ def load_course_stats(semester: int = 1):
         return stats
         
     except Exception as e:
+        st.error(f"Erro detalhado (load_course_stats): {e}")
         return None
 
 
@@ -167,7 +216,7 @@ def load_cohort_data():
         return pd.DataFrame()
 
 
-def get_closest_courses(arg_previsto: float, n: int = 5, semester: int = 1) -> pd.DataFrame:
+def get_closest_courses(arg_previsto: float, n: int = 5, semester: int = 1, triennium: Optional[str] = None) -> pd.DataFrame:
     """
     Retorna os N cursos com nota de corte mais próxima do argumento previsto.
     
@@ -175,13 +224,13 @@ def get_closest_courses(arg_previsto: float, n: int = 5, semester: int = 1) -> p
         arg_previsto: Argumento final previsto
         n: Número de cursos a retornar
         semester: 1 para 1º semestre, 2 para 2º semestre
+        triennium: Triênio de referência
     """
-    stats = load_course_stats(semester=semester)
+    stats = load_course_stats(semester=semester, triennium=triennium)
     if stats is None or stats.empty:
         return pd.DataFrame()
     
-    # Remove curso sob judice (garantia adicional)
-    stats = stats[~stats['Curso'].str.contains('JUDICE', case=False, na=False)]
+
     
     # Calcula diferença absoluta do min para o argumento previsto
     stats = stats.copy()
@@ -208,7 +257,7 @@ def get_closest_courses(arg_previsto: float, n: int = 5, semester: int = 1) -> p
 # =============================================================================
 
 st.set_page_config(
-    page_title="PAS Intelligence",
+    page_title="VETOR PAS",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -429,7 +478,7 @@ def predict_eb_pas3(features: np.ndarray) -> float:
     return float(prediction[0])
 
 
-def load_sample_data() -> pd.DataFrame:
+def load_sample_data(include_pas3: bool = False) -> pd.DataFrame:
     """Carrega dados de exemplo para demonstração."""
     np.random.seed(42)
     n = 30
@@ -445,7 +494,7 @@ def load_sample_data() -> pd.DataFrame:
     p1_pas2 = np.clip(p1_pas1 + variacao * 0.1, 0, 15)
     p2_pas2 = np.clip(p2_pas1 + variacao, 5, 55)
     
-    return pd.DataFrame({
+    df_data = {
         'Inscricao': [f"2024{i:04d}" for i in range(n)],
         'Nome': [f"Aluno {i+1}" for i in range(n)],
         'P1_PAS1': p1_pas1.round(2),
@@ -455,19 +504,35 @@ def load_sample_data() -> pd.DataFrame:
         'P2_PAS2': p2_pas2.round(2),
         'Red_PAS2': np.random.uniform(5, 10, n).round(2),
         'Turma': np.random.choice(['A', 'B'], n),
-    })
+    }
+
+    if include_pas3:
+        # Gera dados do PAS 3 seguindo a tendência
+        tendencia_pas3 = np.random.choice([-1, 0, 1], n, p=[0.2, 0.4, 0.4])
+        variacao_pas3 = np.random.uniform(2, 8, n) * tendencia_pas3
+        
+        p1_pas3 = np.clip(p1_pas2 + variacao_pas3 * 0.1, 0, 15)
+        p2_pas3 = np.clip(p2_pas2 + variacao_pas3, 5, 60)
+        
+        df_data.update({
+            'P1_PAS3': p1_pas3.round(2),
+            'P2_PAS3': p2_pas3.round(2),
+            'Red_PAS3': np.random.uniform(5, 10, n).round(2),
+        })
+    
+    return pd.DataFrame(df_data)
 
 
 # =============================================================================
 # SIDEBAR - NAVEGAÇÃO
 # =============================================================================
 
-st.sidebar.markdown("# 🎓 PAS Intelligence")
+st.sidebar.markdown("# 🎓 VETOR PAS")
 st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
-    "Navegação",
-    ["📊 Análise Temporal", "🚦 Semáforo de Risco", "🔮 Preditor PAS 3", "🏫 Análise da Escola", "📈 Comparação Entre Grupos"],
+    "Ir para:",
+    ["📊 Análise Temporal", "🚦 Semáforo de Risco", "🔮 Preditor PAS 3", "🏫 Análise da Escola", "📈 Comparação Entre Grupos", "📄 Gerador de PDF"]
 )
 
 st.sidebar.markdown("---")
@@ -505,8 +570,18 @@ if 'df' not in st.session_state:
 # PÁGINA 1: UPLOAD & ANÁLISE
 # =============================================================================
 
+
+
 if page == "📊 Análise Temporal":
     st.markdown('<p class="main-header">📊 Análise Temporal</p>', unsafe_allow_html=True)
+    
+    # Seletor de Modo de Análise
+    analysis_mode = st.radio(
+        "Modo de Análise:",
+        ["Triênio Atual (Em Andamento)", "Triênios Concluídos (Histórico)"],
+        horizontal=True,
+        help="Escolha 'Triênio Atual' para turmas que ainda não fizeram o PAS 3. Escolha 'Triênios Concluídos' para analisar o ciclo completo (PAS 1, 2 e 3)."
+    )
     
     col1, col2 = st.columns([2, 1])
     
@@ -514,7 +589,8 @@ if page == "📊 Análise Temporal":
         uploaded_file = st.file_uploader(
             "Faça upload do arquivo da turma (CSV ou Excel)",
             type=['csv', 'xlsx', 'xls'],
-            help="O arquivo deve conter colunas: Nome, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2"
+            help="O arquivo deve conter colunas: Nome, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2" + 
+                 (" e P1_PAS3, P2_PAS3, Red_PAS3" if analysis_mode == "Triênios Concluídos (Histórico)" else "")
         )
         
         if uploaded_file is not None:
@@ -529,11 +605,18 @@ if page == "📊 Análise Temporal":
     
     with col2:
         if st.button("📥 Usar Dados de Exemplo"):
-            st.session_state.df = load_sample_data()
+            # Carrega dados de exemplo baseado no modo selecionado
+            include_pas3 = (analysis_mode == "Triênios Concluídos (Histórico)")
+            st.session_state.df = load_sample_data(include_pas3=include_pas3)
             st.success("✅ Dados de exemplo carregados!")
     
     if st.session_state.df is not None:
-        df = st.session_state.df
+        df = st.session_state.df.copy()
+        
+        # Garante que a coluna 'Turma' seja a última se existir
+        if 'Turma' in df.columns:
+            cols = [c for c in df.columns if c != 'Turma'] + ['Turma']
+            df = df[cols]
         
         st.markdown("### 📋 Prévia dos Dados")
         st.dataframe(df.head(10), use_container_width=True)
@@ -541,48 +624,83 @@ if page == "📊 Análise Temporal":
         # Estatísticas gerais
         st.markdown("### 📈 Estatísticas Gerais")
         
-        col1, col2, col3, col4 = st.columns(4)
-        
-        # Verifica colunas necessárias
+        # Definição de colunas necessárias baseada no modo
         required_cols = ['P1_PAS1', 'P2_PAS1', 'P1_PAS2', 'P2_PAS2']
+        if analysis_mode == "Triênios Concluídos (Histórico)":
+            required_cols.extend(['P1_PAS3', 'P2_PAS3'])
+            
         missing_cols = [c for c in required_cols if c not in df.columns]
         
         if missing_cols:
-            st.warning(f"⚠️ Colunas faltando: {', '.join(missing_cols)}")
+            st.warning(f"⚠️ Colunas faltando para o modo '{analysis_mode}': {', '.join(missing_cols)}")
             st.info("""
             📋 **Colunas necessárias:**
             - P1_PAS1, P2_PAS1, Red_PAS1 (notas do PAS 1)
             - P1_PAS2, P2_PAS2, Red_PAS2 (notas do PAS 2)
+            """ + ("- P1_PAS3, P2_PAS3, Red_PAS3 (notas do PAS 3)" if analysis_mode == "Triênios Concluídos (Histórico)" else "") + """
             
             💡 Use **Dados de Exemplo** para testar o sistema.
             """)
-            with col1:
-                st.metric("Total de Alunos", len(df))
-            st.caption(f"Colunas encontradas: {', '.join(df.columns.tolist())}")
         else:
+            # Cálculos de Escore Bruto
             df['EB_PAS1'] = df['P1_PAS1'] + df['P2_PAS1']
             df['EB_PAS2'] = df['P1_PAS2'] + df['P2_PAS2']
             
-            with col1:
-                st.metric("Total de Alunos", len(df))
-            with col2:
-                st.metric("Média EB PAS 1", f"{df['EB_PAS1'].mean():.2f}")
-            with col3:
-                st.metric("Média EB PAS 2", f"{df['EB_PAS2'].mean():.2f}")
-            with col4:
-                trend = df['EB_PAS2'].mean() - df['EB_PAS1'].mean()
-                st.metric("Tendência Média", f"{trend:+.2f}", delta=f"{trend:+.2f}")
+            cols_metrics = st.columns(4 if analysis_mode == "Triênio Atual (Em Andamento)" else 5)
             
-            # Gráfico de distribuição
-            fig = px.histogram(
-                df.melt(value_vars=['EB_PAS1', 'EB_PAS2'], var_name='Etapa', value_name='Escore Bruto'),
-                x='Escore Bruto',
-                color='Etapa',
-                barmode='overlay',
-                title='Distribuição de Escores Brutos',
-                opacity=0.7,
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            with cols_metrics[0]:
+                st.metric("Total de Alunos", len(df))
+            with cols_metrics[1]:
+                st.metric("Média EB PAS 1", f"{df['EB_PAS1'].mean():.2f}")
+            with cols_metrics[2]:
+                st.metric("Média EB PAS 2", f"{df['EB_PAS2'].mean():.2f}")
+            
+            if analysis_mode == "Triênio Atual (Em Andamento)":
+                with cols_metrics[3]:
+                    trend = df['EB_PAS2'].mean() - df['EB_PAS1'].mean()
+                    st.metric("Tendência (P1 → P2)", f"{trend:+.2f}", delta=f"{trend:+.2f}")
+                
+                # Gráfico de distribuição (Apenas PAS 1 e 2)
+                fig = px.histogram(
+                    df.melt(value_vars=['EB_PAS1', 'EB_PAS2'], var_name='Etapa', value_name='Escore Bruto'),
+                    x='Escore Bruto',
+                    color='Etapa',
+                    barmode='overlay',
+                    title='Distribuição de Escores Brutos (PAS 1 vs PAS 2)',
+                    opacity=0.7,
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            else: # Triênios Concluídos
+                df['EB_PAS3'] = df['P1_PAS3'] + df['P2_PAS3']
+                
+                with cols_metrics[3]:
+                    st.metric("Média EB PAS 3", f"{df['EB_PAS3'].mean():.2f}")
+                
+                with cols_metrics[4]:
+                    trend_total = df['EB_PAS3'].mean() - df['EB_PAS2'].mean()
+                    st.metric("Tendência (P2 → P3)", f"{trend_total:+.2f}", delta=f"{trend_total:+.2f}")
+                
+                # Gráfico de distribuição (PAS 1, 2 e 3)
+                fig = px.histogram(
+                    df.melt(value_vars=['EB_PAS1', 'EB_PAS2', 'EB_PAS3'], var_name='Etapa', value_name='Escore Bruto'),
+                    x='Escore Bruto',
+                    color='Etapa',
+                    barmode='overlay',
+                    title='Distribuição de Escores Brutos (Ciclo Completo)',
+                    opacity=0.6,
+                    color_discrete_map={'EB_PAS1': '#EF553B', 'EB_PAS2': '#00CC96', 'EB_PAS3': '#AB63FA'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Gráfico de Evolução Média
+                st.markdown("### 📉 Evolução da Média da Turma")
+                means = pd.DataFrame({
+                    'Etapa': ['PAS 1', 'PAS 2', 'PAS 3'],
+                    'Média': [df['EB_PAS1'].mean(), df['EB_PAS2'].mean(), df['EB_PAS3'].mean()]
+                })
+                fig_line = px.line(means, x='Etapa', y='Média', markers=True, title='Trajetória de Desempenho (Média)')
+                st.plotly_chart(fig_line, use_container_width=True)
 
 
 # =============================================================================
@@ -691,16 +809,45 @@ elif page == "🔮 Preditor PAS 3":
         st.error("❌ Nenhum modelo carregado. Verifique se os arquivos .joblib existem em models/")
         st.stop()
 
-    # Toggle de Semestre (GLOBAL para ambas as abas)
-    st.markdown("### 📅 Semestre de Ingresso")
-    semester_option = st.radio(
-        "Selecione para qual semestre você está concorrendo:",
-        options=["1º Semestre", "2º Semestre"],
-        index=0,
-        horizontal=True,
-        key="global_semester_toggle"
-    )
-    semester = 1 if semester_option == "1º Semestre" else 2
+    # Toggle de Semestre e Subprograma (GLOBAL para ambas as abas)
+    st.markdown("### ⚙️ Configuração do Candidato")
+    
+    col_sem, col_tri = st.columns(2)
+    
+    with col_sem:
+        st.markdown("**📅 Semestre de Ingresso**")
+        semester_option = st.radio(
+            "Selecione para qual semestre você está concorrendo:",
+            options=["1º Semestre", "2º Semestre"],
+            index=0,
+            horizontal=True,
+            key="global_semester_toggle",
+            label_visibility="collapsed"
+        )
+        semester = 1 if semester_option == "1º Semestre" else 2
+
+    with col_tri:
+        st.markdown("**🎓 Subprograma (Triênio)**")
+        # Seleção de Ciclo (Impacta o cálculo de z-score do passado E a referência de nota de corte)
+        ciclo_aluno = st.selectbox(
+            "Em qual Subprograma (Triênio) você está?",
+            options=list(TRIENNIUM_STATS.keys()),
+            index=0, # Default 2023-2025 (Mais recente)
+            help="O sistema usará as notas de corte do triênio ANTERIOR a este como referência.",
+            label_visibility="collapsed"
+        )
+        stats_ciclo = TRIENNIUM_STATS[ciclo_aluno]
+        
+        # Lógica de Triênio de Referência (Anterior)
+        try:
+            start_year, end_year = map(int, ciclo_aluno.split('-'))
+            prev_start = start_year - 1
+            prev_end = end_year - 1
+            ref_triennium = f"{prev_start}-{prev_end}"
+        except:
+            ref_triennium = "2022-2024" # Fallback safe
+
+        st.caption(f"ℹ️ Referência de Notas: **{ref_triennium}**")
     
     # Criação das Abas
     tab_diagnostico, tab_estrategia = st.tabs(["🔮 Diagnóstico Realista", "🎯 Calculadora de Estratégia"])
@@ -717,14 +864,14 @@ elif page == "🔮 Preditor PAS 3":
         
         with col1:
             st.markdown("### 📝 Notas do PAS 1")
-            p1_pas1 = st.number_input("P1 PAS 1 (Língua Estrangeira)", 0.0, 20.0, value=None, step=0.001, format="%.3f", key="pred_p1_1")
-            p2_pas1 = st.number_input("P2 PAS 1 (Demais Disciplinas)", 0.0, 100.0, value=None, step=0.001, format="%.3f", key="pred_p2_1")
+            p1_pas1 = st.number_input("P1 PAS 1 (Língua Estrangeira)", -20.0, 20.0, value=None, step=0.001, format="%.3f", key="pred_p1_1")
+            p2_pas1 = st.number_input("P2 PAS 1 (Demais Disciplinas)", -100.0, 100.0, value=None, step=0.001, format="%.3f", key="pred_p2_1")
             red_pas1 = st.number_input("Redação PAS 1", 0.0, 10.0, value=None, step=0.001, format="%.3f", key="pred_r_1")
             
         with col2:
             st.markdown("### 📝 Notas do PAS 2")
-            p1_pas2 = st.number_input("P1 PAS 2 (Língua Estrangeira)", 0.0, 20.0, value=None, step=0.001, format="%.3f", key="pred_p1_2")
-            p2_pas2 = st.number_input("P2 PAS 2 (Demais Disciplinas)", 0.0, 100.0, value=None, step=0.001, format="%.3f", key="pred_p2_2")
+            p1_pas2 = st.number_input("P1 PAS 2 (Língua Estrangeira)", -20.0, 20.0, value=None, step=0.001, format="%.3f", key="pred_p1_2")
+            p2_pas2 = st.number_input("P2 PAS 2 (Demais Disciplinas)", -100.0, 100.0, value=None, step=0.001, format="%.3f", key="pred_p2_2")
             red_pas2 = st.number_input("Redação PAS 2", 0.0, 10.0, value=None, step=0.001, format="%.3f", key="pred_r_2")
         
         # Validação de preenchimento
@@ -798,7 +945,7 @@ elif page == "🔮 Preditor PAS 3":
             arg_final_pred = results['arg_final_pred']
             predictions = results['predictions']
             recommended_model = results['recommended_model']
-            ARG_FINAL_MAE = 13.49
+            
             
             # --- DISPLAY ESCORE BRUTO PAS 3 PREVISTO (RESTAURADO) ---
             st.markdown("---")
@@ -844,8 +991,8 @@ elif page == "🔮 Preditor PAS 3":
                 # Input de Curso para Probabilidade
                 st.markdown(f"#### 🎓 Análise de Probabilidade ({semester_option})")
                 
-                # Carrega cursos com SEMESTRE DINÂMICO
-                df_cursos = load_course_stats(semester=semester) 
+                # Carrega cursos com SEMESTRE DINÂMICO e TRIÊNIO DE REFERÊNCIA
+                df_cursos = load_course_stats(semester=semester, triennium=ref_triennium) 
                 if df_cursos is not None:
                     cursos_lista = df_cursos['Curso'].unique().tolist()
                     
@@ -859,6 +1006,7 @@ elif page == "🔮 Preditor PAS 3":
                     curso_selecionado = st.selectbox(
                         "Selecione um curso de interesse para ver sua chance:", 
                         ["Selecione..."] + cursos_lista,
+                        key=f"prob_course_{semester}_{ref_triennium}", # Key dinâmica para forçar reload completo
                         format_func=fmt_course
                     )
                     
@@ -882,8 +1030,8 @@ elif page == "🔮 Preditor PAS 3":
                             st.warning("Módulo de estatísticas não carregado.")
                             
                     # Tabela de Cursos Próximos com Probabilidade
-                    st.markdown(f"#### 🏫 Cursos ao seu alcance no {semester_option}")
-                    closest = get_closest_courses(arg_ajustado, n=10, semester=semester)
+                    st.markdown(f"#### 🏫 Cursos ao seu alcance no {semester_option} (Ref. {ref_triennium})")
+                    closest = get_closest_courses(arg_ajustado, n=10, semester=semester, triennium=ref_triennium)
                     
                     if not closest.empty and calculate_approval_probability:
                         closest['Chance %'] = closest['Min'].apply(
@@ -901,19 +1049,6 @@ elif page == "🔮 Preditor PAS 3":
         st.markdown("""
         > **Engenharia Reversa:** Defina onde quer chegar e descubra quanto precisa tirar.
         """)
-        
-        # =========================================================================
-        # CONFIGURAÇÃO DE CICLO (Exclusivo da Estratégia)
-        # =========================================================================
-        st.markdown("### ⚙️ Configuração do Subprograma")
-        # Seleção de Ciclo (Impacta o cálculo de z-score do passado)
-        ciclo_aluno = st.selectbox(
-            "Em qual Subprograma (Triênio) você está?",
-            options=list(TRIENNIUM_STATS.keys()),
-            index=1, # Default 2022-2024
-            help="Isso garante que o sistema use a 'régua' correta das médias do ano em que você fez o PAS 1 e 2."
-        )
-        stats_ciclo = TRIENNIUM_STATS[ciclo_aluno]
         
         if TargetCalculator and 'prediction_results' in st.session_state:
             # Reusa dados inputados na aba 1 se disponíveis
@@ -937,7 +1072,9 @@ elif page == "🔮 Preditor PAS 3":
                 
                 # Seleção de Curso Alvo
                 st.markdown(f"### 🎯 Meta ({semester_option})")
-                df_cursos_estrat = load_course_stats(semester=semester)
+                
+                # Carrega stats do triênio de referência
+                df_cursos_estrat = load_course_stats(semester=semester, triennium=ref_triennium)
                 if df_cursos_estrat is not None:
                     cursos_lista = df_cursos_estrat['Curso'].unique().tolist()
                     
@@ -950,12 +1087,12 @@ elif page == "🔮 Preditor PAS 3":
                     curso_alvo_nome = st.selectbox(
                         "Curso Objetivo:", 
                         cursos_lista, 
-                        key="target_course",
+                        key=f"target_course_{semester}_{ref_triennium}", # Key dinâmica para forçar reload completo
                         format_func=fmt_course_estrat
                     )
                     
                     meta_arg = df_cursos_estrat[df_cursos_estrat['Curso'] == curso_alvo_nome]['Min'].values[0]
-                    st.info(f"Nota de Corte Alvo no **{semester_option}**: **{meta_arg:.3f}**")
+                    st.info(f"Nota de Corte Alvo no **{semester_option}**: **{meta_arg:.3f}** (Base: {ref_triennium})")
                     
                     # ESTRATÉGIA DINÂMICA
                     # Define a projeção do PAS 3 baseada no subprograma escolhido
@@ -1003,7 +1140,7 @@ elif page == "🔮 Preditor PAS 3":
                             
                             p1_override = c_sim1.number_input(
                                 "Estimativa P1 PAS 3", 
-                                0.0, 20.0, 
+                                -20.0, 20.0, 
                                 value=p1_val, 
                                 step=0.001, format="%.3f",
                                 help="Personalize quanto você acha que vai tirar na P1 (Língua Estrangeira)."
@@ -1057,7 +1194,7 @@ elif page == "🔮 Preditor PAS 3":
                             
                             if amostra > 0:
                                 st.warning(f"""
-                                **Análise de Coorte:** De {amostra} alunos com desempenho semelhante ao seu no PAS 1 e 2 nos últimos anos,
+                                **Análise de Corte:** De {amostra} alunos com desempenho semelhante ao seu no PAS 1 e 2 nos últimos anos,
                                 **{prob_hist:.1f}%** conseguiram atingir essa nota final.
                                 """)
                             else:
@@ -1105,12 +1242,20 @@ elif page == "🏫 Análise da Escola":
     col1, col2 = st.columns([3, 1])
     with col2:
         if st.button("📥 Usar Exemplo de Escola"):
-            try:
-                escola_exemplo = pd.read_excel(Path(__file__).parent.parent / "data" / "exemplo_escola_1000_alunos.xlsx")
-                st.session_state.escola_df = escola_exemplo
-                st.success("✅ Carregado: 1000 alunos de exemplo")
-            except Exception as e:
-                st.error(f"Erro: {e}")
+            example_path = Path(__file__).parent.parent / "data" / "exemplo_escola_1000_alunos.xlsx"
+            if not example_path.exists():
+                # Fallback para o caso de estar rodando na raiz
+                example_path = Path("data/exemplo_escola_1000_alunos.xlsx")
+                
+            if example_path.exists():
+                try:
+                    escola_exemplo = pd.read_excel(example_path)
+                    st.session_state.escola_df = escola_exemplo
+                    st.success("✅ Carregado: 1000 alunos de exemplo")
+                except Exception as e:
+                    st.error(f"Erro ao ler arquivo de exemplo: {e}")
+            else:
+                st.error("❌ Arquivo de exemplo não encontrado. Por favor, execute o script 'scripts/generate_sample_school.py' primeiro.")
     
     if uploaded_file is not None:
         try:
@@ -1580,3 +1725,299 @@ elif page == "📈 Comparação Entre Grupos":
             except Exception as e:
                 st.error(f"❌ Erro ao realizar teste: {e}")
 
+# =============================================================================
+# PÁGINA 7: GERADOR DE PDF
+# =============================================================================
+
+elif page == "📄 Gerador de PDF":
+    st.markdown('<p class="main-header">📄 Gerador de Relatórios PDF</p>', unsafe_allow_html=True)
+    st.markdown("""
+    > **Gera um PDF estilizado com sua projeção e metas.**
+    > Use a calculadora na aba anterior para estimar seus valores ou preencha manualmente abaixo.
+    """)
+    
+    tab_manual, tab_batch = st.tabs(["✍️ Manual", "📦 Em Lote (Escola)"])
+    
+    pdf_gen = PDFGenerator()
+    
+    with tab_manual:
+        st.markdown("### Preenchimento Manual (Automático)")
+        
+        # --- SELEÇÃO DE CURSO (Igual à aba Estratégia) ---
+        target_semester = 1 # Definido pelo usuário: 1º Semestre
+        ref_triennium_pdf = "2022-2024" # Definido pelo usuário
+        
+        df_cursos_pdf = load_course_stats(semester=target_semester, triennium=ref_triennium_pdf)
+        
+        if df_cursos_pdf is not None:
+            cursos_lista = df_cursos_pdf['Curso'].unique().tolist()
+            course_scores_pdf = dict(zip(df_cursos_pdf['Curso'], df_cursos_pdf['Min']))
+            
+            def fmt_course_pdf(nome):
+                return f"{nome} (Corte: {course_scores_pdf.get(nome, 0):.3f})"
+                
+            selected_course_name = st.selectbox(
+                "Curso Pretendido (Ref. 2022-2024 - 1º Semestre)", 
+                cursos_lista,
+                format_func=fmt_course_pdf
+            )
+            nota_corte_val = course_scores_pdf.get(selected_course_name, 0.0)
+        else:
+            st.error("Erro ao carregar lista de cursos.")
+            selected_course_name = ""
+            nota_corte_val = 0.0
+
+        with st.form("pdf_manual_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                aluno = st.text_input("Nome do Aluno", "Estudante")
+                # curso = st.text_input("Curso Pretendido") # Substituído pelo selectbox acima
+                
+                st.markdown("#### 📝 Notas PAS 1")
+                p1_pas1 = st.number_input("PAS 1 - P1 (Língua)", 0.0, 20.0, 0.0, step=0.001, format="%.3f")
+                p2_pas1 = st.number_input("PAS 1 - P2 (Gerais)", 0.0, 100.0, 0.0, step=0.001, format="%.3f")
+                red_pas1 = st.number_input("PAS 1 - Redação", 0.0, 10.0, 0.0, step=0.001, format="%.3f")
+                
+            with col2:
+                # Spacer
+                st.write("") 
+                st.write("")
+                
+                st.markdown("#### 📝 Notas PAS 2")
+                p1_pas2 = st.number_input("PAS 2 - P1 (Língua)", 0.0, 20.0, 0.0, step=0.001, format="%.3f")
+                p2_pas2 = st.number_input("PAS 2 - P2 (Gerais)", 0.0, 100.0, 0.0, step=0.001, format="%.3f")
+                red_pas2 = st.number_input("PAS 2 - Redação", 0.0, 10.0, 0.0, step=0.001, format="%.3f")
+                
+            st.info(f"Nota de Corte Selecionada: **{nota_corte_val:.3f}** (Calculada automaticamente)")
+
+            submitted = st.form_submit_button("Gerar PDF 📄", type="primary")
+            
+        if submitted:
+            # 1. Carrega Estatísticas para Cálculo (Usando 2023-2025 como base atual)
+            stats_base = TRIENNIUM_STATS["2023-2025"]
+            
+            # 2. Calcula Argumentos PAS 1 e 2
+            arg_pas1 = calculate_argument_etapa(p1_pas1, p2_pas1, red_pas1, stats_base["PAS1"])
+            arg_pas2 = calculate_argument_etapa(p1_pas2, p2_pas2, red_pas2, stats_base["PAS2"])
+            arg_acumulado = arg_pas1 + 2 * arg_pas2
+            
+            # 3. Calcula Meta (Reverse Prediction)
+            calc = TargetCalculator()
+            
+            notas_input = {
+                'P1_PAS1': p1_pas1, 'P2_PAS1': p2_pas1, 'Red_PAS1': red_pas1,
+                'P1_PAS2': p1_pas2, 'P2_PAS2': p2_pas2, 'Red_PAS2': red_pas2,
+            }
+            
+            # Usa projeção de tendência para PAS 3 (ou stats_base["PAS3"] se preferir média histórica)
+            stats_pas3_proj = STATS_PAS3_TREND 
+            
+            result = calc.calculate_required_score(
+                notas_input, nota_corte_val,
+                stats_base["PAS1"], stats_base["PAS2"], stats_pas3_proj
+            )
+            
+            # 4. Calcula Z-score e Probabilidade para o PDF usando o Modelo ML (Fonte da Verdade)
+            eb_p1 = p1_pas1 + p2_pas1
+            eb_p2 = p1_pas2 + p2_pas2
+            c_eb = eb_p2 - eb_p1
+            c_red = red_pas2 - red_pas1
+            
+            features_manual = np.array([[eb_p1, red_pas1, eb_p2, red_pas2, c_eb, c_red]])
+            
+            # Predição do Modelo AI
+            arg_final_pred_ml = 0.0
+            if ARG_FINAL_MODEL:
+                arg_final_pred_ml = float(ARG_FINAL_MODEL.predict(features_manual)[0])
+            else:
+                # Fallback para cálculo manual se modelo não carregar
+                arg3_pred_realista = calculate_argument_etapa(result.p1_estimado, stats_pas3_proj.mean_p2, result.red_estimada, stats_pas3_proj)
+                arg_final_pred_ml = arg_pas1 + 2*arg_pas2 + 3*arg3_pred_realista
+
+            z_score_val = (arg_final_pred_ml - nota_corte_val) / ARG_FINAL_MAE
+            prob_pdf = 0.0
+            if calculate_approval_probability:
+                prob_pdf = calculate_approval_probability(arg_final_pred_ml, nota_corte_val, rmse=ARG_FINAL_MAE)
+
+            # REALITY CHECK (COHORTE)
+            reality_check_str = "-"
+            if calculate_cohort_evolution_probability:
+                df_hist = load_cohort_data()
+                aluno_dados = {'eb_pas1': eb_p1, 'eb_pas2': eb_p2}
+                prob_hist, amostra = calculate_cohort_evolution_probability(aluno_dados, nota_corte_val, df_hist)
+                if amostra > 0:
+                    reality_check_str = f"Em {amostra} alunos: {prob_hist:.1f}% aprovação"
+            
+            # 5. Prepara Dados para o PDF
+            data = {
+                'aluno': aluno, 
+                'curso': selected_course_name,
+                # Notas Brutas
+                'pas1_p1': f"{p1_pas1:.3f}", 'pas1_p2': f"{p2_pas1:.3f}", 'pas1_red': f"{red_pas1:.3f}", 
+                'pas1_arg': f"{arg_pas1:.3f}",
+                'pas2_p1': f"{p1_pas2:.3f}", 'pas2_p2': f"{p2_pas2:.3f}", 'pas2_red': f"{red_pas2:.3f}", 
+                'pas2_arg': f"{arg_pas2:.3f}",
+                # Argumentos Ponderados e Acumulado
+                'arg_pond_1': f"{arg_pas1:.3f}", 
+                'arg_pond_2': f"{arg_pas2 * 2:.3f}",
+                'arg_acumulado': f"{arg_acumulado:.3f}",
+                # PAS 3 (Estimativas e Meta)
+                'pas3_p1_est': f"{result.p1_estimado:.3f}", 
+                'pas3_red_est': f"{result.red_estimada:.3f}",
+                'pas3_p2_necessario': f"{result.p2_necessario:.3f}",
+                'nota_corte': f"{nota_corte_val:.3f}",
+                'arg_necessario': f"{result.arg_pas3_necessario:.3f}",
+                # Estatísticas de Aprovação
+                'probabilidade': f"{prob_pdf * 100:.1f}%",
+                'z_score': reality_check_str # Substituído pelo Reality Check
+            }
+            
+            try:
+                pdf_bytes = pdf_gen.generate_single_pdf(data)
+                st.success("PDF Gerado com Sucesso!")
+                st.download_button(
+                    label="📥 Baixar PDF",
+                    data=pdf_bytes,
+                    file_name=f"Relatorio_PAS_{aluno.replace(' ', '_')}.pdf",
+                    mime="application/pdf"
+                )
+            except Exception as e:
+                st.error(f"Erro ao gerar PDF: {e}")
+
+    with tab_batch:
+        st.markdown("### Processamento em Lote")
+        st.info("Faça upload de uma planilha com colunas: **Nome, Curso, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2**.")
+        
+        st.markdown("#### ⚙️ Configuração do Lote")
+        col_b1, col_b2 = st.columns(2)
+        with col_b1:
+            batch_semester = st.radio("Semestre de Ingresso (para corte)", [1, 2], index=0, horizontal=True, key="batch_sem")
+        with col_b2:
+            batch_ref_triennium = st.selectbox("Triênio de Referência (Corte)", list(TRIENNIUM_STATS.keys()), index=1, key="batch_tri")
+
+        uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'])
+        
+        if uploaded_batch:
+            if st.button("Gerar PDFs em Lote"):
+                try:
+                    df_batch = pd.read_csv(uploaded_batch) if uploaded_batch.name.endswith('.csv') else pd.read_excel(uploaded_batch)
+                    
+                    # Normaliza colunas para minúsculo
+                    df_batch.columns = df_batch.columns.str.lower().str.replace(' ', '_')
+                    
+                    # Carrega notas de corte
+                    df_cursos_ref = load_course_stats(semester=batch_semester, triennium=batch_ref_triennium)
+                    
+                    if df_cursos_ref is not None:
+                        course_map = dict(zip(df_cursos_ref['Curso'], df_cursos_ref['Min']))
+                        available_courses = list(course_map.keys())
+                    else:
+                        course_map = {}
+                        available_courses = []
+                    
+                    # Stats base para cálculo (2023-2025)
+                    stats_base = TRIENNIUM_STATS["2023-2025"]
+                    calc = TargetCalculator()
+                    
+                    processed_data = []
+                    
+                    progress_bar = st.progress(0)
+                    total_rows = len(df_batch)
+                    
+                    for idx, row in df_batch.iterrows():
+                        # Extrai dados (com fallbacks seguros)
+                        aluno_name = str(row.get('nome', row.get('aluno', 'Estudante')))
+                        raw_course_name = str(row.get('curso', 'Não informado'))
+                        
+                        # --- Fuzzy Match Logic ---
+                        # Tenta encontrar o nome oficial do curso
+                        official_course_name = find_best_course_match(raw_course_name, available_courses)
+                        nota_corte = course_map.get(official_course_name, 0.0)
+                        
+                        # Feedback no console/UI (opcional, pode poluir se muitos)
+                        # if raw_course_name != official_course_name:
+                        #    print(f"Mapped '{raw_course_name}' to '{official_course_name}'")
+
+                        # Notas PAS 1
+                        p1_1 = float(row.get('p1_pas1', 0))
+                        p2_1 = float(row.get('p2_pas1', 0))
+                        red_1 = float(row.get('red_pas1', 0))
+                        
+                        # Notas PAS 2
+                        p1_2 = float(row.get('p1_pas2', 0))
+                        p2_2 = float(row.get('p2_pas2', 0))
+                        red_2 = float(row.get('red_pas2', 0))
+                        
+                        # Cálculos
+                        arg1 = calculate_argument_etapa(p1_1, p2_1, red_1, stats_base["PAS1"])
+                        arg2 = calculate_argument_etapa(p1_2, p2_2, red_2, stats_base["PAS2"])
+                        arg_acum = arg1 + 2 * arg2
+                        
+                        # Projeção PAS 3
+                        notas_input = {
+                            'P1_PAS1': p1_1, 'P2_PAS1': p2_1, 'Red_PAS1': red_1,
+                            'P1_PAS2': p1_2, 'P2_PAS2': p2_2, 'Red_PAS2': red_2,
+                        }
+                        
+                        # Usa projeção de tendência para PAS 3
+                        result = calc.calculate_required_score(
+                            notas_input, nota_corte,
+                            stats_base["PAS1"], stats_base["PAS2"], STATS_PAS3_TREND
+                        )
+                        
+                        # --- Estatísticas de Aprovação Usando Modelo AI ---
+                        eb_b1 = p1_1 + p2_1
+                        eb_b2 = p1_2 + p2_2
+                        cb_eb = eb_b2 - eb_b1
+                        cb_red = red_2 - red_1
+                        
+                        feat_b = np.array([[eb_b1, red_1, eb_b2, red_2, cb_eb, cb_red]])
+                        
+                        arg_final_batch_pred = 0.0
+                        if ARG_FINAL_MODEL:
+                            arg_final_batch_pred = float(ARG_FINAL_MODEL.predict(feat_b)[0])
+                        else:
+                            # Fallback
+                            arg3_p = calculate_argument_etapa(result.p1_estimado, stats_pas3_proj.mean_p2, result.red_estimada, stats_pas3_proj)
+                            arg_final_batch_pred = 1*arg1 + 2*arg2 + 3*arg3_p
+                        
+                        z_score_batch = (arg_final_batch_pred - nota_corte) / ARG_FINAL_MAE
+                        prob_batch = 0.0
+                        if calculate_approval_probability:
+                            prob_batch = calculate_approval_probability(arg_final_batch_pred, nota_corte, rmse=ARG_FINAL_MAE)
+
+                        # Monta dict final
+                        student_data = {
+                            'aluno': aluno_name,
+                            'curso': official_course_name, # Usa o nome oficial encontrado
+                            'pas1_p1': f"{p1_1:.3f}", 'pas1_p2': f"{p2_1:.3f}", 'pas1_red': f"{red_1:.3f}",
+                            'pas1_arg': f"{arg1:.3f}",
+                            'pas2_p1': f"{p1_2:.3f}", 'pas2_p2': f"{p2_2:.3f}", 'pas2_red': f"{red_2:.3f}",
+                            'pas2_arg': f"{arg2:.3f}",
+                            'arg_pond_1': f"{arg1:.3f}",
+                            'arg_pond_2': f"{arg2*2:.3f}",
+                            'arg_acumulado': f"{arg_acum:.3f}",
+                            'pas3_p1_est': f"{result.p1_estimado:.3f}",
+                            'pas3_red_est': f"{result.red_estimada:.3f}",
+                            'pas3_p2_necessario': f"{result.p2_necessario:.3f}",
+                            'nota_corte': f"{nota_corte:.3f}",
+                            'arg_necessario': f"{result.arg_pas3_necessario:.3f}",
+                            'probabilidade': f"{prob_batch * 100:.1f}%",
+                            'z_score': f"{z_score_batch:+.2f}"
+                        }
+                        processed_data.append(student_data)
+                        progress_bar.progress((idx + 1) / total_rows)
+                    
+                    zip_buffer = pdf_gen.generate_batch_zip(processed_data)
+                    
+                    st.success(f"✅ Processamento concluído: {len(processed_data)} arquivos gerados.")
+                    st.download_button(
+                        label="📦 Baixar Arquivos (ZIP)",
+                        data=zip_buffer,
+                        file_name="relatorios_pas_batch.zip",
+                        mime="application/zip"
+                    )
+                    
+                except Exception as e:
+                    st.error(f"Erro no processamento em lote: {e}")
