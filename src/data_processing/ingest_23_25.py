@@ -57,7 +57,7 @@ def extract_from_pdf(pdf_path):
 def main():
     pas1_pdf = "data/Ed_7_PAS_1_2023_2025_Res_final_tipo_D_redação.pdf"
     pas2_pdf = "data/Ed_15_PAS_2_2023-2025_Res_final_tipo_D_redacao.pdf"
-    master_csv = "data/PAS_MESTRE_LIMPO_FINAL.csv"
+    master_csv = "data/banco_alunos_pas_final.csv"
     
     df1 = extract_from_pdf(pas1_pdf)
     df2 = extract_from_pdf(pas2_pdf)

@@ -4,7 +4,7 @@ import re
 
 # Paths
 PDF_PATH = 'data/Ed_8_2024_PAS_UnB_1_2024-2026_Res_final_tipo_D_redação.pdf'
-CSV_PATH = 'data/PAS_MESTRE_LIMPO_FINAL.csv'
+CSV_PATH = 'data/banco_alunos_pas_final.csv'
 
 def main():
     print("--- Starting PAS 1 Data Extraction (PDF) ---")

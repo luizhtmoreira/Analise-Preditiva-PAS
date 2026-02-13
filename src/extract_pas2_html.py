@@ -5,8 +5,8 @@ import shutil
 
 # Paths
 HTML_PATH = 'data/Ed_12_PAS_2_2024-2026_Res_final_tipoD_red.html'
-CSV_PATH = 'data/PAS_MESTRE_LIMPO_FINAL.csv'
-BACKUP_PATH = 'data/PAS_MESTRE_LIMPO_FINAL_BACKUP.csv'
+CSV_PATH = 'data/banco_alunos_pas_final.csv'
+BACKUP_PATH = 'data/banco_alunos_pas_final_BACKUP.csv'
 
 def main():
     print("--- Starting Data Extraction & Integration ---")

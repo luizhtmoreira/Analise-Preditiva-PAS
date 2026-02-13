@@ -124,7 +124,7 @@ def main():
     base_path = "data"
     pas1_file = os.path.join(base_path, "Ed_7_PAS_1_2023_2025_Res_final_tipo_D_redação.pdf")
     pas2_file = os.path.join(base_path, "Ed_15_PAS_2_2023-2025_Res_final_tipo_D_redacao.pdf")
-    master_csv = os.path.join(base_path, "PAS_MESTRE_LIMPO_FINAL.csv")
+    master_csv = os.path.join(base_path, "banco_alunos_pas_final.csv")
     
     if not os.path.exists(master_csv):
         print("CRITICAL ERROR: Master CSV not found. Please restore backup first.")

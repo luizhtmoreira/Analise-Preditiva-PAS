@@ -6,7 +6,7 @@ class ExamStats:
     m_p2: float; dp_p2: float
     m_red: float; dp_red: float
 
-# Gerado automaticamente via análise do PAS_MESTRE_LIMPO_FINAL.csv
+# Gerado automaticamente via análise do banco_alunos_pas_final.csv
 # Chave: (Ano da Prova, Etapa)
 OFFICIAL_STATS = {
     (2016, 1): ExamStats(m_p1=4.421, dp_p1=2.782, m_p2=24.246, dp_p2=13.169, m_red=6.074, dp_red=2.669),

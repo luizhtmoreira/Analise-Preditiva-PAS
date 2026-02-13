@@ -15,7 +15,7 @@ for pair in data_str.split(','):
         mapping[insc] = curso
 
 # Load master dataset
-csv_path = Path("data/PAS_MESTRE_LIMPO_FINAL.csv")
+csv_path = Path("data/banco_alunos_pas_final.csv")
 df_master = pd.read_csv(csv_path)
 
 # Ensure Inscricao is string for matching

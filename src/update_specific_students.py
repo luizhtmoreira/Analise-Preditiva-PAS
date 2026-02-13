@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Path
-CSV_PATH = 'data/PAS_MESTRE_LIMPO_FINAL.csv'
+CSV_PATH = 'data/banco_alunos_pas_final.csv'
 
 def main():
     print("--- Manual Student Update ---")

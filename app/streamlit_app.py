@@ -186,7 +186,7 @@ def load_cohort_data():
     """Calcula ou carrega dados históricos para análise de coorte."""
     try:
         data_dir = Path(__file__).parent.parent / "data"
-        csv_path = data_dir / "PAS_MESTRE_LIMPO_FINAL.csv"
+        csv_path = data_dir / "banco_alunos_pas_final.csv"
         
         if not csv_path.exists():
             return pd.DataFrame()
@@ -1226,9 +1226,9 @@ elif page == "🏫 Análise da Escola":
     @st.cache_data
     def load_pas_data():
         try:
-            return pd.read_csv(Path(__file__).parent.parent / "data" / "PAS_MESTRE_LIMPO_FINAL.csv")
+            return pd.read_csv(Path(__file__).parent.parent / "data" / "banco_alunos_pas_final.csv")
         except:
-            return pd.read_csv("data/PAS_MESTRE_LIMPO_FINAL.csv")
+            return pd.read_csv("data/banco_alunos_pas_final.csv")
     
     df_geral = load_pas_data()
     
