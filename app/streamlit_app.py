@@ -140,14 +140,11 @@ def load_course_stats(semester: int = 1, triennium: Optional[str] = None):
     try:
         data_dir = Path(__file__).parent.parent / "data"
         
-        # Prioridade 1: Arquivo Consolidado (Solicitado)
-        csv_path = data_dir / "notas_corte_PAS_consolidado_v2.csv"
-        
-        # Prioridade 2: Arquivo Ordenado (Fallback)
-        if not csv_path.exists():
-            csv_path = data_dir / "notas_corte_PAS_ORDENADO.csv"
+        # Arquivo de Notas de Corte Final
+        csv_path = data_dir / "notas_corte_pas_final.csv"
         
         if not csv_path.exists():
+            st.error(f"⚠️ Arquivo não encontrado: {csv_path}")
             return None
         
         # Carrega CSV encontrado
@@ -809,96 +806,96 @@ elif page == "🔮 Preditor PAS 3":
         st.error("❌ Nenhum modelo carregado. Verifique se os arquivos .joblib existem em models/")
         st.stop()
 
-    # Toggle de Semestre e Subprograma (GLOBAL para ambas as abas)
+    # --- CARREGAMENTO DO BANCO DE DADOS PADRONIZADO ---
+    data_dir = Path(__file__).parent.parent / "data"
+    ARQUIVO_DADOS = data_dir / "notas_corte_pas_final.csv"
+    
+    try:
+        @st.cache_data
+        def load_data_preditor():
+            if not ARQUIVO_DADOS.exists():
+                return None
+            df = pd.read_csv(ARQUIVO_DADOS)
+            df['Min'] = pd.to_numeric(df['Min'], errors='coerce')
+            return df
+            
+        df_notas = load_data_preditor()
+        if df_notas is None:
+            st.error(f"❌ Arquivo '{ARQUIVO_DADOS.name}' não encontrado na pasta data/.")
+            st.stop()
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar banco de dados: {e}")
+        st.stop()
+
+    # --- CONFIGURAÇÃO (GLOBAL) ---
     st.markdown("### ⚙️ Configuração do Candidato")
     
-    col_sem, col_tri = st.columns(2)
+    col_sem, col_tri, col_cota = st.columns([1, 1, 2])
     
     with col_sem:
-        st.markdown("**📅 Semestre de Ingresso**")
+        st.markdown("**📅 Semestre**")
         semester_option = st.radio(
-            "Selecione para qual semestre você está concorrendo:",
-            options=["1º Semestre", "2º Semestre"],
-            index=0,
-            horizontal=True,
-            key="global_semester_toggle",
-            label_visibility="collapsed"
+            "Semestre", ["1º Semestre", "2º Semestre"], 
+            label_visibility="collapsed", horizontal=True
         )
-        semester = 1 if semester_option == "1º Semestre" else 2
+        semester_db = "1°" if semester_option == "1º Semestre" else "2°"
+        semester_int = 1 if semester_option == "1º Semestre" else 2
 
     with col_tri:
-        st.markdown("**🎓 Subprograma (Triênio)**")
-        # Seleção de Ciclo (Impacta o cálculo de z-score do passado E a referência de nota de corte)
+        st.markdown("**🎓 Triênio**")
         ciclo_aluno = st.selectbox(
-            "Em qual Subprograma (Triênio) você está?",
-            options=list(TRIENNIUM_STATS.keys()),
-            index=0, # Default 2023-2025 (Mais recente)
-            help="O sistema usará as notas de corte do triênio ANTERIOR a este como referência.",
+            "Triênio", list(TRIENNIUM_STATS.keys()), 
             label_visibility="collapsed"
         )
         stats_ciclo = TRIENNIUM_STATS[ciclo_aluno]
-        
-        # Lógica de Triênio de Referência (Anterior)
+        # Lógica de referência (Ano Anterior)
         try:
             start_year, end_year = map(int, ciclo_aluno.split('-'))
-            prev_start = start_year - 1
-            prev_end = end_year - 1
-            ref_triennium = f"{prev_start}-{prev_end}"
+            ref_triennium = f"{start_year - 1}-{end_year - 1}"
         except:
-            ref_triennium = "2022-2024" # Fallback safe
+            ref_triennium = "2022-2024"
 
-        st.caption(f"ℹ️ Referência de Notas: **{ref_triennium}**")
-    
-    # Criação das Abas
+    with col_cota:
+        st.markdown("**🏷️ Sistema de Concorrência (Cota)**")
+        # Lista de cotas ordenada com Universal no topo
+        lista_cotas = sorted(df_notas['Sistema_Nome'].unique().astype(str).tolist())
+        if 'Universal' in lista_cotas:
+            lista_cotas.insert(0, lista_cotas.pop(lista_cotas.index('Universal')))
+        
+        cota_selecionada = st.selectbox("Cota", lista_cotas, label_visibility="collapsed")
+
+    st.caption(f"ℹ️ Referência: **{ref_triennium}** | Cota: **{cota_selecionada}**")
+
+    # --- ABAS ---
     tab_diagnostico, tab_estrategia = st.tabs(["🔮 Diagnóstico Realista", "🎯 Calculadora de Estratégia"])
 
     # =========================================================================
-    # ABA 1: DIAGNÓSTICO REALISTA
+    # ABA 1: DIAGNÓSTICO (ESTILO ORIGINAL RESTAURADO)
     # =========================================================================
     with tab_diagnostico:
-        st.markdown("""
-        > **Previsão baseada em Inteligência Artificial:** Insira suas notas acumuladas para ver sua projeção.
-        """)
+        st.markdown("> **Previsão baseada em IA:** Insira suas notas para ver sua projeção.")
         
         col1, col2 = st.columns(2)
-        
         with col1:
             st.markdown("### 📝 Notas do PAS 1")
-            p1_pas1 = st.number_input("P1 PAS 1 (Língua Estrangeira)", -20.0, 20.0, value=None, step=0.001, format="%.3f", key="pred_p1_1")
-            p2_pas1 = st.number_input("P2 PAS 1 (Demais Disciplinas)", -100.0, 100.0, value=None, step=0.001, format="%.3f", key="pred_p2_1")
-            red_pas1 = st.number_input("Redação PAS 1", 0.0, 10.0, value=None, step=0.001, format="%.3f", key="pred_r_1")
-            
+            p1_pas1 = st.number_input("P1 PAS 1 (Língua Estrangeira)", -20.0, 20.0, value=None, step=0.1, key="p1_1")
+            p2_pas1 = st.number_input("P2 PAS 1 (Conhecimentos)", -100.0, 100.0, value=None, step=0.1, key="p2_1")
+            red_pas1 = st.number_input("Redação PAS 1", 0.0, 10.0, value=None, step=0.1, key="r_1")
         with col2:
             st.markdown("### 📝 Notas do PAS 2")
-            p1_pas2 = st.number_input("P1 PAS 2 (Língua Estrangeira)", -20.0, 20.0, value=None, step=0.001, format="%.3f", key="pred_p1_2")
-            p2_pas2 = st.number_input("P2 PAS 2 (Demais Disciplinas)", -100.0, 100.0, value=None, step=0.001, format="%.3f", key="pred_p2_2")
-            red_pas2 = st.number_input("Redação PAS 2", 0.0, 10.0, value=None, step=0.001, format="%.3f", key="pred_r_2")
+            p1_pas2 = st.number_input("P1 PAS 2", -20.0, 20.0, value=None, step=0.1, key="p1_2")
+            p2_pas2 = st.number_input("P2 PAS 2", -100.0, 100.0, value=None, step=0.1, key="p2_2")
+            red_pas2 = st.number_input("Redação PAS 2", 0.0, 10.0, value=None, step=0.1, key="r_2")
         
-        # Validação de preenchimento
         missing_data = any(v is None for v in [p1_pas1, p2_pas1, red_pas1, p1_pas2, p2_pas2, red_pas2])
         
-        if not missing_data:
-            # Calcula Escores Brutos
-            eb_pas1 = p1_pas1 + p2_pas1
-            eb_pas2 = p1_pas2 + p2_pas2
-            
-            st.markdown("---")
-            # st.markdown(f"**Escore Bruto PAS 1:** {eb_pas1:.3f} | **Escore Bruto PAS 2:** {eb_pas2:.3f}")
-        else:
-            st.warning("⚠️ Insira todas as notas acima para habilitar a predição.")
-            st.stop()
-        
-        # Botão de Predição
-        if st.button("🚀 Calcular Projeção", type="primary"):
+        if not missing_data and st.button("🚀 Calcular Projeção", type="primary"):
             try:
-                # Features EXATAS que o modelo espera
-                cresc_eb = eb_pas2 - eb_pas1
-                cresc_red = red_pas2 - red_pas1
+                # Cálculo Original
+                eb_pas1, eb_pas2 = p1_pas1 + p2_pas1, p1_pas2 + p2_pas2
+                cresc_eb, cresc_red = eb_pas2 - eb_pas1, red_pas2 - red_pas1
                 
-                features = np.array([[
-                    eb_pas1, red_pas1, eb_pas2, red_pas2, cresc_eb, cresc_red
-                ]])
-                
+                features = np.array([[eb_pas1, red_pas1, eb_pas2, red_pas2, cresc_eb, cresc_red]])
                 features_scaled = SCALER.transform(features) if SCALER else features
                 
                 # Predições de cada modelo para ensemble
@@ -907,307 +904,203 @@ elif page == "🔮 Preditor PAS 3":
                 if MODELS['rf']: predictions['rf'] = float(MODELS['rf'].predict(features)[0])
                 if MODELS['linear']: predictions['linear'] = float(MODELS['linear'].predict(features_scaled)[0])
                 if MODELS['mlp']: predictions['mlp'] = float(MODELS['mlp'].predict(features_scaled)[0])
-                
-                if len(predictions) > 0:
-                    # Meta-modelo Select
-                    recommended_model = 'lgbm'
-                    if META_MODEL and META_SCALER:
-                        meta_features = np.array([[
-                            eb_pas1, red_pas1, eb_pas2, red_pas2,
-                            cresc_eb, cresc_red,
-                            abs(cresc_eb)/(eb_pas1+0.01), abs(cresc_red)/(red_pas1+0.01),
-                            (eb_pas1+eb_pas2)/2, 1 if cresc_eb > 0 else (-1 if cresc_eb < 0 else 0)
-                        ]])
-                        best_model_label = META_MODEL.predict(META_SCALER.transform(meta_features))[0]
-                        recommended_model = LABEL_TO_MODEL.get(best_model_label, 'lgbm')
-                    
-                    # Argumento Final
-                    arg_final_pred = None
-                    if ARG_FINAL_MODEL:
-                        arg_final_pred = float(ARG_FINAL_MODEL.predict(features)[0])
-                    
-                    st.session_state.prediction_results = {
-                        'predictions': predictions,
-                        'recommended_model': recommended_model,
-                        'arg_final_pred': arg_final_pred,
-                        'eb_pas1': eb_pas1, 'eb_pas2': eb_pas2,
-                        'red_pas1': red_pas1, 'red_pas2': red_pas2,
-                    }
-                else:
-                    st.error("❌ Erro: Modelos não carregados corretamente.")
-                    
-            except Exception as e:
-                st.error(f"❌ Erro na predição: {e}")
 
-        # Exibição dos Resultados (Se existirem)
+                # Determina o melhor modelo para este perfil (Meta-Modelo)
+                recommended_model = 'lgbm' # Default
+                if META_MODEL and META_SCALER:
+                    meta_features = np.array([[
+                        eb_pas1, red_pas1, eb_pas2, red_pas2,
+                        cresc_eb, cresc_red,
+                        abs(cresc_eb)/(abs(eb_pas1)+0.01), abs(cresc_red)/(abs(red_pas1)+0.01),
+                        (eb_pas1+eb_pas2)/2, 1 if cresc_eb > 0 else (-1 if cresc_eb < 0 else 0)
+                    ]])
+                    best_model_label = META_MODEL.predict(META_SCALER.transform(meta_features))[0]
+                    recommended_model = LABEL_TO_MODEL.get(best_model_label, 'lgbm')
+                
+                # Predição do Argumento Final
+                arg_final_pred = float(ARG_FINAL_MODEL.predict(features)[0]) if ARG_FINAL_MODEL else 0.0
+                
+                st.session_state.prediction_results = {
+                    'predictions': predictions,
+                    'recommended_model': recommended_model,
+                    'arg_final_pred': arg_final_pred,
+                    'eb_pas1': eb_pas1, 'eb_pas2': eb_pas2,
+                    'red_pas1': red_pas1, 'red_pas2': red_pas2,
+                }
+            except Exception as e:
+                st.error(f"Erro: {e}")
+
+        # --- EXIBIÇÃO DE RESULTADOS (LAYOUT ORIGINAL) ---
         if 'prediction_results' in st.session_state and st.session_state.prediction_results:
-            results = st.session_state.prediction_results
-            arg_final_pred = results['arg_final_pred']
-            predictions = results['predictions']
-            recommended_model = results['recommended_model']
+            res = st.session_state.prediction_results
+            arg_final_pred = res['arg_final_pred']
+            recommended_model = res['recommended_model']
+            recommended_eb = res['predictions'].get(recommended_model, 0.0) 
             
-            
-            # --- DISPLAY ESCORE BRUTO PAS 3 PREVISTO (RESTAURADO) ---
             st.markdown("---")
             st.markdown("### 🔢 Previsões do Modelo")
             
             c_eb, c_arg = st.columns(2)
+            c_eb.metric("EB PAS 3 Previsto", f"{recommended_eb:.3f}")
+            c_arg.metric("Argumento Final Previsto", f"{arg_final_pred:.3f}", delta=f"± {ARG_FINAL_MAE:.2f}")
             
-            # 1. EB PAS 3
-            recommended_eb_pred = predictions.get(recommended_model, 0.0)
-            model_mae = MODEL_MAE.get(recommended_model, 6.8) # Default error if not found
+            st.markdown("---")
+            st.markdown("#### 🎛️ Ajuste de Cenário")
+            arg_ajustado = st.slider(
+                "Simule variações no seu Argumento Final:",
+                min_value=float(arg_final_pred - 20),
+                max_value=float(arg_final_pred + 20),
+                value=float(arg_final_pred),
+                step=0.1, format="%.3f"
+            )
             
-            with c_eb:
-                st.metric(
-                    "EB PAS 3 Previsto",
-                    f"{recommended_eb_pred:.3f}",
-                    help=f"Previsão gerada pelo modelo {recommended_model.upper()}. Intervalo de confiança (erro médio): ± {model_mae:.2f} pontos."
-                )
+            # --- ANÁLISE DE PROBABILIDADE (ORIGINAL + COTA) ---
+            st.markdown(f"#### 🎓 Análise de Probabilidade ({semester_option})")
             
-            # 2. Argumento Final (já existente)
-            with c_arg:
-                if arg_final_pred is not None:
-                    st.metric(
-                        "Argumento Final Previsto",
-                        f"{arg_final_pred:.3f}",
-                        delta=f"± {ARG_FINAL_MAE:.2f}",
-                        help="Nota final que será usada para classificação no curso."
+            # 1. Filtra Dados pela COTA SELECIONADA
+            df_cota_atual = df_notas[
+                (df_notas['Trienio'] == ref_triennium) & 
+                (df_notas['Semestre'] == semester_db) &
+                (df_notas['Sistema_Nome'] == cota_selecionada) &
+                (df_notas['Chamada'] == '1ª')
+            ].sort_values(['Curso_Limpo', 'Campus', 'Turno'])
+            
+            # Cria uma lista de objetos/dicionários para o selectbox para garantir unicidade
+            # Unimos Nome + Campus + Turno para a chave única
+            df_cota_atual['Combo_Nome'] = df_cota_atual['Curso_Limpo'] + " (" + df_cota_atual['Campus'] + " - " + df_cota_atual['Turno'] + ")"
+            opcoes_lista = df_cota_atual['Combo_Nome'].tolist()
+            
+            # Seletor de Curso
+            curso_combo_sel = st.selectbox(
+                "Selecione um curso de interesse:", 
+                ["Selecione..."] + opcoes_lista,
+                format_func=lambda x: x if x == "Selecione..." else f"{x} [Corte: {df_cota_atual[df_cota_atual['Combo_Nome']==x]['Min'].values[0]:.3f}]"
+            )
+            
+            if curso_combo_sel != "Selecione...":
+                # Extrai os dados do curso selecionado via Combo_Nome
+                row_sel = df_cota_atual[df_cota_atual['Combo_Nome'] == curso_combo_sel].iloc[0]
+                curso_selecionado = row_sel['Curso_Limpo']
+                campus_sel = row_sel['Campus']
+                turno_sel = row_sel['Turno']
+                nota_corte = row_sel['Min']
+                
+                # CÁLCULO ORIGINAL DE PROBABILIDADE (Mantido!)
+                if calculate_approval_probability:
+                    prob = calculate_approval_probability(arg_ajustado, nota_corte, rmse=ARG_FINAL_MAE)
+                    
+                    # CORES ORIGINAIS
+                    color = "#4CAF50" if prob >= 0.8 else "#FFC107" if prob >= 0.3 else "#F44336"
+                    st.markdown(f"""
+                    <div style="background-color: {color}; padding: 20px; border-radius: 10px; color: white; text-align: center; margin-bottom: 20px;">
+                        <h2 style="margin:0;">{prob*100:.1f}% de Chance</h2>
+                        <p style="margin:5px 0 0 0;">Curso: {curso_selecionado} | Campus: {campus_sel} | Turno: {turno_sel}</p>
+                        <p style="font-size: 0.9em;">Cota: {cota_selecionada} | Corte: {nota_corte:.3f} | Simulação: {arg_ajustado:.3f}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # --- NOVO: HISTÓRICO DE CHAMADAS (O que você pediu) ---
+                st.markdown("##### 📉 Histórico de Chamadas (Lista de Espera)")
+                # Busca todas as chamadas deste curso/campus/turno/cota
+                df_hist = df_notas[
+                    (df_notas['Trienio'] == ref_triennium) & 
+                    (df_notas['Semestre'] == semester_db) &
+                    (df_notas['Curso_Limpo'] == curso_selecionado) &
+                    (df_notas['Campus'] == campus_sel) &
+                    (df_notas['Turno'] == turno_sel) &
+                    (df_notas['Sistema_Nome'] == cota_selecionada)
+                ].sort_values('Chamada')
+                
+                if len(df_hist) > 1:
+                    # Exibe tabela limpa
+                    st.dataframe(
+                        df_hist[['Chamada', 'Campus', 'Turno', 'Min']].rename(columns={'Min': 'Nota de Corte'}).style.format({'Nota de Corte': '{:.3f}'}),
+                        use_container_width=True,
+                        hide_index=True
                     )
+                else:
+                    st.caption("Apenas 1ª chamada registrada para este período.")
+
+            # --- LISTA AUTOMÁTICA (Restaurada e Filtrada pela Cota) ---
+            st.markdown(f"#### 🏫 Cursos ao seu alcance (Top 10 na Cota)")
             
-            if arg_final_pred is not None:
-                st.markdown("---")
-                
-                # Slider de Cenário
-                st.markdown("#### 🎛️ Ajuste de Cenário")
-                arg_ajustado = st.slider(
-                    "Simule variações no seu Argumento Final (dentro do intervalo de confiança):",
-                    min_value=float(arg_final_pred - ARG_FINAL_MAE),
-                    max_value=float(arg_final_pred + ARG_FINAL_MAE),
-                    value=float(arg_final_pred),
-                    format="%.3f",
-                    step=0.1
+            # Recalcula probabilidades para TODOS os cursos da cota
+            if not df_cota_atual.empty and calculate_approval_probability:
+                df_cota_atual['Chance %'] = df_cota_atual['Min'].apply(
+                    lambda x: calculate_approval_probability(arg_ajustado, x, rmse=ARG_FINAL_MAE) * 100
                 )
                 
-                # Input de Curso para Probabilidade
-                st.markdown(f"#### 🎓 Análise de Probabilidade ({semester_option})")
+                # Ordena pela maior chance, mas remove os 100% fáceis demais se quiser focar nos "próximos"
+                # Na versão original, mostrávamos os mais próximos (distância) ou maior chance. 
+                # Vou usar Distância Absoluta para mostrar o "Radar" (o que está perto da nota dele)
+                df_cota_atual['Dist'] = abs(df_cota_atual['Min'] - arg_ajustado)
+                closest = df_cota_atual.sort_values('Dist').head(10)
                 
-                # Carrega cursos com SEMESTRE DINÂMICO e TRIÊNIO DE REFERÊNCIA
-                df_cursos = load_course_stats(semester=semester, triennium=ref_triennium) 
-                if df_cursos is not None:
-                    cursos_lista = df_cursos['Curso'].unique().tolist()
-                    
-                    # Cria mapa para exibir nota no dropdown
-                    course_scores = dict(zip(df_cursos['Curso'], df_cursos['Min']))
-                    
-                    def fmt_course(nome):
-                        if nome == "Selecione...": return nome
-                        return f"{nome} (Nota: {course_scores.get(nome, 0):.3f})"
-                    
-                    curso_selecionado = st.selectbox(
-                        "Selecione um curso de interesse para ver sua chance:", 
-                        ["Selecione..."] + cursos_lista,
-                        key=f"prob_course_{semester}_{ref_triennium}", # Key dinâmica para forçar reload completo
-                        format_func=fmt_course
-                    )
-                    
-                    if curso_selecionado != "Selecione...":
-                        curso_stats = df_cursos[df_cursos['Curso'] == curso_selecionado].iloc[0]
-                        nota_corte = curso_stats['Min']
-                        
-                        # Probabilidade
-                        if calculate_approval_probability:
-                            prob = calculate_approval_probability(arg_ajustado, nota_corte, rmse=ARG_FINAL_MAE)
-                            
-                            # Card Visual
-                            color = "#4CAF50" if prob >= 0.8 else "#FFC107" if prob >= 0.3 else "#F44336"
-                            st.markdown(f"""
-                            <div style="background-color: {color}; padding: 20px; border-radius: 10px; color: white; text-align: center; margin-bottom: 20px;">
-                                <h2 style="margin:0;">{prob*100:.1f}% de Chance</h2>
-                                <p style="margin:5px 0 0 0;">Nota de Corte: {nota_corte:.3f} | Sua Simulação: {arg_ajustado:.3f}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.warning("Módulo de estatísticas não carregado.")
-                            
-                    # Tabela de Cursos Próximos com Probabilidade
-                    st.markdown(f"#### 🏫 Cursos ao seu alcance no {semester_option} (Ref. {ref_triennium})")
-                    closest = get_closest_courses(arg_ajustado, n=10, semester=semester, triennium=ref_triennium)
-                    
-                    if not closest.empty and calculate_approval_probability:
-                        closest['Chance %'] = closest['Min'].apply(
-                            lambda x: calculate_approval_probability(arg_ajustado, x, rmse=ARG_FINAL_MAE) * 100
-                        )
-                        st.dataframe(
-                            closest[['Curso', 'Min', 'Chance %', 'Status']].style.format({'Min': '{:.3f}', 'Chance %': '{:.1f}%'}),
-                            use_container_width=True
-                        )
+                st.dataframe(
+                    closest[['Curso_Limpo', 'Campus', 'Turno', 'Min', 'Chance %']].rename(columns={'Curso_Limpo': 'Curso', 'Min': 'Corte'}).style.format({'Corte': '{:.3f}', 'Chance %': '{:.1f}%'}),
+                    use_container_width=True,
+                    hide_index=True
+                )
 
     # =========================================================================
-    # ABA 2: CALCULADORA DE ESTRATÉGIA
+    # ABA 2: CALCULADORA (MANTER ORIGINAL COM FILTRO DE COTA)
     # =========================================================================
     with tab_estrategia:
-        st.markdown("""
-        > **Engenharia Reversa:** Defina onde quer chegar e descubra quanto precisa tirar.
-        """)
+        st.markdown("> **Engenharia Reversa:** Defina onde quer chegar e descubra quanto precisa tirar.")
         
-        if TargetCalculator and 'prediction_results' in st.session_state:
-            # Reusa dados inputados na aba 1 se disponíveis
+        if 'prediction_results' in st.session_state and TargetCalculator:
             res = st.session_state.prediction_results
-            notas_input = {
-                'P1_PAS1': res.get('eb_pas1', 0)/2,
-                'P2_PAS1': res.get('eb_pas1', 0)/2,
-                'Red_PAS1': res.get('red_pas1', 0),
-                'P1_PAS2': res.get('eb_pas2', 0)/2,
-                'P2_PAS2': res.get('eb_pas2', 0),
-                'Red_PAS2': res.get('red_pas2', 0),
-            } 
-            # Vamos usar os inputs diretos dos widgets que estão no escopo global desta pagina
+            # Prepara notas
             notas_validas = {
-                'P1_PAS1': p1_pas1, 'P2_PAS1': p2_pas1, 'Red_PAS1': red_pas1,
-                'P1_PAS2': p1_pas2, 'P2_PAS2': p2_pas2, 'Red_PAS2': red_pas2
+                'P1_PAS1': res['eb_pas1']/2, 'P2_PAS1': res['eb_pas1']/2, 'Red_PAS1': res['red_pas1'],
+                'P1_PAS2': res['eb_pas2']/2, 'P2_PAS2': res['eb_pas2']/2, 'Red_PAS2': res['red_pas2']
             }
+            calc = TargetCalculator()
             
-            if not missing_data:
-                calc = TargetCalculator()
+            st.markdown(f"### 🎯 Meta ({semester_option} | {cota_selecionada})")
+            
+            # Filtro para Dropdown (Mesma lógica da aba 1)
+            df_estrat = df_notas[
+                (df_notas['Trienio'] == ref_triennium) & 
+                (df_notas['Semestre'] == semester_db) &
+                (df_notas['Sistema_Nome'] == cota_selecionada) &
+                (df_notas['Chamada'] == '1ª')
+            ].sort_values(['Curso_Limpo', 'Campus', 'Turno'])
+            
+            if not df_estrat.empty:
+                # Dropdown com nomes únicos (Curso + Campus + Turno)
+                df_estrat['Combo_Nome'] = df_estrat['Curso_Limpo'] + " (" + df_estrat['Campus'] + " - " + df_estrat['Turno'] + ")"
+                opcoes_meta = df_estrat['Combo_Nome'].tolist()
+                notas_meta = dict(zip(df_estrat['Combo_Nome'], df_estrat['Min']))
                 
-                # Seleção de Curso Alvo
-                st.markdown(f"### 🎯 Meta ({semester_option})")
+                curso_alvo_combo = st.selectbox(
+                    "Curso Objetivo:", opcoes_meta, 
+                    format_func=lambda x: f"{x} (Corte: {notas_meta[x]:.3f})"
+                )
                 
-                # Carrega stats do triênio de referência
-                df_cursos_estrat = load_course_stats(semester=semester, triennium=ref_triennium)
-                if df_cursos_estrat is not None:
-                    cursos_lista = df_cursos_estrat['Curso'].unique().tolist()
-                    
-                    # Cria mapa para exibir nota no dropdown
-                    course_scores_estrat = dict(zip(df_cursos_estrat['Curso'], df_cursos_estrat['Min']))
-                    
-                    def fmt_course_estrat(nome):
-                        return f"{nome} (Nota: {course_scores_estrat.get(nome, 0):.3f})"
-
-                    curso_alvo_nome = st.selectbox(
-                        "Curso Objetivo:", 
-                        cursos_lista, 
-                        key=f"target_course_{semester}_{ref_triennium}", # Key dinâmica para forçar reload completo
-                        format_func=fmt_course_estrat
+                nota_alvo = notas_meta[curso_alvo_combo]
+                
+                if st.button("🔢 Calcular Caminho", type="primary"):
+                    stats_p3 = STATS_PAS3_TREND if ciclo_aluno == "2023-2025" else stats_ciclo["PAS3"]
+                    result = calc.calculate_required_score(
+                        notas_validas, nota_alvo,
+                        stats_ciclo["PAS1"], stats_ciclo["PAS2"], stats_p3
                     )
                     
-                    meta_arg = df_cursos_estrat[df_cursos_estrat['Curso'] == curso_alvo_nome]['Min'].values[0]
-                    st.info(f"Nota de Corte Alvo no **{semester_option}**: **{meta_arg:.3f}** (Base: {ref_triennium})")
+                    # Exibição Original
+                    cor = "success" if result.status in ['possivel', 'garantido'] else "error"
+                    icon = "🎉" if result.status == 'garantido' else ("✅" if result.status == 'possivel' else "⚠️")
                     
-                    # ESTRATÉGIA DINÂMICA
-                    # Define a projeção do PAS 3 baseada no subprograma escolhido
-                    if ciclo_aluno == "2023-2025":
-                        # Para o ciclo atual, usa a projeção de tendência pura
-                        stats_pas3_proj = STATS_PAS3_TREND
-                    else:
-                        # Para ciclos passados, usa a média real daquele PAS 3
-                        stats_pas3_proj = stats_ciclo["PAS3"]
-
-                    # Botão Principal de Cálculo
-                    if st.button("🔢 Calcular Caminho", type="primary"):
-                        result_reverso = calc.calculate_required_score(
-                            notas_validas, meta_arg,
-                            stats_ciclo["PAS1"], stats_ciclo["PAS2"], stats_pas3_proj
-                        )
-                        st.session_state.strategy_result = result_reverso
-                        st.session_state.strategy_active = True
-                        st.session_state.simulacao_ativa = False # Reset simulação ao recalcular do zero
+                    getattr(st, cor)(f"{icon} {result.mensagem}")
                     
-
-                    # Exibe Resultado (Persistente)
-                    if st.session_state.get('strategy_active') and 'strategy_result' in st.session_state:
-                        result_reverso = st.session_state.strategy_result
-                        
-                        if result_reverso.status == 'possivel':
-                            cor_msg = "success"
-                            icon = "✅"
-                        elif result_reverso.status == 'garantido':
-                            cor_msg = "success"
-                            icon = "🎉"
-                        else:
-                            cor_msg = "error"
-                            icon = "⚠️"
-                            
-                        # --- Início do Ajuste de Cenário ---
-                        st.markdown("---")
-                        with st.expander("🛠️ Ajuste de Cenário (Personalizar Previsões)", expanded=st.session_state.get('simulacao_ativa', False)):
-                            st.info("O modelo estima sua nota de P1 e Redação com base no histórico. Se você discorda, ajuste abaixo:")
-                            c_sim1, c_sim2 = st.columns(2)
-                            
-                            # Inputs com precisão de 3 casas
-                            p1_val = float(result_reverso.p1_estimado)
-                            red_val = float(result_reverso.red_estimada)
-                            
-                            p1_override = c_sim1.number_input(
-                                "Estimativa P1 PAS 3", 
-                                -20.0, 20.0, 
-                                value=p1_val, 
-                                step=0.001, format="%.3f",
-                                help="Personalize quanto você acha que vai tirar na P1 (Língua Estrangeira)."
-                            )
-                            red_override = c_sim2.number_input(
-                                "Estimativa Redação PAS 3", 
-                                0.0, 10.0, 
-                                value=red_val,
-                                step=0.001, format="%.3f",
-                                help="Personalize quanto você acha que vai tirar na Redação."
-                            )
-                            
-                            if st.button("🔄 Recalcular com meu Cenário"):
-                                st.session_state.simulacao_ativa = True
-                                # Recalcula usando os valores INPUTADOS pelo usuário
-                                notas_com_override = notas_validas.copy()
-                                notas_com_override['P1_PAS3_Override'] = p1_override
-                                notas_com_override['Red_PAS3_Override'] = red_override
-                                
-                                # Recalcula usando os valores e stats corretos
-                                new_result = calc.calculate_required_score(
-                                    notas_com_override, meta_arg,
-                                    stats_ciclo["PAS1"], stats_ciclo["PAS2"], stats_pas3_proj,
-                                    p1_override=p1_override,
-                                    red_override=red_override
-                                )
-                                st.session_state.strategy_result = new_result
-                                st.rerun()
-
-                        getattr(st, cor_msg)(f"{icon} {result_reverso.mensagem}")
-                        
-                        c1, c2, c3 = st.columns(3)
-                        c1.metric("P1 PAS 3 (Est.)", f"{result_reverso.p1_estimado:.3f}", help="Valor utilizado no cálculo.")
-                        c2.metric("Redação (Est.)", f"{result_reverso.red_estimada:.3f}", help="Valor utilizado no cálculo.")
-                        c3.metric("P2 PAS 3 NECESSÁRIA", f"{result_reverso.p2_necessario:.3f}", delta="Meta" if not st.session_state.get('simulacao_ativa') else "Meta Ajustada")
-                        
-                        # REALITY CHECK (COHORTE)
-                        st.markdown("### 📊 Reality Check (Base Histórica)")
-                        if calculate_cohort_evolution_probability:
-                            df_hist = load_cohort_data()
-                            
-                            # Dados do aluno atual para busca
-                            aluno_atual_dados = {
-                                'eb_pas1': eb_pas1,
-                                'eb_pas2': eb_pas2
-                            }
-                            
-                            prob_hist, amostra = calculate_cohort_evolution_probability(
-                                aluno_atual_dados, meta_arg, df_hist
-                            )
-                            
-                            if amostra > 0:
-                                st.warning(f"""
-                                **Análise de Corte:** De {amostra} alunos com desempenho semelhante ao seu no PAS 1 e 2 nos últimos anos,
-                                **{prob_hist:.1f}%** conseguiram atingir essa nota final.
-                                """)
-                            else:
-                                st.info("Dados históricos insuficientes para perfil similar.")
-                        
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("P1 PAS 3 (Est.)", f"{result.p1_estimado:.3f}")
+                    c2.metric("Redação (Est.)", f"{result.red_estimada:.3f}")
+                    c3.metric("P2 NECESSÁRIA", f"{result.p2_necessario:.3f}")
             else:
-                st.warning("Preencha as notas na aba Diagnóstico primeiro.")
+                st.warning("Sem dados para esta cota.")
         else:
-            st.warning("Calculadora não disponível.")
-            
-
-    
-    
+            st.warning("Preencha as notas na aba Diagnóstico primeiro.")
 
 # =============================================================================
 # PÁGINA 5: ANÁLISE DA ESCOLA (NOVA)

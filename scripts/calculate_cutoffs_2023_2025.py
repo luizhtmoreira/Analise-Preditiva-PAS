@@ -7,7 +7,7 @@ import os
 # --- Configuration ---
 PDF_PATH = r"c:\Users\user\Documents\unb\Codigos\repositorios\Analise-Preditiva-PAS\data\3089BE7E47EF3C07390C31C7506BA674B47B6248F1E990ED2648953612E61491.pdf"
 MASTER_CSV_PATH = r"c:\Users\user\Documents\unb\Codigos\repositorios\Analise-Preditiva-PAS\data\PAS_MESTRE_LIMPO_FINAL.csv"
-OUTPUT_CSV_PATH = r"c:\Users\user\Documents\unb\Codigos\repositorios\Analise-Preditiva-PAS\data\notas_corte_PAS_consolidado_v2.csv"
+OUTPUT_CSV_PATH = r"c:\Users\user\Documents\unb\Codigos\repositorios\Analise-Preditiva-PAS\data\notas_corte_pas_final.csv"
 TRIENNIUM = "2023-2025"
 
 def parse_cutoff_pdf(pdf_path):
