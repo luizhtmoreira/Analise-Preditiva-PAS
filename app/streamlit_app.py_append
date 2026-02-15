@@ -1,0 +1,132 @@
+
+# =============================================================================
+# PÁGINA 6: GERADOR DE PDF (NOVA)
+# =============================================================================
+elif page == "📄 Gerador de PDF":
+    st.markdown('<p class="main-header">📄 Gerador de Relatórios PDF</p>', unsafe_allow_html=True)
+    st.markdown("""
+    > **Gera um PDF estilizado com sua projeção e metas.**
+    > Use a calculadora na aba anterior para estimar seus valores ou preencha manualmente abaixo.
+    """)
+    
+    tab_manual, tab_batch = st.tabs(["✍️ Manual", "📦 Em Lote (Escola)"])
+    
+    pdf_gen = PDFGenerator()
+    
+    # --- ABA MANUAL ---
+    with tab_manual:
+        st.markdown("### Preenchimento Manual")
+        
+        with st.form("pdf_manual_form"):
+            c_info1, c_info2 = st.columns(2)
+            nome_aluno = c_info1.text_input("Nome do Aluno", placeholder="Ex: João da Silva")
+            curso_alvo = c_info2.text_input("Curso Alvo", placeholder="Ex: MEDICINA (BACHARELADO) - DARCY RIBEIRO (DIURNO)")
+            
+            st.markdown("#### 1️⃣ Notas PAS 1")
+            c1, c2, c3, c4 = st.columns(4)
+            p1_pas1 = c1.number_input("Parte 1", 0.0, 100.0, step=0.01, format="%.2f", key="pdf_p1_1")
+            p2_pas1 = c2.number_input("Parte 2", 0.0, 100.0, step=0.01, format="%.2f", key="pdf_p2_1")
+            red_pas1 = c3.number_input("Redação", 0.0, 10.0, step=0.01, format="%.2f", key="pdf_r_1")
+            arg_pas1 = c4.number_input("Argumento", -10.0, 10.0, step=0.001, format="%.3f", key="pdf_arg_1")
+            
+            st.markdown("#### 2️⃣ Notas PAS 2")
+            c1, c2, c3, c4 = st.columns(4)
+            p1_pas2 = c1.number_input("Parte 1", 0.0, 100.0, step=0.01, format="%.2f", key="pdf_p1_2")
+            p2_pas2 = c2.number_input("Parte 2", 0.0, 100.0, step=0.01, format="%.2f", key="pdf_p2_2")
+            red_pas2 = c3.number_input("Redação", 0.0, 10.0, step=0.01, format="%.2f", key="pdf_r_2")
+            arg_pas2 = c4.number_input("Argumento", -10.0, 10.0, step=0.001, format="%.3f", key="pdf_arg_2")
+            
+            st.markdown("#### 3️⃣ Estimativas PAS 3")
+            c1, c2 = st.columns(2)
+            p1_pas3_est = c1.number_input("Est. Parte 1 (Inglês/Esp)", -20.0, 20.0, step=0.01, format="%.2f", help="Estimativa gerada pelo modelo")
+            red_pas3_est = c2.number_input("Est. Redação", 0.0, 10.0, step=0.01, format="%.2f", help="Estimativa gerada pelo modelo")
+            
+            st.markdown("#### 4️⃣ Metas e Resultados")
+            c1, c2, c3 = st.columns(3)
+            arg_acumulado = c1.number_input("Argumento Acumulado Atual", -10.0, 10.0, step=0.001, format="%.3f")
+            nota_corte = c2.number_input("Nota de Corte (Ref.)", -10.0, 10.0, step=0.001, format="%.3f")
+            arg_necessario = c3.number_input("Arg. Necessário (Peso 3)", -10.0, 10.0, step=0.001, format="%.3f")
+            
+            submitted = st.form_submit_button("Gerar PDF 📄")
+            
+            if submitted:
+                if not nome_aluno or not curso_alvo:
+                    st.error("Preencha Nome e Curso.")
+                else:
+                    data = {
+                        'aluno': nome_aluno,
+                        'curso': curso_alvo,
+                        'pas1_p1': f"{p1_pas1:.2f}",
+                        'pas1_p2': f"{p2_pas1:.2f}",
+                        'pas1_red': f"{red_pas1:.2f}",
+                        'pas1_arg': f"{arg_pas1:.3f}",
+                        'pas2_p1': f"{p1_pas2:.2f}",
+                        'pas2_p2': f"{p2_pas2:.2f}",
+                        'pas2_red': f"{red_pas2:.2f}",
+                        'pas2_arg': f"{arg_pas2:.3f}",
+                        'pas3_p1_est': f"{p1_pas3_est:.2f}",
+                        'pas3_red_est': f"{red_pas3_est:.2f}",
+                        'arg_acumulado': f"{arg_acumulado:.3f}",
+                        'nota_corte': f"{nota_corte:.3f}",
+                        'arg_necessario': f"{arg_necessario:.3f}"
+                    }
+                    
+                    pdf_bytes = pdf_gen.generate_single_pdf(data)
+                    
+                    if pdf_bytes:
+                        st.success("PDF Gerado com Sucesso!")
+                        st.download_button(
+                            label="⬇️ Baixar PDF",
+                            data=pdf_bytes,
+                            file_name=f"Relatorio_PAS_{nome_aluno.replace(' ', '_')}.pdf",
+                            mime="application/pdf"
+                        )
+                    else:
+                        st.error("Erro ao gerar PDF. Verifique os logs.")
+
+    # --- ABA BATCH ---
+    with tab_batch:
+        st.markdown("### Processamento em Lote")
+        st.info("Faça upload de um arquivo Excel (.xlsx) ou CSV com as colunas correspondentes aos campos acima.")
+        
+        uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'])
+        
+        if uploaded_batch:
+            try:
+                if uploaded_batch.name.endswith('.csv'):
+                    df_batch = pd.read_csv(uploaded_batch)
+                else:
+                    df_batch = pd.read_excel(uploaded_batch)
+                    
+                st.write(f"Carregado: {len(df_batch)} registros.")
+                st.dataframe(df_batch.head())
+                
+                if st.button("Gerar PDFs em Lote"):
+                    # Converter DF para lista de dicts
+                    # Necessário mapear colunas se os nomes forem diferentes.
+                    # Por enquanto, assume-se que o usuário usará um template com os nomes de chaves do data dict
+                    # Ou podemos ser flexíveis.
+                    
+                    # Normalização simples de colunas para lower case
+                    df_batch.columns = df_batch.columns.str.lower().str.replace(' ', '_')
+                    
+                    data_list = df_batch.to_dict('records')
+                    
+                    # Conversão de floats para string formatada
+                    for item in data_list:
+                        for k, v in item.items():
+                            if isinstance(v, float):
+                                item[k] = f"{v:.2f}" # Default format
+                    
+                    with st.spinner("Gerando PDFs..."):
+                        zip_bytes = pdf_gen.generate_batch_zip(data_list)
+                        
+                    st.success(f"Lote processado! {len(data_list)} PDFs gerados.")
+                    st.download_button(
+                        label="⬇️ Baixar Lote (ZIP)",
+                        data=zip_bytes,
+                        file_name="Relatorios_PAS.zip",
+                        mime="application/zip"
+                    )
+            except Exception as e:
+                st.error(f"Erro ao processar arquivo: {e}")

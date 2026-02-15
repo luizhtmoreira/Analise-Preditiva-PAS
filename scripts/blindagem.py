@@ -3,9 +3,9 @@ import os
 
 # ================= CONFIGURAÇÕES =================
 # Nome do arquivo de entrada (o que você disse que vai usar)
-ARQUIVO_ENTRADA = "notas_corte_pas_final_BLINDADO.csv"
+ARQUIVO_ENTRADA = "notas_corte_pas.csv"
 # Nome do arquivo de saída (blindado)
-ARQUIVO_SAIDA = "notas_corte_pas_final_BLINDADO.csv"
+ARQUIVO_SAIDA = "notas_corte_pas.csv"
 
 def aplicar_blindagem():
     print(f"🛡️ Iniciando Blindagem Cronológica em: {ARQUIVO_ENTRADA}")

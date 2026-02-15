@@ -113,22 +113,20 @@ def find_best_course_match(input_name, course_list):
         if normalized_input == unicodedata.normalize('NFKD', course).encode('ASCII', 'ignore').decode('utf-8').upper():
             return course
             
-    # 2. Substring match
+    # 2. Bidirectional substring match
     matches = []
     for course in course_list:
         normalized_course = unicodedata.normalize('NFKD', course).encode('ASCII', 'ignore').decode('utf-8').upper()
-        if normalized_input in normalized_course:
+        # Input inside course OR course inside input (bidirectional)
+        if normalized_input in normalized_course or normalized_course in normalized_input:
             matches.append(course)
     
-    # Return the shortest match (likely the most specific/correct root) or the first one
+    # Return the longest match (most specific) to avoid false positives
     if matches:
-        # Sort by length to prefer concise matches or just pick first
-        # Example: "Direito" matches "Direito (Diurno)" and "Direito (Noturno)"
-        # Use first for now or specific logic? User asked for "contains"
-        return matches[0] 
+        return max(matches, key=len)
         
     return input_name
-def load_course_stats(semester: int = 1, triennium: Optional[str] = None):
+def load_course_stats(semester: int = 1, triennium: Optional[str] = None, system: str = "Sistema Universal"):
     """
     Carrega estatísticas de nota de corte por curso do triênio especificado.
     Lê de CSVs pré-processados para carregamento instantâneo.
@@ -136,12 +134,13 @@ def load_course_stats(semester: int = 1, triennium: Optional[str] = None):
     Args:
         semester: 1 para 1º semestre, 2 para 2º semestre
         triennium: String do triênio (ex: "2022-2024"). Se None, usa o mais recente.
+        system: Nome do sistema de concorrência. Default: "Sistema Universal".
     """
     try:
         data_dir = Path(__file__).parent.parent / "data"
         
         # Arquivo de Notas de Corte Final
-        csv_path = data_dir / "notas_corte_pas_final_BLINDADO.csv"
+        csv_path = data_dir / "notas_corte_pas.csv"
         
         if not csv_path.exists():
             st.error(f"⚠️ Arquivo não encontrado: {csv_path}")
@@ -150,11 +149,14 @@ def load_course_stats(semester: int = 1, triennium: Optional[str] = None):
         # Carrega CSV encontrado
         stats = pd.read_csv(csv_path)
         
-        # Filtra pelo semestre selecionado
-        sem_str = "1º" if semester == 1 else "2º"
+        # Filtra pelo semestre selecionado (formato CSV: '1°' ou '2°')
+        sem_str = f"{semester}°"
         stats = stats[stats['Semestre'] == sem_str]
 
-        # Filtra pelo Triênio (Se especificado)
+        # Filtra por sistema
+        if 'Sistema_Nome' in stats.columns:
+            stats = stats[stats['Sistema_Nome'] == system]
+
         if triennium:
             stats = stats[stats['Trienio'] == triennium]
         else:
@@ -247,6 +249,72 @@ def get_closest_courses(arg_previsto: float, n: int = 5, semester: int = 1, trie
     # Ordena por proximidade
     closest = stats.nsmallest(n, 'Diferenca')
     return closest[['Curso', 'Min', 'Max', 'Media', 'N', 'Diferenca', 'Status']]
+
+
+import difflib
+import unicodedata
+
+def find_best_match(query: str, choices: list[str], cutoff: float = 0.6) -> str:
+    """
+    Encontra a melhor correspondência para uma string em uma lista de opções.
+    1. Tenta difflib (para typos).
+    2. Tenta substring (para palavras-chave).
+    3. Tenta interseção de tokens (para "direito noturno" -> "direito").
+    """
+    if not query or not choices:
+        return query
+        
+    # 1. Tentativa DIFUSA (Typos, pequenas variações)
+    matches = difflib.get_close_matches(query, choices, n=1, cutoff=cutoff)
+    if matches:
+        return matches[0]
+        
+    # Normalização para métodos 2 e 3
+    try:
+        query_norm = unicodedata.normalize('NFKD', str(query)).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
+        
+        # 2. Tentativa SUBSTRING (Palavra-chave)
+        # Ex: "audiovisual" in "COMUNICAÇÃO SOCIAL - AUDIOVISUAL"
+        candidates = []
+        for choice in choices:
+            choice_norm = unicodedata.normalize('NFKD', str(choice)).encode('ASCII', 'ignore').decode('utf-8').lower()
+            if query_norm in choice_norm:
+                candidates.append(choice)
+        
+        if candidates:
+            return min(candidates, key=len)
+
+        # 3. Tentativa INTERSEÇÃO DE TOKENS (Keywords soltas)
+        # Útil para: "direito noturno" -> "DIREITO (BACHARELADO)"
+        # Se 50% ou mais das palavras buscadas existirem no alvo, consideramos Match.
+        # Remove pontuação para evitar (ceilandia) != ceilandia
+        query_clean = query_norm.replace('(', ' ').replace(')', ' ').replace('-', ' ')
+        query_tokens = set(query_clean.split())
+        
+        best_token_match = None
+        best_token_score = 0.0
+        
+        for choice in choices:
+            choice_norm = unicodedata.normalize('NFKD', str(choice)).encode('ASCII', 'ignore').decode('utf-8').lower()
+            choice_clean = choice_norm.replace('(', ' ').replace(')', ' ').replace('-', ' ')
+            choice_tokens = set(choice_clean.split())
+            
+            common = query_tokens.intersection(choice_tokens)
+            if not common: continue
+            
+            score = len(common) / len(query_tokens)
+            
+            if score > best_token_score:
+                best_token_score = score
+                best_token_match = choice
+        
+        if best_token_match and best_token_score >= 0.5:
+            return best_token_match
+            
+    except Exception:
+        pass
+    
+    return query
 
 
 # =============================================================================
@@ -383,10 +451,15 @@ def fmt(val, decimals=2):
 # =============================================================================
 
 TRIENNIUM_STATS = {
+    "2024-2026": {
+        "PAS1": HistoricalStats(mean_p1=2.2175, std_p1=2.4766, mean_p2=23.8314, std_p2=12.3387, mean_red=6.0345, std_red=2.4790), # PAS 1 já ocorreu (placeholder 23-25 por enquanto)
+        "PAS2": HistoricalStats(mean_p1=3.1496, std_p1=3.2475, mean_p2=25.3101, std_p2=14.2913, mean_red=6.1569, std_red=2.4728), # PAS 2 já ocorreu (placeholder 23-25 por enquanto)
+        "PAS3": None, # FUTURO - Será definido dinamicamente (Trend ou Imitar 23-25)
+    },
     "2023-2025": {
         "PAS1": HistoricalStats(mean_p1=2.2175, std_p1=2.4766, mean_p2=23.8314, std_p2=12.3387, mean_red=6.0345, std_red=2.4790),
         "PAS2": HistoricalStats(mean_p1=3.1496, std_p1=3.2475, mean_p2=25.3101, std_p2=14.2913, mean_red=6.1569, std_red=2.4728),
-        "PAS3": HistoricalStats(mean_p1=3.8200, std_p1=2.1000, mean_p2=33.7400, std_p2=14.5000, mean_red=7.6500, std_red=1.8500), # Projeção
+        "PAS3": HistoricalStats(mean_p1=3.8200, std_p1=2.1000, mean_p2=33.7400, std_p2=14.5000, mean_red=7.6500, std_red=1.8500), # Histórico Real Consolidados
     },
     "2022-2024": {
         "PAS1": HistoricalStats(mean_p1=3.6037, std_p1=3.0053, mean_p2=20.7094, std_p2=13.5819, mean_red=5.8878, std_red=2.7796),
@@ -476,7 +549,21 @@ def predict_eb_pas3(features: np.ndarray) -> float:
 
 
 def load_sample_data(include_pas3: bool = False) -> pd.DataFrame:
-    """Carrega dados de exemplo para demonstração."""
+    """Carrega dados de exemplo para demonstração, incluindo alunos específicos se o arquivo existir."""
+    try:
+        # Tenta carregar alunos específicos do PAS 3 / Gestão de Ativos
+        data_dir = Path(__file__).parent.parent / "data"
+        specific_path = data_dir / "alunos_especificos.csv"
+        
+        if specific_path.exists():
+            df_spec = pd.read_csv(specific_path)
+            # Se já temos os específicos, retornamos eles (podemos adicionar mocks depois)
+            # Mas vamos combinar com mocks para ter volume
+        else:
+            df_spec = pd.DataFrame()
+    except Exception:
+        df_spec = pd.DataFrame()
+
     np.random.seed(42)
     n = 30
     
@@ -491,7 +578,7 @@ def load_sample_data(include_pas3: bool = False) -> pd.DataFrame:
     p1_pas2 = np.clip(p1_pas1 + variacao * 0.1, 0, 15)
     p2_pas2 = np.clip(p2_pas1 + variacao, 5, 55)
     
-    df_data = {
+    df_mock = pd.DataFrame({
         'Inscricao': [f"2024{i:04d}" for i in range(n)],
         'Nome': [f"Aluno {i+1}" for i in range(n)],
         'P1_PAS1': p1_pas1.round(2),
@@ -500,24 +587,36 @@ def load_sample_data(include_pas3: bool = False) -> pd.DataFrame:
         'P1_PAS2': p1_pas2.round(2),
         'P2_PAS2': p2_pas2.round(2),
         'Red_PAS2': np.random.uniform(5, 10, n).round(2),
-        'Turma': np.random.choice(['A', 'B'], n),
-    }
+        'Turma': np.random.choice(['3º A', '3º B'], n),
+        'Unidade': np.random.choice(['Asa Sul', 'Taguatinga', 'Lago Sul'], n, p=[0.4, 0.35, 0.25]),
+        'Curso_Alvo': np.random.choice([
+            'MEDICINA (BACHARELADO)', 'DIREITO (BACHARELADO)', 'ENGENHARIA CIVIL (BACHARELADO)',
+            'ADMINISTRAÇÃO (BACHARELADO)', 'PSICOLOGIA (BACHARELADO)', 'CIÊNCIA DA COMPUTAÇÃO (BACHARELADO)',
+        ], n, p=[0.20, 0.20, 0.15, 0.15, 0.15, 0.15]),
+        'Cota': np.nan # Inicializa com NaN para ser preenchido pela lógica principal
+    })
 
     if include_pas3:
         # Gera dados do PAS 3 seguindo a tendência
         tendencia_pas3 = np.random.choice([-1, 0, 1], n, p=[0.2, 0.4, 0.4])
         variacao_pas3 = np.random.uniform(2, 8, n) * tendencia_pas3
         
-        p1_pas3 = np.clip(p1_pas2 + variacao_pas3 * 0.1, 0, 15)
-        p2_pas3 = np.clip(p2_pas2 + variacao_pas3, 5, 60)
-        
-        df_data.update({
-            'P1_PAS3': p1_pas3.round(2),
-            'P2_PAS3': p2_pas3.round(2),
-            'Red_PAS3': np.random.uniform(5, 10, n).round(2),
-        })
+        df_mock['P1_PAS3'] = np.clip(p1_pas2 + variacao_pas3 * 0.1, 0, 15).round(2)
+        df_mock['P2_PAS3'] = np.clip(p2_pas2 + variacao_pas3, 5, 60).round(2)
+        df_mock['Red_PAS3'] = np.random.uniform(5, 10, n).round(2)
     
-    return pd.DataFrame(df_data)
+    # Combina específicos com mocks
+    if not df_spec.empty:
+        # Garante que as colunas batem para o concat
+        # Preenche P1/P2/Red_PAS3 com 0 se não existirem nos específicos
+        for col in ['P1_PAS3', 'P2_PAS3', 'Red_PAS3']:
+            if col not in df_spec.columns:
+                df_spec[col] = 0.0
+                
+        df_final = pd.concat([df_spec, df_mock], ignore_index=True)
+        return df_final
+    
+    return df_mock
 
 
 # =============================================================================
@@ -529,7 +628,7 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Ir para:",
-    ["📊 Análise Temporal", "🚦 Semáforo de Risco", "🔮 Preditor PAS 3", "🏫 Análise da Escola", "📈 Comparação Entre Grupos", "📄 Gerador de PDF"]
+    ["📊 Análise Temporal", "💼 Gestão de Ativos", "🔮 Preditor PAS 3", "🏫 Análise da Escola", "📈 Comparação Entre Grupos", "📄 Gerador de PDF"]
 )
 
 st.sidebar.markdown("---")
@@ -701,17 +800,17 @@ if page == "📊 Análise Temporal":
 
 
 # =============================================================================
-# PÁGINA 2: SEMÁFORO DE RISCO (CORRIGIDO)
+# PÁGINA 2: GESTÃO DE ATIVOS (MONEYBALL)
 # =============================================================================
 
-elif page == "🚦 Semáforo de Risco":
-    st.markdown('<p class="main-header">🚦 Semáforo de Risco</p>', unsafe_allow_html=True)
+elif page == "💼 Gestão de Ativos":
+    st.markdown('<p class="main-header">💼 Gestão de Ativos</p>', unsafe_allow_html=True)
     
     st.info("""
-    📌 **Lógica do Semáforo:**
-    - 🔴 **Alto Risco**: Nota muito baixa (<20) OU queda >5 pontos
-    - 🟡 **Médio Risco**: Queda moderada (2-5 pontos) OU média baixa (<30)
-    - 🟢 **Baixo Risco**: Estável ou subindo
+    🎯 **Lógica de Classificação (Duplo Corte: 1º e 2º Semestre):**
+    - 🟢 **Baixo Risco**: Argumento previsto ≥ nota de corte do **1º Semestre** → Aprovado direto
+    - 🟡 **Médio Risco / Oportunidade**: Argumento < corte do 1º Sem, mas ≥ corte do **2º Semestre** → Salvo pelo 2º Semestre
+    - 🔴 **Alto Risco**: Argumento < ambos os cortes → Considerar redirecionamento
     """)
     
     if st.session_state.df is None:
@@ -721,77 +820,589 @@ elif page == "🚦 Semáforo de Risco":
     df = st.session_state.df.copy()
     
     # Verifica colunas necessárias
-    required_cols = ['P1_PAS1', 'P2_PAS1', 'P1_PAS2', 'P2_PAS2']
+    required_cols = ['P1_PAS1', 'P2_PAS1', 'P1_PAS2', 'P2_PAS2', 'Red_PAS1', 'Red_PAS2']
     missing_cols = [c for c in required_cols if c not in df.columns]
     
     if missing_cols:
         st.error(f"❌ Colunas faltando: {', '.join(missing_cols)}")
-        st.info("💡 Faça upload de um arquivo com as colunas P1_PAS1, P2_PAS1, P1_PAS2, P2_PAS2 ou use **Dados de Exemplo**.")
+        st.info("💡 Faça upload de um arquivo com P1/P2/Red para PAS 1 e PAS 2, ou use **Dados de Exemplo**.")
         st.stop()
     
     # Calcula EB se não existir
     if 'EB_PAS1' not in df.columns:
         df['EB_PAS1'] = df['P1_PAS1'] + df['P2_PAS1']
+    if 'EB_PAS2' not in df.columns:
         df['EB_PAS2'] = df['P1_PAS2'] + df['P2_PAS2']
     
-    # Calcula tendência
-    df['Tendência'] = df['EB_PAS2'] - df['EB_PAS1']
+    # --- MOCK DATA: Adiciona colunas extras se não existirem ---
+    n_rows = len(df)
+    if 'Unidade' not in df.columns:
+        np.random.seed(42)
+        df['Unidade'] = np.random.choice(['Asa Sul', 'Taguatinga', 'Lago Sul'], n_rows, p=[0.4, 0.35, 0.25])
+    if 'Turma' not in df.columns:
+        np.random.seed(43)
+        df['Turma'] = np.random.choice(['3º A', '3º B', '3º C'], n_rows)
+    if 'Curso_Alvo' not in df.columns:
+        np.random.seed(44)
+        df['Curso_Alvo'] = np.random.choice([
+            'MEDICINA (BACHARELADO)', 'DIREITO (BACHARELADO)', 'ENGENHARIA CIVIL (BACHARELADO)',
+            'ADMINISTRAÇÃO (BACHARELADO)', 'PSICOLOGIA (BACHARELADO)', 'CIÊNCIA DA COMPUTAÇÃO (BACHARELADO)',
+        ], n_rows, p=[0.20, 0.20, 0.15, 0.15, 0.15, 0.15])
+    if 'Cota' not in df.columns:
+        np.random.seed(45)
+        # O banco do usuário só tem 2 sistemas: Universal e Cota para Negros
+        # Distribuição estimada: 80% Universal, 20% Negros
+        df['Cota'] = np.random.choice(
+            ['Sistema Universal', 'Cota para Negros'], 
+            n_rows, p=[0.8, 0.2]
+        )
+    else:
+        # Preenche valores nulos com Sistema Universal (segurança)
+        if df['Cota'].isnull().any():
+             # Gera valores apenas para os nulos se quiser aleatório ou default
+             # Aqui vou assumir default Universal para evitar problemas, ou manter aleatório para mocks
+             # Vamos preencher NaN com aleatório para manter a lógica de mock misturado
+             mask_null = df['Cota'].isnull()
+             n_null = mask_null.sum()
+             if n_null > 0:
+                 np.random.seed(45)
+                 fill_values = np.random.choice(
+                    ['Sistema Universal', 'Cota para Negros'], 
+                    n_null, p=[0.8, 0.2]
+                 )
+                 df.loc[mask_null, 'Cota'] = fill_values
     
-    # Classifica risco (LÓGICA CORRIGIDA)
-    risk_data = df.apply(
-        lambda row: classify_risk(row['EB_PAS1'], row['EB_PAS2']),
-        axis=1,
-        result_type='expand'
-    )
-    df['Risco'] = risk_data[0]
-    df['Risco_Level'] = risk_data[1]
-    df['Motivo'] = risk_data[2]
+    # =================================================================
+    # FILTROS HIERÁRQUICOS
+    # =================================================================
+    st.markdown("---")
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
     
-    # Métricas
-    col1, col2, col3 = st.columns(3)
+    with col_f1:
+        unidades_disp = ["Todas"] + sorted(df['Unidade'].unique().tolist())
+        unidade_sel = st.selectbox("🏢 Unidade", unidades_disp, key="ga_unidade")
     
-    high_risk = (df['Risco_Level'] == 'high').sum() # type: ignore
-    medium_risk = (df['Risco_Level'] == 'medium').sum() # type: ignore
-    low_risk = (df['Risco_Level'] == 'low').sum() # type: ignore
+    df_filtrado = df if unidade_sel == "Todas" else df[df['Unidade'] == unidade_sel]
+    
+    with col_f2:
+        turmas_disp = ["Todas"] + sorted(df_filtrado['Turma'].unique().tolist())
+        turma_sel = st.selectbox("🏫 Turma", turmas_disp, key="ga_turma")
+    
+    if turma_sel != "Todas":
+        df_filtrado = df_filtrado[df_filtrado['Turma'] == turma_sel]
+    
+    with col_f3:
+        trienios_disp = ["2024-2026", "2023-2025"]
+        trienio_sel = st.selectbox("📅 Triênio", trienios_disp, key="ga_trienio")
+
+    with col_f4:
+        status_filter = st.selectbox("🚦 Status", ["Todos", "🔴 Alto Risco", "🟡 Oportunidade (2º Sem)", "🟢 Baixo Risco"], key="ga_status")
+        
+    # --- PROJEÇÃO GLOBAL PARA 2024-2026 ---
+    stats_p3_global_asset = None
+    if trienio_sel == "2024-2026":
+        # st.markdown("##### 🔮 Base de Projeção PAS 3 (Massa)")
+        base_projecao_asset = st.radio(
+            "🔮 Cenário de Dificuldade PAS 3 (Simulação):",
+            ["Replicar Padrão 2023-2025", "Utilizar Projeção Tendência"],
+            horizontal=True,
+            help="Defina qual estatística o sistema deve usar para projetar o futuro (PAS 3).",
+            key="ga_base_projecao"
+        )
+        if base_projecao_asset == "Replicar Padrão 2023-2025":
+            stats_p3_global_asset = TRIENNIUM_STATS["2023-2025"]["PAS3"]
+        else:
+            stats_p3_global_asset = STATS_PAS3_TREND
+    
+    # =================================================================
+    # CÁLCULO DE MÉTRICAS POR ALUNO
+    # =================================================================
+    
+    # Carrega notas de corte para o triênio mais recente
+    data_dir = Path(__file__).parent.parent / "data"
+    csv_corte = data_dir / "notas_corte_pas.csv"
+    
+    try:
+        df_corte = pd.read_csv(csv_corte)
+        # Determina o triênio de referência (anterior ao selecionado)
+        try:
+            start_year, end_year = map(int, trienio_sel.split('-'))
+            trienio_ref = f"{start_year - 1}-{end_year - 1}"
+            # Se não houver dados para o triênio anterior imediato, tenta o fallback consolidado
+            if trienio_ref not in df_corte['Trienio'].unique():
+                trienio_ref = "2022-2024"
+        except:
+            trienio_ref = "2022-2024"
+        
+        # --- Carrega cortes do 1º SEMESTRE (TODOS OS SISTEMAS) ---
+        df_corte_1sem = df_corte[
+            (df_corte['Trienio'] == trienio_ref) & 
+            (df_corte['Semestre'] == '1°')
+        ]
+        # Remove duplicatas (optimista: menor nota de corte para o curso/sistema)
+        df_corte_1sem = df_corte_1sem.sort_values('Min', ascending=True).drop_duplicates(
+            subset=['Sistema_Nome', 'Curso_Limpo', 'Campus', 'Turno'], keep='first'
+        )
+        
+        # Cria mapa aninhado: Sistema -> Curso (com Turno/Campus) -> Nota
+        # chave: "DIREITO (BACHARELADO) - NOTURNO (DARCY RIBEIRO)"
+        corte_1sem_map = {}
+        for sistema, group in df_corte_1sem.groupby('Sistema_Nome'):
+             # Cria dicionário com chaves compostas
+             corte_1sem_map[sistema] = {}
+             for _, row in group.iterrows():
+                 # Chave composta para diferenciar turnos e campi
+                 full_key = f"{row['Curso_Limpo']} - {row['Turno']} ({row['Campus']})"
+                 corte_1sem_map[sistema][full_key] = row['Min']
+
+        # --- Carrega cortes do 2º SEMESTRE (TODOS OS SISTEMAS) ---
+        trienio_ref_2sem = trienio_ref
+        has_2sem = not df_corte[(df_corte['Trienio'] == trienio_ref) & (df_corte['Semestre'] == '2°')].empty
+        if not has_2sem:
+            trienio_ref_2sem = "2022-2024"
+
+        df_corte_2sem = df_corte[
+            (df_corte['Trienio'] == trienio_ref_2sem) & 
+            (df_corte['Semestre'] == '2°')
+        ]
+        df_corte_2sem = df_corte_2sem.sort_values('Min', ascending=True).drop_duplicates(
+            subset=['Sistema_Nome', 'Curso_Limpo', 'Campus', 'Turno'], keep='first'
+        )
+        
+        corte_2sem_map = {}
+        for sistema, group in df_corte_2sem.groupby('Sistema_Nome'):
+             corte_2sem_map[sistema] = {}
+             for _, row in group.iterrows():
+                 full_key = f"{row['Curso_Limpo']} - {row['Turno']} ({row['Campus']})"
+                 corte_2sem_map[sistema][full_key] = row['Min']
+        
+        # Lista global de sistemas disponíveis
+        available_systems = sorted(list(set(corte_1sem_map.keys()) | set(corte_2sem_map.keys())))
+        
+        # Compatibilidade: usa Universal como fallback para lista de cursos
+        corte_por_curso = corte_1sem_map.get('Sistema Universal', {})
+        available_courses = tuple(corte_por_curso.keys())
+        
+    except Exception as e:
+        st.error(f"Erro ao carregar banco de cortes: {e}")
+        corte_1sem_map = {}
+        corte_2sem_map = {}
+        corte_por_curso = {}
+        available_courses = []
+        available_systems = []
+        trienio_ref = "N/A"
+    
+    # Função auxiliar de matching inline (sem cache do Streamlit)
+    def _match_curso(nome_aluno_curso, dict_corte):
+        """Resolve o nome do curso do aluno para a chave no dicionário de cortes."""
+        if not nome_aluno_curso or nome_aluno_curso == 'Não informado':
+            return None
+        # 1. Exact match
+        if nome_aluno_curso in dict_corte:
+            return nome_aluno_curso
+        # 2. Normaliza e tenta substring bidirecional
+        norm_input = unicodedata.normalize('NFKD', nome_aluno_curso).encode('ASCII', 'ignore').decode('utf-8').upper().strip()
+        best_match = None
+        best_len = 0
+        for key in dict_corte:
+            norm_key = unicodedata.normalize('NFKD', key).encode('ASCII', 'ignore').decode('utf-8').upper().strip()
+            if norm_input == norm_key:
+                return key
+            if norm_input in norm_key or norm_key in norm_input:
+                if len(key) > best_len:
+                    best_match = key
+                    best_len = len(key)
+        if best_match:
+            return best_match
+        # 3. Fallback: compara só o nome raiz (antes do parêntese)
+        root_input = norm_input.split('(')[0].strip()
+        for key in dict_corte:
+            norm_key = unicodedata.normalize('NFKD', key).encode('ASCII', 'ignore').decode('utf-8').upper().strip()
+            root_key = norm_key.split('(')[0].strip()
+            if root_input == root_key:
+                return key
+        return None
+
+    # Calcula métricas por aluno
+    resultados = []
+    debug_info = []  # Para o expander de debug
+    for idx, row in df_filtrado.iterrows():
+        nome = row.get('Nome', row.get('Inscricao', f'Aluno {idx}'))
+        turma = row.get('Turma', 'N/A')
+        unidade = row.get('Unidade', 'N/A')
+        curso_alvo = row.get('Curso_Alvo', 'Não informado')
+        cota_aluno = row.get('Cota', 'Sistema Universal')
+        
+        # --- Normalização Inteligente (Fuzzy Match) ---
+        # 1. Normaliza Cota
+        # Consolida sistemas disponíveis
+        available_systems = list(set(corte_1sem_map.keys()) | set(corte_2sem_map.keys()))
+        if available_systems:
+            cota_aluno = find_best_match(str(cota_aluno), available_systems, cutoff=0.6)
+            
+        # 2. Normaliza Curso
+        # Usa a cota já normalizada para listar cursos candidatos
+        mapa_1 = corte_1sem_map.get(cota_aluno, corte_1sem_map.get('Sistema Universal', {}))
+        mapa_2 = corte_2sem_map.get(cota_aluno, corte_2sem_map.get('Sistema Universal', {}))
+        
+        # Compatibilidade com código antigo (que usava corte_1sem)
+        corte_1sem = mapa_1
+        corte_2sem = mapa_2
+        
+        available_courses = list(mapa_1.keys())
+        
+        # Se não achou cursos na cota, pode ser que a cota esteja errada ou vazia, tenta todos os cursos únicos
+        if not available_courses:
+             all_courses = set()
+             for c_map in corte_1sem_map.values():
+                 all_courses.update(c_map.keys())
+             available_courses = list(all_courses)
+        
+        if available_courses:
+            curso_alvo = find_best_match(str(curso_alvo), available_courses, cutoff=0.4) # Cutoff baixo para pegar "audiovisual" -> "COMUNICAÇÃO..."
+            
+        # 3. Identifica corte específico para o curso (agora com chave composta)
+        # O find_best_match já nos deu a chave completa: "DIREITO (...) - NOTURNO (...)"
+        # Então o get direto deve funcionar
+        nota_corte_1sem = mapa_1.get(curso_alvo)
+        nota_corte_2sem = mapa_2.get(curso_alvo)
+        
+        # Tenta fallback de string se não achou (caso o match tenha sido "parcial" ou manual errado)
+        if nota_corte_1sem is None and available_courses:
+             # Tenta achar de novo nos cursos disponíveis (redudante mas seguro)
+             match_retry = find_best_match(str(curso_alvo), available_courses, cutoff=0.6)
+             nota_corte_1sem = mapa_1.get(match_retry)
+             
+        if nota_corte_2sem is None and available_courses:
+             match_retry_2 = find_best_match(str(curso_alvo), available_courses, cutoff=0.6)
+             nota_corte_2sem = mapa_2.get(match_retry_2)
+
+        # Se ainda None, não temos corte para esse curso/turno específico
+        if nota_corte_1sem is None:
+            nota_corte_1sem = 0.0 # Indica "N/A"
+        
+        # Define qual nota de corte usar (1º sem ou 2º sem)
+        # Regra Padrão: Usa 1º Semestre
+        nota_corte = nota_corte_1sem
+        
+        # Armazena debug
+        curso_matched_1 = curso_alvo if nota_corte_1sem else None
+        curso_matched_2 = curso_alvo if nota_corte_2sem else None  # referência principal para cálculos
+        
+        # Prediz argumento final se modelo disponível
+        arg_pred = 0.0
+        gap = 0.0
+        chance = 0.0
+        
+        if ARG_FINAL_MODEL is not None:
+            try:
+                # Features devem ser: [EB_PAS1, Red_PAS1, EB_PAS2, Red_PAS2, C_EB, C_Red]
+                # EB = Escore Bruto = P1 + P2; C = variação entre etapas
+                eb_p1 = float(row['P1_PAS1']) + float(row['P2_PAS1'])
+                red_p1 = float(row.get('Red_PAS1', 6.0))
+                eb_p2 = float(row['P1_PAS2']) + float(row['P2_PAS2'])
+                red_p2 = float(row.get('Red_PAS2', 6.0))
+                c_eb = eb_p2 - eb_p1
+                c_red = red_p2 - red_p1
+                
+                features_aluno = np.array([[eb_p1, red_p1, eb_p2, red_p2, c_eb, c_red]])
+                arg_pred = float(ARG_FINAL_MODEL.predict(features_aluno)[0])
+                
+                if nota_corte is not None:
+                    gap = arg_pred - nota_corte
+                    # Calcula probabilidade via Z-Score (Igual ao Diagnóstico)
+                    if calculate_approval_probability:
+                        chance = calculate_approval_probability(arg_pred, nota_corte, rmse=ARG_FINAL_MAE) * 100
+                    else:
+                        chance = 50.0  # fallback
+                else:
+                    gap = 0.0
+                    chance = 0.0
+            except Exception:
+                arg_pred = 0.0
+                gap = -999.0
+                chance = 0.0
+        
+        # Reality Check (coorte histórica) - AGORA PADRONIZADO COM A CALCULADORA
+        historico_pct = 0.0
+        historico_err = ""
+        df_hist_cohort_debug = pd.DataFrame() 
+        
+        if calculate_cohort_evolution_probability and nota_corte is not None and TargetCalculator:
+            try:
+                df_hist_cohort = load_cohort_data()
+                df_hist_cohort_debug = df_hist_cohort
+                
+                if not df_hist_cohort.empty:
+                    # Prepara dados para a calculadora (TargetCalculator)
+                    notas_aluno = {
+                        'P1_PAS1': float(row['P1_PAS1']), 'P2_PAS1': float(row['P2_PAS1']), 
+                        'Red_PAS1': float(row.get('Red_PAS1', 6.0)),
+                        'P1_PAS2': float(row['P1_PAS2']), 'P2_PAS2': float(row['P2_PAS2']), 
+                        'Red_PAS2': float(row.get('Red_PAS2', 6.0))
+                    }
+                    
+                    # Instancia calculadora
+                    calc = TargetCalculator()
+                    
+                    # Define estatísticas baseado no triênio selacionado (GLOBAL)
+                    # O seletor estará lá em cima, na configuração.
+                    # Mas como isso é um loop, precisamos acessar a variável global de configuração.
+                    # Vou assumir que 'stats_p3_global' foi definido antes do loop se for 2024-2026.
+                    
+                    stats_ciclo_calc = TRIENNIUM_STATS.get(trienio_sel) # trienio_sel vem do Page 5 config
+                    
+                    if trienio_sel == "2024-2026" and 'stats_p3_global_asset' in locals():
+                        stats_p3_calc = stats_p3_global_asset
+                    elif trienio_sel == "2023-2025":
+                         stats_p3_calc = TRIENNIUM_STATS["2023-2025"]["PAS3"]
+                    elif stats_ciclo_calc:
+                        stats_p3_calc = stats_ciclo_calc["PAS3"]
+                    else:
+                        stats_p3_calc = STATS_PAS3_TREND # Fallback
+                    
+                    if stats_ciclo_calc:
+                        # Lógica para determinar qual corte usar no Histórico
+                        # Se o aluno é "Yellow" (não passa no 1º mas passa no 2º), usamos a nota do 2º sem
+                        cutoff_historico = nota_corte
+                        if gap < 0 and nota_corte_2sem is not None:
+                            # Verifica se passaria no 2º (Gap 2 >= 0)
+                            if arg_pred >= nota_corte_2sem:
+                                cutoff_historico = nota_corte_2sem
+                        
+                        # Calcula o caminho exato para a nota de corte selecionada
+                        result_path = calc.calculate_required_score(
+                            notas_aluno, cutoff_historico,
+                            stats_ciclo_calc["PAS1"], stats_ciclo_calc["PAS2"], stats_p3_calc
+                        )
+                        
+                        # EB Total Necessário = P1_estimado + P2_necessario
+                        eb_pas3_nec_real = result_path.p1_estimado + result_path.p2_necessario
+                        
+                        # Agora sim calcula a probabilidade histórica baseada na meta REAL
+                        aluno_dados_hist = {
+                            'eb_pas1': eb_p1, 
+                            'eb_pas2': eb_p2
+                        }
+                        
+                        prob_h, amostra_h = calculate_cohort_evolution_probability(
+                            aluno_dados_hist, eb_pas3_nec_real, df_hist_cohort
+                        )
+                        historico_pct = prob_h
+                        
+            except Exception as e:
+                historico_err = str(e)
+
+        # Registra debug
+        debug_info.append({
+            'Nome': nome[:30],
+            'Curso Input': curso_alvo[:40],
+            'Matched 1ºSem': curso_matched_1[:40] if curso_matched_1 else '❌ NÃO ENCONTRADO',
+            'Matched 2ºSem': curso_matched_2[:40] if curso_matched_2 else '❌ NÃO ENCONTRADO',
+            'Corte 1ºSem': f"{nota_corte_1sem:.1f}" if nota_corte_1sem else 'N/A',
+            'Corte 2ºSem': f"{nota_corte_2sem:.1f}" if nota_corte_2sem else 'N/A',
+            'Arg Previsto': f"{arg_pred:.1f}",
+            'Modelo?': '✅' if ARG_FINAL_MODEL is not None else '❌',
+            'Histórico (%)': f"{historico_pct:.1f}%",
+            'Histórico Err': historico_err if historico_err else "OK",
+            'Cohort Size': f"{len(df_hist_cohort_debug)}" if not df_hist_cohort_debug.empty else "0",
+        })
+        
+        # =============================================================
+        # CLASSIFICAÇÃO DUPLO CORTE (1º e 2º Semestre)
+        # =============================================================
+        sugestao = ""
+        
+        if nota_corte_1sem is not None and arg_pred >= nota_corte_1sem:
+            # Cenário 1: Aprovado direto no 1º semestre
+            status = "🟢"
+            status_level = 'green'
+        elif nota_corte_2sem is not None and arg_pred >= nota_corte_2sem:
+            # Cenário 2: Não passa no 1º, mas passa no 2º semestre
+            status = "🟡"
+            status_level = 'yellow'
+            sugestao = "Aprovado no 2º Semestre"
+        else:
+            # Cenário 3: Não passa em nenhum dos dois
+            status = "🔴"
+            status_level = 'red'
+        
+        # Sugestão DUPLA (1º e 2º Semestre)
+        # Se status for RED ou YELLOW, buscamos opções melhores.
+        sugestao_1sem = None
+        sugestao_2sem = None
+        
+        if status_level in ['red', 'yellow'] and calculate_approval_probability:
+            # Busca melhor opção para 1º Semestre (que seja GREEN)
+            melhor_gap_1 = -float('inf')
+            
+            # Ordena cursos por corte (do maior pro menor) para pegar o "melhor" possível que ele passa
+            # Ou pegar o mais difícil que ele passa? Normalmente queremos o curso de maior prestígio (maior nota) que ele passa.
+            for curso_alt, corte_alt in sorted(corte_1sem.items(), key=lambda x: x[1], reverse=True):
+                 if curso_alt == curso_matched_1: continue
+                 
+                 # Checa se passa com segurança (ex: > 80% chance ou gap positivo)
+                 # Usando gap positivo como critério base de "Green" simplificado
+                 if arg_pred >= corte_alt:
+                     # Verifica probabilidade para garantir
+                     try:
+                         prob = calculate_approval_probability(arg_pred, corte_alt, rmse=ARG_FINAL_MAE)
+                         if prob >= 0.8:
+                             sugestao_1sem = curso_alt.split(' (')[0]
+                             break # Achou o curso com maior nota de corte que ele passa
+                     except: pass
+            
+            # Busca melhor opção para 2º Semestre (que seja GREEN)
+            for curso_alt, corte_alt in sorted(corte_2sem.items(), key=lambda x: x[1], reverse=True):
+                 if curso_alt == curso_matched_2: continue
+                 if arg_pred >= corte_alt:
+                     try:
+                         prob = calculate_approval_probability(arg_pred, corte_alt, rmse=ARG_FINAL_MAE)
+                         if prob >= 0.8:
+                             sugestao_2sem = curso_alt.split(' (')[0]
+                             break 
+                     except: pass
+
+        # Formata string de sugestão
+        sugestao_final_parts = []
+        if sugestao_1sem:
+            sugestao_final_parts.append(f"1º Sem: {sugestao_1sem}")
+        if sugestao_2sem:
+            sugestao_final_parts.append(f"2º Sem: {sugestao_2sem}")
+            
+        if sugestao_final_parts:
+            sugestao = " | ".join(sugestao_final_parts)
+        else:
+            sugestao = ""
+            
+        # Se status for YELLOW, mostra a chance do 2º semestre explicitamente
+        chance_display = f"{chance:.1f}%"
+        if status_level == 'yellow':
+             # Recalcula chance para o 2º semestre usando nota_corte_2sem
+             if nota_corte_2sem:
+                 try:
+                     chance_2sem = calculate_approval_probability(arg_pred, nota_corte_2sem, rmse=ARG_FINAL_MAE) * 100
+                     chance_display = f"1º: {chance:.1f}% | 2º: {chance_2sem:.1f}%"
+                 except: pass
+        
+        resultados.append({
+            'Status': status,
+            'Status_Level': status_level,
+            'Nome': nome,
+            'Turma': turma,
+            'Cota': cota_aluno,
+            'Curso Alvo': curso_alvo.split(' (')[0],
+            'Gap': round(gap, 1),
+            'Chance (%)': chance_display,
+            'Histórico (%)': round(historico_pct, 1),
+            'Sugestão': sugestao if sugestao else '—',
+        })
+    
+    df_result = pd.DataFrame(resultados)
+    
+    # Aplica filtro de status
+    if status_filter == "🔴 Alto Risco":
+        df_result = df_result[df_result['Status_Level'] == 'red']
+    elif status_filter == "🟡 Oportunidade (2º Sem)":
+        df_result = df_result[df_result['Status_Level'] == 'yellow']
+    elif status_filter == "🟢 Baixo Risco":
+        df_result = df_result[df_result['Status_Level'] == 'green']
+    
+    # =================================================================
+    # KPIs (CARDS)
+    # =================================================================
+    col1, col2, col3, col4 = st.columns(4)
+    
+    total_alunos = len(df_result)
+    n_red = (df_result['Status_Level'] == 'red').sum()
+    n_yellow = (df_result['Status_Level'] == 'yellow').sum()
+    n_green = (df_result['Status_Level'] == 'green').sum()
     
     with col1:
-        st.markdown("### 🔴 Alto Risco")
-        st.markdown(f"<h1 style='color: #D32F2F;'>{high_risk}</h1>", unsafe_allow_html=True)
+        st.metric("📦 Total de Ativos", total_alunos)
     with col2:
-        st.markdown("### 🟡 Médio Risco")
-        st.markdown(f"<h1 style='color: #FFA000;'>{medium_risk}</h1>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style="background-color: #FFCDD2; padding: 15px; border-radius: 10px; text-align: center;">
+            <p style="margin:0; font-size: 0.9em; color: #B71C1C;">🔴 Alto Risco</p>
+            <h2 style="margin:0; color: #D32F2F;">{n_red}</h2>
+        </div>
+        """, unsafe_allow_html=True)
     with col3:
-        st.markdown("### 🟢 Baixo Risco")
-        st.markdown(f"<h1 style='color: #388E3C;'>{low_risk}</h1>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style="background-color: #FFF9C4; padding: 15px; border-radius: 10px; text-align: center;">
+            <p style="margin:0; font-size: 0.9em; color: #F57F17;">🟡 Oportunidade (2º Sem)</p>
+            <h2 style="margin:0; color: #FFA000;">{n_yellow}</h2>
+        </div>
+        """, unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"""
+        <div style="background-color: #C8E6C9; padding: 15px; border-radius: 10px; text-align: center;">
+            <p style="margin:0; font-size: 0.9em; color: #1B5E20;">🟢 Baixo Risco</p>
+            <h2 style="margin:0; color: #388E3C;">{n_green}</h2>
+        </div>
+        """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Filtro por risco
-    risk_filter = st.selectbox(
-        "Filtrar por nível de risco:",
-        ["Todos", "🔴 Alto Risco", "🟡 Médio Risco", "🟢 Baixo Risco"]
-    )
+    # =================================================================
+    # TABELA PRINCIPAL (PROFISSIONAL)
+    # =================================================================
+    st.markdown("### 📋 Painel de Ativos")
+    st.caption(f"Referência: Triênio {trienio_ref} | Universal | Última Chamada")
     
-    if risk_filter != "Todos":
-        df_filtered = df[df['Risco'] == risk_filter]
-    else:
-        df_filtered = df
+    # Ordena: red primeiro, depois yellow, depois green
+    order_map = {'red': 0, 'yellow': 1, 'green': 2}
+    df_result['_order'] = df_result['Status_Level'].map(order_map)
+    df_display = df_result.sort_values('_order').drop(columns=['Status_Level', '_order'])
     
-    # Tabela com tendência
-    st.markdown("### 📋 Lista de Alunos")
-    
-    display_cols = ['Nome', 'EB_PAS1', 'EB_PAS2', 'Tendência', 'Risco', 'Motivo']
-    available_cols = [c for c in display_cols if c in df_filtered.columns]
-    
-    # Ordena: alto risco primeiro
-    order = {'high': 0, 'medium': 1, 'low': 2}
-    df_filtered['order'] = df_filtered['Risco_Level'].map(order)
-    df_sorted = df_filtered.sort_values('order')
+    # Configuração profissional das colunas
+    column_config = {
+        'Status': st.column_config.TextColumn('Status', width='small'),
+        'Nome': st.column_config.TextColumn('Nome', width='medium'),
+        'Turma': st.column_config.TextColumn('Turma', width='small'),
+        'Curso Alvo': st.column_config.TextColumn('Curso Alvo', width='medium'),
+        'Gap': st.column_config.NumberColumn(
+            'Gap',
+            format="%+.1f",
+            help="Distância para a nota de corte (+ = acima, - = abaixo)",
+        ),
+        'Chance (%)': st.column_config.TextColumn(
+            'Chance (Univ.)',
+            help="Probabilidade de aprovação baseada no modelo ML (Incerteza da Previsão)",
+        ),
+        'Histórico (%)': st.column_config.ProgressColumn(
+            'Histórico',
+            format="%.1f%%",
+            min_value=0,
+            max_value=100,
+            help="Reality Check: % de alunos similares que alcançaram a Nota Exata necessária para este curso",
+        ),
+        'Sugestão': st.column_config.TextColumn(
+            'Sugestão 🏈',
+            width='medium',
+            help="Curso alternativo na zona verde (≥80% de chance)",
+        ),
+    }
     
     st.dataframe(
-        df_sorted[available_cols],
+        df_display,
+        column_config=column_config,
         use_container_width=True,
+        hide_index=True,
+        height=min(35 * len(df_display) + 38, 600),  # Auto-height com cap
     )
+    
+    # Rodapé com insights
+    if n_red > 0:
+        pct_risco = (n_red / total_alunos * 100) if total_alunos > 0 else 0
+        st.warning(f"⚠️ **{n_red} alunos ({pct_risco:.0f}%)** estão na zona vermelha e podem precisar de redirecionamento de curso.")
+    
+    # Debug expander: mostra como os cursos foram resolvidos
+    with st.expander("🔧 Debug: Resolução de Cursos e Modelo", expanded=False):
+        if debug_info:
+            st.dataframe(pd.DataFrame(debug_info), use_container_width=True, hide_index=True)
+        else:
+            st.info("Nenhum aluno processado.")
 
 
 # =============================================================================
@@ -808,7 +1419,7 @@ elif page == "🔮 Preditor PAS 3":
 
     # --- CARREGAMENTO DO BANCO DE DADOS PADRONIZADO ---
     data_dir = Path(__file__).parent.parent / "data"
-    ARQUIVO_DADOS = data_dir / "notas_corte_pas_final_BLINDADO.csv"
+    ARQUIVO_DADOS = data_dir / "notas_corte_pas.csv"
     
     try:
         @st.cache_data
@@ -859,8 +1470,8 @@ elif page == "🔮 Preditor PAS 3":
         st.markdown("**🏷️ Sistema de Concorrência (Cota)**")
         # Lista de cotas ordenada com Universal no topo
         lista_cotas = sorted(df_notas['Sistema_Nome'].unique().astype(str).tolist())
-        if 'Universal' in lista_cotas:
-            lista_cotas.insert(0, lista_cotas.pop(lista_cotas.index('Universal')))
+        if 'Sistema Universal' in lista_cotas:
+            lista_cotas.insert(0, lista_cotas.pop(lista_cotas.index('Sistema Universal')))
         
         cota_selecionada = st.selectbox("Cota", lista_cotas, label_visibility="collapsed")
 
@@ -1149,13 +1760,37 @@ elif page == "🔮 Preditor PAS 3":
                             help=f"Baseado no modelo {metodo_ia.upper()}"
                         )
                 
+                # --- NOVO: SELETOR DE ESTRATÉGIA PARA 2024-2026 (FUTURO) ---
+                stats_p3_usado = None
+                
+                if ciclo_aluno == "2024-2026":
+                    st.markdown("##### 🔮 Base de Projeção para o PAS 3 (Futuro)")
+                    base_projecao = st.radio(
+                        "Como você quer simular a dificuldade da prova?",
+                        ["Replicar Padrão 2023-2025", "Utilizar Projeção Tendência"],
+                        help="Replicar 2023-2025 assume que a prova será igual ao último ano. Tendência usa a média projetada estatisticamente."
+                    )
+                    
+                    if base_projecao == "Replicar Padrão 2023-2025":
+                        stats_p3_usado = TRIENNIUM_STATS["2023-2025"]["PAS3"]
+                    else:
+                        stats_p3_usado = STATS_PAS3_TREND
+                elif ciclo_aluno == "2023-2025":
+                     # Para 2023-2025, o PAS 3 já é histórico
+                    stats_p3_usado = stats_ciclo["PAS3"]
+                else:
+                    # Para outros (2022-2024, etc), usa o histórico deles
+                    stats_p3_usado = stats_ciclo["PAS3"]
+
                 if st.button("🔢 Calcular Caminho", type="primary"):
-                    stats_p3 = STATS_PAS3_TREND if ciclo_aluno == "2023-2025" else stats_ciclo["PAS3"]
+                    # Se, por algum motivo, stats_p3_usado for None (ex: erro de chave), fallback para trend
+                    if stats_p3_usado is None:
+                        stats_p3_usado = STATS_PAS3_TREND
                     
                     # Usa os overrides do slider
                     result = calc.calculate_required_score(
                         notas_validas, nota_alvo,
-                        stats_ciclo["PAS1"], stats_ciclo["PAS2"], stats_p3,
+                        stats_ciclo["PAS1"], stats_ciclo["PAS2"], stats_p3_usado,
                         p1_override=p1_ov,
                         red_override=red_ov
                     )

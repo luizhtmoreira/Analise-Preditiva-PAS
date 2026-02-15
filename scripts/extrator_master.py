@@ -158,7 +158,7 @@ if resultados_mestres:
         ascending=[False, True, True, True, True]
     ).drop(columns=['Sistema_Int'])
     
-    df_final.to_csv("notas_corte_pas_final_BLINDADO.csv", index=False)
+    df_final.to_csv("notas_corte_pas.csv", index=False)
     print(f"\n🎉 TABELA PERFEITA GERADA! {len(df_final)} linhas salvas.")
 else:
     print("\n⚠️ Nada gerado.")
