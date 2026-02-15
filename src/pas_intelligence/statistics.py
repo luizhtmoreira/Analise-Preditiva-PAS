@@ -37,7 +37,7 @@ def calculate_cohort_evolution_probability(
     
     Args:
         current_student_data: Dict com 'eb_pas1' e 'eb_pas2'
-        target_arg: Argumento final necessário (meta)
+        target_arg: EB PAS 3 necessário (P1 + P2 do PAS 3)
         historical_df: DataFrame com histórico (banco_alunos_pas_final.csv)
         tolerance_percent: Margem de tolerância para encontrar vizinhos (default 10%)
         
@@ -52,8 +52,7 @@ def calculate_cohort_evolution_probability(
     # 1. Normaliza nomes de colunas (Case-insensitive e mapeamento)
     cols_norm = {c.upper(): c for c in hist_data.columns}
     
-    # Identifica colunas (priorizando EB já calculado)
-    target_col = cols_norm.get('ARG_FINAL_REAL') or cols_norm.get('ARG_FINAL')
+    # Identifica colunas necessárias
     p1_eb_col = cols_norm.get('EB_PAS1')
     p2_eb_col = cols_norm.get('EB_PAS2')
     
@@ -65,8 +64,17 @@ def calculate_cohort_evolution_probability(
     if not p2_eb_col and 'P1_PAS2' in cols_norm and 'P2_PAS2' in cols_norm:
         hist_data['EB_PAS2'] = hist_data[cols_norm['P1_PAS2']] + hist_data[cols_norm['P2_PAS2']]
         p2_eb_col = 'EB_PAS2'
+    
+    # Calcula EB_PAS3 do histórico (P1_PAS3 + P2_PAS3)
+    p1_pas3_col = cols_norm.get('P1_PAS3')
+    p2_pas3_col = cols_norm.get('P2_PAS3')
+    
+    if not p1_pas3_col or not p2_pas3_col:
+        return 0.0, 0
+    
+    hist_data['EB_PAS3'] = hist_data[p1_pas3_col] + hist_data[p2_pas3_col]
         
-    if not all([target_col, p1_eb_col, p2_eb_col]):
+    if not all([p1_eb_col, p2_eb_col]):
         return 0.0, 0
         
     # 2. Calcula proxy de similaridade
@@ -88,8 +96,8 @@ def calculate_cohort_evolution_probability(
     if sample_size == 0:
         return 0.0, 0
         
-    # 5. Verifica sucesso
-    successes = neighbors[neighbors[target_col] >= target_arg]
+    # 5. Verifica sucesso (compara EB_PAS3 real com EB_PAS3 necessário)
+    successes = neighbors[neighbors['EB_PAS3'] >= target_arg]
     success_rate = (len(successes) / sample_size) * 100
     
     return success_rate, sample_size

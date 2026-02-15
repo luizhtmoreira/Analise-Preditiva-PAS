@@ -141,7 +141,7 @@ def load_course_stats(semester: int = 1, triennium: Optional[str] = None):
         data_dir = Path(__file__).parent.parent / "data"
         
         # Arquivo de Notas de Corte Final
-        csv_path = data_dir / "notas_corte_pas_final.csv"
+        csv_path = data_dir / "notas_corte_pas_final_BLINDADO.csv"
         
         if not csv_path.exists():
             st.error(f"⚠️ Arquivo não encontrado: {csv_path}")
@@ -189,7 +189,7 @@ def load_cohort_data():
             return pd.DataFrame()
             
         # Carrega apenas colunas necessárias para otimizar
-        cols_to_load = ['P1_PAS1', 'P2_PAS1', 'P1_PAS2', 'P2_PAS2', 'Arg_Final']
+        cols_to_load = ['P1_PAS1', 'P2_PAS1', 'P1_PAS2', 'P2_PAS2', 'P1_PAS3', 'P2_PAS3', 'Arg_Final']
         df = pd.read_csv(csv_path, usecols=lambda c: c in cols_to_load)
         
         # Renomeia para o padrão esperado pelo backend de estatísticas
@@ -808,7 +808,7 @@ elif page == "🔮 Preditor PAS 3":
 
     # --- CARREGAMENTO DO BANCO DE DADOS PADRONIZADO ---
     data_dir = Path(__file__).parent.parent / "data"
-    ARQUIVO_DADOS = data_dir / "notas_corte_pas_final.csv"
+    ARQUIVO_DADOS = data_dir / "notas_corte_pas_final_BLINDADO.csv"
     
     try:
         @st.cache_data
@@ -878,14 +878,14 @@ elif page == "🔮 Preditor PAS 3":
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("### 📝 Notas do PAS 1")
-            p1_pas1 = st.number_input("P1 PAS 1 (Língua Estrangeira)", -20.0, 20.0, value=None, step=0.1, key="p1_1")
-            p2_pas1 = st.number_input("P2 PAS 1 (Conhecimentos)", -100.0, 100.0, value=None, step=0.1, key="p2_1")
-            red_pas1 = st.number_input("Redação PAS 1", 0.0, 10.0, value=None, step=0.1, key="r_1")
+            p1_pas1 = st.number_input("P1 PAS 1 (Língua Estrangeira)", -20.0, 20.0, value=None, step=0.001, key="p1_1", format="%.3f")
+            p2_pas1 = st.number_input("P2 PAS 1 (Conhecimentos)", -100.0, 100.0, value=None, step=0.001, key="p2_1", format="%.3f")
+            red_pas1 = st.number_input("Redação PAS 1", 0.0, 10.0, value=None, step=0.001, key="r_1", format="%.3f")
         with col2:
             st.markdown("### 📝 Notas do PAS 2")
-            p1_pas2 = st.number_input("P1 PAS 2", -20.0, 20.0, value=None, step=0.1, key="p1_2")
-            p2_pas2 = st.number_input("P2 PAS 2", -100.0, 100.0, value=None, step=0.1, key="p2_2")
-            red_pas2 = st.number_input("Redação PAS 2", 0.0, 10.0, value=None, step=0.1, key="r_2")
+            p1_pas2 = st.number_input("P1 PAS 2", -20.0, 20.0, value=None, step=0.001, key="p1_2", format="%.3f")
+            p2_pas2 = st.number_input("P2 PAS 2", -100.0, 100.0, value=None, step=0.001, key="p2_2", format="%.3f")
+            red_pas2 = st.number_input("Redação PAS 2", 0.0, 10.0, value=None, step=0.001, key="r_2", format="%.3f")
         
         missing_data = any(v is None for v in [p1_pas1, p2_pas1, red_pas1, p1_pas2, p2_pas2, red_pas2])
         
@@ -926,6 +926,8 @@ elif page == "🔮 Preditor PAS 3":
                     'arg_final_pred': arg_final_pred,
                     'eb_pas1': eb_pas1, 'eb_pas2': eb_pas2,
                     'red_pas1': red_pas1, 'red_pas2': red_pas2,
+                    'p1_pas1': p1_pas1, 'p2_pas1': p2_pas1,
+                    'p1_pas2': p1_pas2, 'p2_pas2': p2_pas2,
                 }
             except Exception as e:
                 st.error(f"Erro: {e}")
@@ -941,15 +943,15 @@ elif page == "🔮 Preditor PAS 3":
             st.markdown("### 🔢 Previsões do Modelo")
             
             c_eb, c_arg = st.columns(2)
-            c_eb.metric("EB PAS 3 Previsto", f"{recommended_eb:.3f}")
+            c_eb.metric("EB PAS 3 Previsto", f"{recommended_eb:.3f}", help=f"Modelo selecionado pelo meta-modelo: {recommended_model.upper()}")
             c_arg.metric("Argumento Final Previsto", f"{arg_final_pred:.3f}", delta=f"± {ARG_FINAL_MAE:.2f}")
             
             st.markdown("---")
             st.markdown("#### 🎛️ Ajuste de Cenário")
             arg_ajustado = st.slider(
                 "Simule variações no seu Argumento Final:",
-                min_value=float(arg_final_pred - 20),
-                max_value=float(arg_final_pred + 20),
+                min_value=float(arg_final_pred - ARG_FINAL_MAE),
+                max_value=float(arg_final_pred + ARG_FINAL_MAE),
                 value=float(arg_final_pred),
                 step=0.1, format="%.3f"
             )
@@ -970,11 +972,35 @@ elif page == "🔮 Preditor PAS 3":
             df_cota_atual['Combo_Nome'] = df_cota_atual['Curso_Limpo'] + " (" + df_cota_atual['Campus'] + " - " + df_cota_atual['Turno'] + ")"
             opcoes_lista = df_cota_atual['Combo_Nome'].tolist()
             
+            # Cria dicionário com a última chamada de cada curso
+            ultimas_chamadas = {}
+            for combo in opcoes_lista:
+                curso_info = df_cota_atual[df_cota_atual['Combo_Nome'] == combo].iloc[0]
+                df_chamadas = df_notas[
+                    (df_notas['Trienio'] == ref_triennium) & 
+                    (df_notas['Semestre'] == semester_db) &
+                    (df_notas['Curso_Limpo'] == curso_info['Curso_Limpo']) &
+                    (df_notas['Campus'] == curso_info['Campus']) &
+                    (df_notas['Turno'] == curso_info['Turno']) &
+                    (df_notas['Sistema_Nome'] == cota_selecionada)
+                ].sort_values('Chamada', ascending=False)
+                
+                if not df_chamadas.empty:
+                    ultimas_chamadas[combo] = {
+                        'nota': df_chamadas.iloc[0]['Min'],
+                        'chamada': df_chamadas.iloc[0]['Chamada']
+                    }
+                else:
+                    ultimas_chamadas[combo] = {
+                        'nota': curso_info['Min'],
+                        'chamada': '1ª'
+                    }
+            
             # Seletor de Curso
             curso_combo_sel = st.selectbox(
                 "Selecione um curso de interesse:", 
                 ["Selecione..."] + opcoes_lista,
-                format_func=lambda x: x if x == "Selecione..." else f"{x} [Corte: {df_cota_atual[df_cota_atual['Combo_Nome']==x]['Min'].values[0]:.3f}]"
+                format_func=lambda x: x if x == "Selecione..." else f"{x} [Corte ({ultimas_chamadas[x]['chamada']}): {ultimas_chamadas[x]['nota']:.3f}]"
             )
             
             if curso_combo_sel != "Selecione...":
@@ -983,7 +1009,24 @@ elif page == "🔮 Preditor PAS 3":
                 curso_selecionado = row_sel['Curso_Limpo']
                 campus_sel = row_sel['Campus']
                 turno_sel = row_sel['Turno']
-                nota_corte = row_sel['Min']
+                
+                # Busca a última chamada disponível para este curso
+                df_chamadas_curso = df_notas[
+                    (df_notas['Trienio'] == ref_triennium) & 
+                    (df_notas['Semestre'] == semester_db) &
+                    (df_notas['Curso_Limpo'] == curso_selecionado) &
+                    (df_notas['Campus'] == campus_sel) &
+                    (df_notas['Turno'] == turno_sel) &
+                    (df_notas['Sistema_Nome'] == cota_selecionada)
+                ].sort_values('Chamada', ascending=False)
+                
+                if not df_chamadas_curso.empty:
+                    ultima_chamada = df_chamadas_curso.iloc[0]
+                    nota_corte = ultima_chamada['Min']
+                    chamada_ref = ultima_chamada['Chamada']
+                else:
+                    nota_corte = row_sel['Min']
+                    chamada_ref = '1ª'
                 
                 # CÁLCULO ORIGINAL DE PROBABILIDADE (Mantido!)
                 if calculate_approval_probability:
@@ -995,9 +1038,11 @@ elif page == "🔮 Preditor PAS 3":
                     <div style="background-color: {color}; padding: 20px; border-radius: 10px; color: white; text-align: center; margin-bottom: 20px;">
                         <h2 style="margin:0;">{prob*100:.1f}% de Chance</h2>
                         <p style="margin:5px 0 0 0;">Curso: {curso_selecionado} | Campus: {campus_sel} | Turno: {turno_sel}</p>
-                        <p style="font-size: 0.9em;">Cota: {cota_selecionada} | Corte: {nota_corte:.3f} | Simulação: {arg_ajustado:.3f}</p>
+                        <p style="font-size: 0.9em;">Cota: {cota_selecionada} | Corte ({chamada_ref}): {nota_corte:.3f} | Simulação: {arg_ajustado:.3f}</p>
                     </div>
                     """, unsafe_allow_html=True)
+                else:
+                    color = "#999999"  # Default color if probability can't be calculated
                 
                 # --- NOVO: HISTÓRICO DE CHAMADAS (O que você pediu) ---
                 st.markdown("##### 📉 Histórico de Chamadas (Lista de Espera)")
@@ -1022,7 +1067,7 @@ elif page == "🔮 Preditor PAS 3":
                     st.caption("Apenas 1ª chamada registrada para este período.")
 
             # --- LISTA AUTOMÁTICA (Restaurada e Filtrada pela Cota) ---
-            st.markdown(f"#### 🏫 Cursos ao seu alcance (Top 10 na Cota)")
+            st.markdown(f"#### 🏫 Cursos ao seu alcance (Top 10 no Sistema de Concorrência)")
             
             # Recalcula probabilidades para TODOS os cursos da cota
             if not df_cota_atual.empty and calculate_approval_probability:
@@ -1050,10 +1095,10 @@ elif page == "🔮 Preditor PAS 3":
         
         if 'prediction_results' in st.session_state and TargetCalculator:
             res = st.session_state.prediction_results
-            # Prepara notas
+            # Prepara notas (usa valores reais de P1 e P2)
             notas_validas = {
-                'P1_PAS1': res['eb_pas1']/2, 'P2_PAS1': res['eb_pas1']/2, 'Red_PAS1': res['red_pas1'],
-                'P1_PAS2': res['eb_pas2']/2, 'P2_PAS2': res['eb_pas2']/2, 'Red_PAS2': res['red_pas2']
+                'P1_PAS1': res['p1_pas1'], 'P2_PAS1': res['p2_pas1'], 'Red_PAS1': res['red_pas1'],
+                'P1_PAS2': res['p1_pas2'], 'P2_PAS2': res['p2_pas2'], 'Red_PAS2': res['red_pas2']
             }
             calc = TargetCalculator()
             
@@ -1079,12 +1124,40 @@ elif page == "🔮 Preditor PAS 3":
                 )
                 
                 nota_alvo = notas_meta[curso_alvo_combo]
+
+                # --- NOVO: SIMULAÇÃO DE DESEMPENHO (OVERRIDES) ---
+                with st.expander("🛠️ Customizar Estimativas (Parte 1 e Redação)", expanded=False):
+                    st.caption("Ajuste suas próprias expectativas ou use as projeções automáticas da IA.")
+                    
+                    # Busca predições baseadas nos modelos (p1_pas3_model e red_pas3_model)
+                    previsao_ia = calc.predict_stable_components(notas_validas)
+                    p1_ia = float(previsao_ia['p1_pred'])
+                    red_ia = float(previsao_ia['red_pred'])
+                    metodo_ia = previsao_ia.get('method', 'algoritmo')
+
+                    col_ov1, col_ov2 = st.columns(2)
+                    with col_ov1:
+                        p1_ov = st.number_input(
+                            f"Expectativa P1 (Est. IA: {p1_ia:.2f})", 
+                            -20.0, 20.0, p1_ia, 0.5,
+                            help=f"Baseado no modelo {metodo_ia.upper()}"
+                        )
+                    with col_ov2:
+                        red_ov = st.number_input(
+                            f"Expectativa Redação (Est. IA: {red_ia:.2f})", 
+                            0.0, 10.0, red_ia, 0.1,
+                            help=f"Baseado no modelo {metodo_ia.upper()}"
+                        )
                 
                 if st.button("🔢 Calcular Caminho", type="primary"):
                     stats_p3 = STATS_PAS3_TREND if ciclo_aluno == "2023-2025" else stats_ciclo["PAS3"]
+                    
+                    # Usa os overrides do slider
                     result = calc.calculate_required_score(
                         notas_validas, nota_alvo,
-                        stats_ciclo["PAS1"], stats_ciclo["PAS2"], stats_p3
+                        stats_ciclo["PAS1"], stats_ciclo["PAS2"], stats_p3,
+                        p1_override=p1_ov,
+                        red_override=red_ov
                     )
                     
                     # Exibição Original
@@ -1097,10 +1170,36 @@ elif page == "🔮 Preditor PAS 3":
                     c1.metric("P1 PAS 3 (Est.)", f"{result.p1_estimado:.3f}")
                     c2.metric("Redação (Est.)", f"{result.red_estimada:.3f}")
                     c3.metric("P2 NECESSÁRIA", f"{result.p2_necessario:.3f}")
+                    
+                    # --- REALITY CHECK (COHORTE) ---
+                    if calculate_cohort_evolution_probability:
+                        try:
+                            df_hist_cohort = load_cohort_data()
+                            if not df_hist_cohort.empty:
+                                aluno_dados = {'eb_pas1': res['eb_pas1'], 'eb_pas2': res['eb_pas2']}
+                                # Usa EB PAS 3 calculado (P1 + P2 necessária)
+                                eb_pas3_necessario = result.p1_estimado + result.p2_necessario
+                                prob_hist, amostra = calculate_cohort_evolution_probability(aluno_dados, eb_pas3_necessario, df_hist_cohort)
+                                
+                                if amostra > 0:
+                                    st.markdown(f"""
+                                    <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 5px solid #2196F3; margin-top: 15px;">
+                                        <p style="margin:0; color: #31333F; font-weight: bold;">📊 Reality Check (Estatística Real)</p>
+                                        <p style="margin:5px 0 0 0; color: #31333F;">
+                                            De <b>{amostra}</b> alunos com desempenho similar ao seu no PAS 1 e 2, 
+                                            <b>{prob_hist:.1f}%</b> conseguiram alcançar um EB PAS 3 de <b>{eb_pas3_necessario:.2f}</b> ou superior.
+                                        </p>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                else:
+                                    st.caption(f"ℹ️ Reality Check: Não encontramos alunos históricos suficientemente parecidos (Amostra: {amostra}).")
+                        except Exception as e:
+                            st.caption(f"Reality Check indisponível: {e}")
             else:
                 st.warning("Sem dados para esta cota.")
         else:
             st.warning("Preencha as notas na aba Diagnóstico primeiro.")
+
 
 # =============================================================================
 # PÁGINA 5: ANÁLISE DA ESCOLA (NOVA)

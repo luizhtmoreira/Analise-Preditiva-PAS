@@ -196,7 +196,7 @@ def extract_and_join_scores(data_dir: str = "data"):
     print("\n--- SANITY CHECK (MEDICINA) ---")
     print(summary[summary['Curso'].str.contains("MEDICINA", case=False)])
     
-    out_file = data_path / "notas_corte_pas_final.csv"
+    out_file = data_path / "notas_corte_pas_final_BLINDADO.csv"
     summary.to_csv(out_file, index=False)
     print(f"\nSucesso: {out_file}")
 

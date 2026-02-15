@@ -227,7 +227,7 @@ def extract_cutoff_scores(data_dir: str = "data"):
         print("ALERTA: Medicina não encontrada nos dados processados!")
 
     # 5. Exportação
-    output_file = Path(data_dir) / "notas_corte_pas_final.csv"
+    output_file = Path(data_dir) / "notas_corte_pas_final_BLINDADO.csv"
     summary.to_csv(output_file, index=False)
     print(f"\nArquivo consolidado gerado: {output_file}")
     
