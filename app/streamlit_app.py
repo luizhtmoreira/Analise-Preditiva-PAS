@@ -52,7 +52,7 @@ try:
     importlib.reload(pdf_generator)
     from pdf_generator import PDFGenerator
 except ImportError as e:
-    st.error(f"⚠️ Módulo pas_intelligence não encontrado: {e}")
+    st.error(f":material/warning: Módulo pas_intelligence não encontrado: {e}")
     st.stop()
 
 # Import adicional para calculadora de meta
@@ -143,27 +143,42 @@ def load_course_stats(semester: int = 1, triennium: Optional[str] = None, system
         csv_path = data_dir / "notas_corte_pas.csv"
         
         if not csv_path.exists():
-            st.error(f"⚠️ Arquivo não encontrado: {csv_path}")
+            st.error(f":material/warning: Arquivo não encontrado: {csv_path}")
             return None
         
         # Carrega CSV encontrado
         stats = pd.read_csv(csv_path)
         
+        # Padroniza nomes de colunas para compatibilidade
+        rename_map = {}
+        if 'Curso_Limpo' in stats.columns: rename_map['Curso_Limpo'] = 'Curso'
+        if 'N_Banco' in stats.columns: rename_map['N_Banco'] = 'N'
+        
+        if rename_map:
+            stats = stats.rename(columns=rename_map)
+
         # Filtra pelo semestre selecionado (formato CSV: '1°' ou '2°')
-        sem_str = f"{semester}°"
-        stats = stats[stats['Semestre'] == sem_str]
+        # Ajuste para garantir que o símbolo ° bata (pode ser UTF-8 ou outro)
+        if 'Semestre' in stats.columns:
+            stats = stats[stats['Semestre'].astype(str).str.contains(str(semester))]
 
         # Filtra por sistema
         if 'Sistema_Nome' in stats.columns:
             stats = stats[stats['Sistema_Nome'] == system]
 
+        # Filtra por triênio
         if triennium:
-            stats = stats[stats['Trienio'] == triennium]
+            if 'Trienio' in stats.columns:
+                stats = stats[stats['Trienio'] == triennium]
+            elif 'Triênio' in stats.columns:
+                stats = stats[stats['Triênio'] == triennium]
         else:
             # Fallback: Pega o triênio mais recente disponível no CSV se não especificado
-            if 'Trienio' in stats.columns and not stats.empty:
-                recent_triennium = stats['Trienio'].max()
-                stats = stats[stats['Trienio'] == recent_triennium]
+            for col in ['Trienio', 'Triênio']:
+                if col in stats.columns and not stats.empty:
+                    recent_triennium = stats[col].max()
+                    stats = stats[stats[col] == recent_triennium]
+                    break
         
 
         
@@ -323,7 +338,7 @@ def find_best_match(query: str, choices: list[str], cutoff: float = 0.6) -> str:
 
 st.set_page_config(
     page_title="VETOR PAS",
-    page_icon="🎓",
+    page_icon=":material/school:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -419,10 +434,10 @@ MODELS, SCALER, META_MODEL, META_SCALER, ARG_FINAL_MODEL = load_models()
 # Mapeamento de labels do meta-modelo
 LABEL_TO_MODEL = {0: 'lgbm', 1: 'rf', 2: 'linear', 3: 'mlp'}
 MODEL_NAMES = {
-    'lgbm': '🚀 LightGBM',
-    'rf': '🌲 Random Forest',
-    'linear': '📈 Regressão Linear',
-    'mlp': '🧠 Rede Neural MLP',
+    'lgbm': ':material/rocket_launch: LightGBM',
+    'rf': ':material/forest: Random Forest',
+    'linear': ':material/trending_up: Regressão Linear',
+    'mlp': ':material/psychology: Rede Neural MLP',
 }
 
 # MAE de cada modelo para EB_PAS3 (do notebook)
@@ -530,7 +545,7 @@ def classify_risk(eb_pas1: float, eb_pas2: float) -> Tuple[str, str, str]:
     # 5. Estável ou subindo = baixo risco
     if trend >= 0:
         if trend > 5:
-            return "🟢 Baixo Risco", "low", f"Subiu {trend:.1f} pontos! 📈"
+            return "🟢 Baixo Risco", "low", f"Subiu {trend:.1f} pontos! :material/trending_up:"
         else:
             return "🟢 Baixo Risco", "low", "Desempenho estável"
     
@@ -623,35 +638,46 @@ def load_sample_data(include_pas3: bool = False) -> pd.DataFrame:
 # SIDEBAR - NAVEGAÇÃO
 # =============================================================================
 
-st.sidebar.markdown("# 🎓 VETOR PAS")
+# Logo do Colégio Ideal (Centralizado)
+logo_path = Path(__file__).parent.parent / "assets" / "templates" / "logo_ideal.png"
+if logo_path.exists():
+    # Usa colunas para centralizar
+    c1, c2, c3 = st.sidebar.columns([1, 4, 1])
+    with c2:
+        st.image(str(logo_path), use_container_width=True)
+else:
+    st.sidebar.markdown(
+        """
+        <div style="text-align: center; padding: 10px;">
+            <h2 style="color: #003366;">COLÉGIO IDEAL</h2>
+            <p style="font-size: 0.8em; color: gray;">SISTEMA DE GESTÃO ESTRATÉGICA</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 st.sidebar.markdown("---")
 
-page = st.sidebar.radio(
-    "Ir para:",
-    ["📊 Análise Temporal", "💼 Gestão de Ativos", "🔮 Preditor PAS 3", "🏫 Análise da Escola", "📈 Comparação Entre Grupos", "📄 Gerador de PDF"]
+# Dicionário de Páginas (ID -> Label com Ícone Material)
+PAGES = {
+    "temporal": ":material/analytics: Análise Temporal",
+    "ativos": ":material/business_center: Gestão de Ativos",
+    "preditor": ":material/model_training: Preditor PAS 3", 
+    "escola": ":material/domain: Análise da Escola",
+    "comparacao": ":material/trending_up: Comparação Entre Grupos",
+    "pdf": ":material/description: Gerador de PDF"
+}
+
+selection = st.sidebar.radio(
+    "Navegação",
+    list(PAGES.values()),
+    label_visibility="collapsed"
 )
 
+# Encontra a chave (ID) baseada na seleção do usuário
+page = next(key for key, value in PAGES.items() if value == selection)
+
 st.sidebar.markdown("---")
-st.sidebar.info("""
-**🚀 Modelo de Projeção Ativo**
-Calculando metas com base na **Tendência de Crescimento (Regressão)** para o PAS 3 e notas reais para o passado.
-""")
-
-st.sidebar.markdown("### ℹ️ Sobre")
-st.sidebar.markdown("""
-Sistema de inteligência para análise 
-preditiva do PAS/UnB.
-
-**Versão:** 1.1.0  
-**Autor:** Luiz Henrique Tomaz Moreira
-""")
-
-# Status do modelo
-models_loaded = sum(1 for m in MODELS.values() if m is not None)
-if models_loaded > 0:
-    st.sidebar.success(f"✅ {models_loaded}/4 modelos carregados")
-else:
-    st.sidebar.warning("⚠️ Nenhum modelo disponível")
+st.sidebar.caption("🔒 Ambiente Seguro | Desenvolvido por Vetor PAS")
 
 
 # =============================================================================
@@ -668,8 +694,8 @@ if 'df' not in st.session_state:
 
 
 
-if page == "📊 Análise Temporal":
-    st.markdown('<p class="main-header">📊 Análise Temporal</p>', unsafe_allow_html=True)
+if page == "temporal":
+    st.title(":material/analytics: Análise Temporal")
     
     # Seletor de Modo de Análise
     analysis_mode = st.radio(
@@ -695,16 +721,16 @@ if page == "📊 Análise Temporal":
                     st.session_state.df = pd.read_csv(uploaded_file)
                 else:
                     st.session_state.df = pd.read_excel(uploaded_file)
-                st.success(f"✅ Arquivo carregado: {len(st.session_state.df)} alunos")
+                st.success(f":material/check_circle: Arquivo carregado: {len(st.session_state.df)} alunos")
             except Exception as e:
-                st.error(f"❌ Erro ao ler arquivo: {e}")
+                st.error(f":material/error: Erro ao ler arquivo: {e}")
     
     with col2:
-        if st.button("📥 Usar Dados de Exemplo"):
+        if st.button(":material/download: Usar Dados de Exemplo"):
             # Carrega dados de exemplo baseado no modo selecionado
             include_pas3 = (analysis_mode == "Triênios Concluídos (Histórico)")
             st.session_state.df = load_sample_data(include_pas3=include_pas3)
-            st.success("✅ Dados de exemplo carregados!")
+            st.success(":material/check_circle: Dados de exemplo carregados!")
     
     if st.session_state.df is not None:
         df = st.session_state.df.copy()
@@ -714,11 +740,11 @@ if page == "📊 Análise Temporal":
             cols = [c for c in df.columns if c != 'Turma'] + ['Turma']
             df = df[cols]
         
-        st.markdown("### 📋 Prévia dos Dados")
+        st.markdown("### :material/toc: Prévia dos Dados")
         st.dataframe(df.head(10), use_container_width=True)
         
         # Estatísticas gerais
-        st.markdown("### 📈 Estatísticas Gerais")
+        st.markdown("### :material/trending_up: Estatísticas Gerais")
         
         # Definição de colunas necessárias baseada no modo
         required_cols = ['P1_PAS1', 'P2_PAS1', 'P1_PAS2', 'P2_PAS2']
@@ -728,14 +754,14 @@ if page == "📊 Análise Temporal":
         missing_cols = [c for c in required_cols if c not in df.columns]
         
         if missing_cols:
-            st.warning(f"⚠️ Colunas faltando para o modo '{analysis_mode}': {', '.join(missing_cols)}")
+            st.warning(f":material/warning: Colunas faltando para o modo '{analysis_mode}': {', '.join(missing_cols)}")
             st.info("""
-            📋 **Colunas necessárias:**
+            :material/toc: **Colunas necessárias:**
             - P1_PAS1, P2_PAS1, Red_PAS1 (notas do PAS 1)
             - P1_PAS2, P2_PAS2, Red_PAS2 (notas do PAS 2)
             """ + ("- P1_PAS3, P2_PAS3, Red_PAS3 (notas do PAS 3)" if analysis_mode == "Triênios Concluídos (Histórico)" else "") + """
             
-            💡 Use **Dados de Exemplo** para testar o sistema.
+            :material/lightbulb: Use **Dados de Exemplo** para testar o sistema.
             """)
         else:
             # Cálculos de Escore Bruto
@@ -745,16 +771,20 @@ if page == "📊 Análise Temporal":
             cols_metrics = st.columns(4 if analysis_mode == "Triênio Atual (Em Andamento)" else 5)
             
             with cols_metrics[0]:
-                st.metric("Total de Alunos", len(df))
+                with st.container(border=True):
+                    st.metric("Total de Alunos", len(df))
             with cols_metrics[1]:
-                st.metric("Média EB PAS 1", f"{df['EB_PAS1'].mean():.2f}")
+                with st.container(border=True):
+                    st.metric("Média EB PAS 1", f"{df['EB_PAS1'].mean():.2f}")
             with cols_metrics[2]:
-                st.metric("Média EB PAS 2", f"{df['EB_PAS2'].mean():.2f}")
+                with st.container(border=True):
+                    st.metric("Média EB PAS 2", f"{df['EB_PAS2'].mean():.2f}")
             
             if analysis_mode == "Triênio Atual (Em Andamento)":
                 with cols_metrics[3]:
-                    trend = df['EB_PAS2'].mean() - df['EB_PAS1'].mean()
-                    st.metric("Tendência (P1 → P2)", f"{trend:+.2f}", delta=f"{trend:+.2f}")
+                    with st.container(border=True):
+                        trend = df['EB_PAS2'].mean() - df['EB_PAS1'].mean()
+                        st.metric("Tendência (P1 → P2)", f"{trend:+.2f}", delta=f"{trend:+.2f}")
                 
                 # Gráfico de distribuição (Apenas PAS 1 e 2)
                 fig = px.histogram(
@@ -771,11 +801,13 @@ if page == "📊 Análise Temporal":
                 df['EB_PAS3'] = df['P1_PAS3'] + df['P2_PAS3']
                 
                 with cols_metrics[3]:
-                    st.metric("Média EB PAS 3", f"{df['EB_PAS3'].mean():.2f}")
+                    with st.container(border=True):
+                        st.metric("Média EB PAS 3", f"{df['EB_PAS3'].mean():.2f}")
                 
                 with cols_metrics[4]:
-                    trend_total = df['EB_PAS3'].mean() - df['EB_PAS2'].mean()
-                    st.metric("Tendência (P2 → P3)", f"{trend_total:+.2f}", delta=f"{trend_total:+.2f}")
+                    with st.container(border=True):
+                        trend_total = df['EB_PAS3'].mean() - df['EB_PAS2'].mean()
+                        st.metric("Tendência (P2 → P3)", f"{trend_total:+.2f}", delta=f"{trend_total:+.2f}")
                 
                 # Gráfico de distribuição (PAS 1, 2 e 3)
                 fig = px.histogram(
@@ -789,13 +821,56 @@ if page == "📊 Análise Temporal":
                 )
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Gráfico de Evolução Média
-                st.markdown("### 📉 Evolução da Média da Turma")
-                means = pd.DataFrame({
-                    'Etapa': ['PAS 1', 'PAS 2', 'PAS 3'],
-                    'Média': [df['EB_PAS1'].mean(), df['EB_PAS2'].mean(), df['EB_PAS3'].mean()]
-                })
-                fig_line = px.line(means, x='Etapa', y='Média', markers=True, title='Trajetória de Desempenho (Média)')
+                # Gráfico de Evolução Média (Enterprise Style)
+                st.markdown("### :material/trending_up: Raio-X da Evolução (Média da Turma)")
+                
+                means_val = [df['EB_PAS1'].mean(), df['EB_PAS2'].mean(), df['EB_PAS3'].mean()]
+                etapas_val = ['PAS 1', 'PAS 2', 'PAS 3']
+                
+                fig_line = go.Figure()
+                
+                fig_line.add_trace(go.Scatter(
+                    x=etapas_val, 
+                    y=means_val,
+                    mode='lines+markers+text',
+                    line=dict(color='#003366', width=4),
+                    marker=dict(size=12, color='white', line=dict(width=2, color='#003366')),
+                    text=[f"{v:.2f}" if i == 2 else "" for i, v in enumerate(means_val)],
+                    textposition="top center",
+                    textfont=dict(color='#003366', size=14, family="Arial Black")
+                ))
+                
+                fig_line.update_layout(
+                    title={'text': "Trajetória de Desempenho (Escore Bruto)", 'font': {'color': '#003366', 'size': 20}},
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    xaxis=dict(showgrid=False, linecolor='#cccccc', tickfont=dict(color='#003366')),
+                    yaxis=dict(showgrid=False, showticklabels=False), # Remove grade Y e labels para limpar visual
+                    margin=dict(l=20, r=20, t=50, b=20),
+                    showlegend=False
+                )
+                
+                # Annotation para o último ponto
+                last_mean = means_val[-1]
+                fig_line.add_annotation(
+                    x='PAS 3',
+                    y=last_mean,
+                    text=f"Média Final: {last_mean:.2f}",
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=1,
+                    arrowwidth=2,
+                    arrowcolor="#003366",
+                    ax=0,
+                    ay=-40,
+                    font=dict(color="#ffffff", size=12),
+                    bgcolor="#003366",
+                    bordercolor="#003366",
+                    borderwidth=2,
+                    borderpad=5,
+                    opacity=0.9
+                )
+                
                 st.plotly_chart(fig_line, use_container_width=True)
 
 
@@ -803,18 +878,18 @@ if page == "📊 Análise Temporal":
 # PÁGINA 2: GESTÃO DE ATIVOS (MONEYBALL)
 # =============================================================================
 
-elif page == "💼 Gestão de Ativos":
-    st.markdown('<p class="main-header">💼 Gestão de Ativos</p>', unsafe_allow_html=True)
+elif page == "ativos":
+    st.title(":material/work: Gestão de Ativos")
     
     st.info("""
-    🎯 **Lógica de Classificação (Duplo Corte: 1º e 2º Semestre):**
+    :material/target: **Lógica de Classificação (Duplo Corte: 1º e 2º Semestre):**
     - 🟢 **Baixo Risco**: Argumento previsto ≥ nota de corte do **1º Semestre** → Aprovado direto
     - 🟡 **Médio Risco / Oportunidade**: Argumento < corte do 1º Sem, mas ≥ corte do **2º Semestre** → Salvo pelo 2º Semestre
     - 🔴 **Alto Risco**: Argumento < ambos os cortes → Considerar redirecionamento
     """)
     
     if st.session_state.df is None:
-        st.warning("⚠️ Primeiro faça upload dos dados na página 'Upload & Análise'")
+        st.warning(":material/warning: Primeiro faça upload dos dados na página 'Upload & Análise'")
         st.stop()
     
     df = st.session_state.df.copy()
@@ -824,8 +899,8 @@ elif page == "💼 Gestão de Ativos":
     missing_cols = [c for c in required_cols if c not in df.columns]
     
     if missing_cols:
-        st.error(f"❌ Colunas faltando: {', '.join(missing_cols)}")
-        st.info("💡 Faça upload de um arquivo com P1/P2/Red para PAS 1 e PAS 2, ou use **Dados de Exemplo**.")
+        st.error(f":material/cancel: Colunas faltando: {', '.join(missing_cols)}")
+        st.info(":material/lightbulb: Faça upload de um arquivo com P1/P2/Red para PAS 1 e PAS 2, ou use **Dados de Exemplo**.")
         st.stop()
     
     # Calcula EB se não existir
@@ -880,30 +955,42 @@ elif page == "💼 Gestão de Ativos":
     
     with col_f1:
         unidades_disp = ["Todas"] + sorted(df['Unidade'].unique().tolist())
-        unidade_sel = st.selectbox("🏢 Unidade", unidades_disp, key="ga_unidade")
+        unidade_sel = st.selectbox(":material/business: Unidade", unidades_disp, key="ga_unidade")
     
     df_filtrado = df if unidade_sel == "Todas" else df[df['Unidade'] == unidade_sel]
     
     with col_f2:
         turmas_disp = ["Todas"] + sorted(df_filtrado['Turma'].unique().tolist())
-        turma_sel = st.selectbox("🏫 Turma", turmas_disp, key="ga_turma")
+        turma_sel = st.selectbox(":material/school: Turma", turmas_disp, key="ga_turma")
     
     if turma_sel != "Todas":
         df_filtrado = df_filtrado[df_filtrado['Turma'] == turma_sel]
     
     with col_f3:
-        trienios_disp = ["2024-2026", "2023-2025"]
-        trienio_sel = st.selectbox("📅 Triênio", trienios_disp, key="ga_trienio")
+        # Triênios Disponíveis (Dinâmico + Defaults)
+        default_trienniums = ["2024-2026", "2023-2025"]
+        available_trienniums = set(default_trienniums)
+        
+        if 'Ano_Trienio' in df.columns:
+            available_trienniums.update(df['Ano_Trienio'].dropna().unique())
+            
+        # Ordena: Mais recente primeiro
+        trienios_disp = sorted(list(available_trienniums), reverse=True)
+        trienio_sel = st.selectbox(":material/calendar_today: Triênio", trienios_disp, key="ga_trienio")
+        
+    # Filtra por Triênio se a coluna existir
+    if 'Ano_Trienio' in df_filtrado.columns:
+        df_filtrado = df_filtrado[df_filtrado['Ano_Trienio'] == trienio_sel]
 
     with col_f4:
-        status_filter = st.selectbox("🚦 Status", ["Todos", "🔴 Alto Risco", "🟡 Oportunidade (2º Sem)", "🟢 Baixo Risco"], key="ga_status")
+        status_filter = st.selectbox(":material/traffic: Status", ["Todos", "🔴 Alto Risco", "🟡 Oportunidade (2º Sem)", "🟢 Baixo Risco"], key="ga_status")
         
     # --- PROJEÇÃO GLOBAL PARA 2024-2026 ---
     stats_p3_global_asset = None
     if trienio_sel == "2024-2026":
         # st.markdown("##### 🔮 Base de Projeção PAS 3 (Massa)")
         base_projecao_asset = st.radio(
-            "🔮 Cenário de Dificuldade PAS 3 (Simulação):",
+            ":material/psychology: Cenário de Dificuldade PAS 3 (Simulação):",
             ["Replicar Padrão 2023-2025", "Utilizar Projeção Tendência"],
             horizontal=True,
             help="Defina qual estatística o sistema deve usar para projetar o futuro (PAS 3).",
@@ -1298,7 +1385,14 @@ elif page == "💼 Gestão de Ativos":
             'Sugestão': sugestao if sugestao else '—',
         })
     
-    df_result = pd.DataFrame(resultados)
+    if not resultados:
+        # Garante que as colunas existam mesmo que o DF esteja vazio
+        df_result = pd.DataFrame(columns=[
+            'Status', 'Status_Level', 'Nome', 'Turma', 'Cota', 'Curso Alvo', 
+            'Gap', 'Chance (%)', 'Histórico (%)', 'Sugestão'
+        ])
+    else:
+        df_result = pd.DataFrame(resultados)
     
     # Aplica filtro de status
     if status_filter == "🔴 Alto Risco":
@@ -1319,7 +1413,8 @@ elif page == "💼 Gestão de Ativos":
     n_green = (df_result['Status_Level'] == 'green').sum()
     
     with col1:
-        st.metric("📦 Total de Ativos", total_alunos)
+        with st.container(border=True):
+            st.metric(":material/inventory_2: Total de Ativos", total_alunos)
     with col2:
         st.markdown(f"""
         <div style="background-color: #FFCDD2; padding: 15px; border-radius: 10px; text-align: center;">
@@ -1347,7 +1442,7 @@ elif page == "💼 Gestão de Ativos":
     # =================================================================
     # TABELA PRINCIPAL (PROFISSIONAL)
     # =================================================================
-    st.markdown("### 📋 Painel de Ativos")
+    st.markdown("### :material/dashboard: Painel de Ativos")
     st.caption(f"Referência: Triênio {trienio_ref} | Universal | Última Chamada")
     
     # Ordena: red primeiro, depois yellow, depois green
@@ -1378,7 +1473,7 @@ elif page == "💼 Gestão de Ativos":
             help="Reality Check: % de alunos similares que alcançaram a Nota Exata necessária para este curso",
         ),
         'Sugestão': st.column_config.TextColumn(
-            'Sugestão 🏈',
+            'Sugestão',
             width='medium',
             help="Curso alternativo na zona verde (≥80% de chance)",
         ),
@@ -1395,26 +1490,19 @@ elif page == "💼 Gestão de Ativos":
     # Rodapé com insights
     if n_red > 0:
         pct_risco = (n_red / total_alunos * 100) if total_alunos > 0 else 0
-        st.warning(f"⚠️ **{n_red} alunos ({pct_risco:.0f}%)** estão na zona vermelha e podem precisar de redirecionamento de curso.")
-    
-    # Debug expander: mostra como os cursos foram resolvidos
-    with st.expander("🔧 Debug: Resolução de Cursos e Modelo", expanded=False):
-        if debug_info:
-            st.dataframe(pd.DataFrame(debug_info), use_container_width=True, hide_index=True)
-        else:
-            st.info("Nenhum aluno processado.")
+        st.warning(f":material/warning: **{n_red} alunos ({pct_risco:.0f}%)** estão na zona vermelha e podem precisar de redirecionamento de curso.")
 
 
 # =============================================================================
 # PÁGINA 3: PREDITOR PAS 3 (USANDO MODELO ML)
 # =============================================================================
 
-elif page == "🔮 Preditor PAS 3":
-    st.markdown('<p class="main-header">🔮 Preditor de Argumento Final</p>', unsafe_allow_html=True)
+elif page == "preditor":
+    st.title(":material/model_training: Preditor de Argumento Final")
     
     models_loaded = sum(1 for m in MODELS.values() if m is not None)
     if models_loaded == 0:
-        st.error("❌ Nenhum modelo carregado. Verifique se os arquivos .joblib existem em models/")
+        st.error(":material/error: Nenhum modelo carregado. Verifique se os arquivos .joblib existem em models/")
         st.stop()
 
     # --- CARREGAMENTO DO BANCO DE DADOS PADRONIZADO ---
@@ -1432,19 +1520,19 @@ elif page == "🔮 Preditor PAS 3":
             
         df_notas = load_data_preditor()
         if df_notas is None:
-            st.error(f"❌ Arquivo '{ARQUIVO_DADOS.name}' não encontrado na pasta data/.")
+            st.error(f":material/error: Arquivo '{ARQUIVO_DADOS.name}' não encontrado na pasta data/.")
             st.stop()
     except Exception as e:
-        st.error(f"❌ Erro ao carregar banco de dados: {e}")
+        st.error(f":material/error: Erro ao carregar banco de dados: {e}")
         st.stop()
 
     # --- CONFIGURAÇÃO (GLOBAL) ---
-    st.markdown("### ⚙️ Configuração do Candidato")
+    st.markdown("### :material/settings: Configuração do Candidato")
     
     col_sem, col_tri, col_cota = st.columns([1, 1, 2])
     
     with col_sem:
-        st.markdown("**📅 Semestre**")
+        st.markdown("**:material/calendar_month: Semestre**")
         semester_option = st.radio(
             "Semestre", ["1º Semestre", "2º Semestre"], 
             label_visibility="collapsed", horizontal=True
@@ -1453,7 +1541,7 @@ elif page == "🔮 Preditor PAS 3":
         semester_int = 1 if semester_option == "1º Semestre" else 2
 
     with col_tri:
-        st.markdown("**🎓 Triênio**")
+        st.markdown("**:material/school: Triênio**")
         ciclo_aluno = st.selectbox(
             "Triênio", list(TRIENNIUM_STATS.keys()), 
             label_visibility="collapsed"
@@ -1467,7 +1555,7 @@ elif page == "🔮 Preditor PAS 3":
             ref_triennium = "2022-2024"
 
     with col_cota:
-        st.markdown("**🏷️ Sistema de Concorrência (Cota)**")
+        st.markdown("**:material/label: Sistema de Concorrência (Cota)**")
         # Lista de cotas ordenada com Universal no topo
         lista_cotas = sorted(df_notas['Sistema_Nome'].unique().astype(str).tolist())
         if 'Sistema Universal' in lista_cotas:
@@ -1475,10 +1563,10 @@ elif page == "🔮 Preditor PAS 3":
         
         cota_selecionada = st.selectbox("Cota", lista_cotas, label_visibility="collapsed")
 
-    st.caption(f"ℹ️ Referência: **{ref_triennium}** | Cota: **{cota_selecionada}**")
+    st.caption(f":material/info: Referência: **{ref_triennium}** | Cota: **{cota_selecionada}**")
 
     # --- ABAS ---
-    tab_diagnostico, tab_estrategia = st.tabs(["🔮 Diagnóstico Realista", "🎯 Calculadora de Estratégia"])
+    tab_diagnostico, tab_estrategia = st.tabs([":material/psychology: Diagnóstico Realista", ":material/track_changes: Calculadora de Estratégia"])
 
     # =========================================================================
     # ABA 1: DIAGNÓSTICO (ESTILO ORIGINAL RESTAURADO)
@@ -1488,19 +1576,19 @@ elif page == "🔮 Preditor PAS 3":
         
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("### 📝 Notas do PAS 1")
+            st.markdown("### :material/edit_note: Notas do PAS 1")
             p1_pas1 = st.number_input("P1 PAS 1 (Língua Estrangeira)", -20.0, 20.0, value=None, step=0.001, key="p1_1", format="%.3f")
             p2_pas1 = st.number_input("P2 PAS 1 (Conhecimentos)", -100.0, 100.0, value=None, step=0.001, key="p2_1", format="%.3f")
             red_pas1 = st.number_input("Redação PAS 1", 0.0, 10.0, value=None, step=0.001, key="r_1", format="%.3f")
         with col2:
-            st.markdown("### 📝 Notas do PAS 2")
+            st.markdown("### :material/edit_note: Notas do PAS 2")
             p1_pas2 = st.number_input("P1 PAS 2", -20.0, 20.0, value=None, step=0.001, key="p1_2", format="%.3f")
             p2_pas2 = st.number_input("P2 PAS 2", -100.0, 100.0, value=None, step=0.001, key="p2_2", format="%.3f")
             red_pas2 = st.number_input("Redação PAS 2", 0.0, 10.0, value=None, step=0.001, key="r_2", format="%.3f")
         
         missing_data = any(v is None for v in [p1_pas1, p2_pas1, red_pas1, p1_pas2, p2_pas2, red_pas2])
         
-        if not missing_data and st.button("🚀 Calcular Projeção", type="primary"):
+        if not missing_data and st.button(":material/calculate: Calcular Projeção", type="primary"):
             try:
                 # Cálculo Original
                 eb_pas1, eb_pas2 = p1_pas1 + p2_pas1, p1_pas2 + p2_pas2
@@ -1551,14 +1639,20 @@ elif page == "🔮 Preditor PAS 3":
             recommended_eb = res['predictions'].get(recommended_model, 0.0) 
             
             st.markdown("---")
-            st.markdown("### 🔢 Previsões do Modelo")
+            st.markdown("### :material/calculate: Previsões do Modelo")
             
             c_eb, c_arg = st.columns(2)
-            c_eb.metric("EB PAS 3 Previsto", f"{recommended_eb:.3f}", help=f"Modelo selecionado pelo meta-modelo: {recommended_model.upper()}")
-            c_arg.metric("Argumento Final Previsto", f"{arg_final_pred:.3f}", delta=f"± {ARG_FINAL_MAE:.2f}")
+            
+            with c_eb:
+                with st.container(border=True):
+                    st.metric("EB PAS 3 Previsto", f"{recommended_eb:.3f}", help=f"Modelo: {recommended_model.upper()}")
+            
+            with c_arg:
+                with st.container(border=True):
+                    st.metric("Argumento Final Previsto", f"{arg_final_pred:.3f}", delta=f"± {ARG_FINAL_MAE:.2f}")
             
             st.markdown("---")
-            st.markdown("#### 🎛️ Ajuste de Cenário")
+            st.markdown("#### :material/tune: Ajuste de Cenário")
             arg_ajustado = st.slider(
                 "Simule variações no seu Argumento Final:",
                 min_value=float(arg_final_pred - ARG_FINAL_MAE),
@@ -1568,7 +1662,7 @@ elif page == "🔮 Preditor PAS 3":
             )
             
             # --- ANÁLISE DE PROBABILIDADE (ORIGINAL + COTA) ---
-            st.markdown(f"#### 🎓 Análise de Probabilidade ({semester_option})")
+            st.markdown(f"#### :material/school: Análise de Probabilidade ({semester_option})")
             
             # 1. Filtra Dados pela COTA SELECIONADA
             df_cota_atual = df_notas[
@@ -1655,8 +1749,150 @@ elif page == "🔮 Preditor PAS 3":
                 else:
                     color = "#999999"  # Default color if probability can't be calculated
                 
+                # --- NOVO: GRÁFICO DE EVOLUÇÃO DE CORTE (Real Data) ---
+                # --- NOVO: GRÁFICO DE EVOLUÇÃO DE CORTE (Lógica Refeita - Step 932) ---
+                st.divider()
+                st.markdown(f"##### 📉 Análise de Tendência de Corte: {curso_selecionado}")
+
+                try:
+                    # --- 1. FILTRAGEM INICIAL E EXTRAÇÃO DO ANO ---
+                    # Garante que estamos olhando apenas para o contexto exato
+                    df_evolucao = df_notas[
+                        (df_notas['Curso_Limpo'] == curso_selecionado) &
+                        (df_notas['Campus'] == campus_sel) &
+                        (df_notas['Turno'] == turno_sel)
+                    ].copy()
+
+                    coluna_trienio = 'Trienio' # Ajustado para o nome real
+                    if coluna_trienio in df_evolucao.columns:
+                        df_evolucao['Ano_X'] = df_evolucao[coluna_trienio].astype(str).apply(
+                            lambda x: x.split('-')[-1].strip() if '-' in x else x.strip()
+                        )
+                    else:
+                        # Fallback se a coluna for 'Ano'
+                        df_evolucao['Ano_X'] = df_evolucao['Ano'].astype(str).str.strip()
+
+                    # Filtro de Cota (Universal ou Selecionada)
+                    cota_col = 'Sistema_Nome'
+                    if cota_selecionada:
+                         df_cota = df_evolucao[df_evolucao[cota_col] == cota_selecionada]
+                         if not df_cota.empty:
+                             df_evolucao = df_cota
+                         else:
+                             st.caption(f"Sem dados para a cota '{cota_selecionada}'. Mostrando Sistema Universal.")
+                             df_evolucao = df_evolucao[df_evolucao[cota_col].astype(str).str.contains("Universal", case=False, na=False)]
+                    else:
+                        df_evolucao = df_evolucao[df_evolucao[cota_col].astype(str).str.contains("Universal", case=False, na=False)]
+
+                    # --- 2. LÓGICA DE ÚLTIMA CHAMADA (CRÍTICO) ---
+                    coluna_chamada = 'Chamada' # Ajustado para o nome real
+                    
+                    if not df_evolucao.empty and coluna_chamada in df_evolucao.columns:
+                        # Extrai apenas o número da string (ex: "3ª Chamada" vira 3.0) para podermos ordenar matematicamente
+                        # Regex extrai digitos. astype(float) lida com NaNs se houver.
+                        df_evolucao['Chamada_Num'] = df_evolucao[coluna_chamada].astype(str).str.extract(r'(\d+)').astype(float)
+                        
+                        # Ordena o dataframe: Ano (Crescente) -> Chamada_Num (Decrescente)
+                        # Assim, a linha da "3ª Chamada" fica acima da "1ª Chamada" no mesmo ano.
+                        df_sorted = df_evolucao.sort_values(by=['Ano_X', 'Chamada_Num'], ascending=[True, False])
+                        
+                        # Remove as duplicatas de ano, mantendo apenas a primeira aparição (que será a maior/última chamada)
+                        df_clean = df_sorted.drop_duplicates(subset=['Ano_X'], keep='first').copy()
+                    else:
+                        # Fallback de segurança: Se não achar a coluna, pega a MENOR nota do ano (que costuma ser a última chamada)
+                        coluna_nota = 'Min' # Ajuste para Min
+                        if not df_evolucao.empty:
+                            df_clean = df_evolucao.sort_values(by=['Ano_X', coluna_nota], ascending=[True, True]).drop_duplicates(subset=['Ano_X'], keep='first')
+                        else:
+                            df_clean = pd.DataFrame()
+
+                    
+                    # --- BLOCO DE PLOTAGEM (CORREÇÃO DE COLUNAS - Step 944) ---
+                    if not df_clean.empty:
+                        # 1. Debug de Segurança: Limpeza Rigorosa de Ano (4 dígitos numéricos) e DEDUPLICAÇÃO FINAL
+                        # Garante que '20212' vire '2021' e remove lixo
+                        df_clean['Ano_X'] = df_clean['Ano_X'].astype(str).str.slice(0, 4)
+                        
+                        # Filtra apenas anos válidos (4 dígitos numéricos)
+                        df_clean = df_clean[df_clean['Ano_X'].str.match(r'^\d{4}$')]
+                        
+                        # CRÍTICO: Agrupa novamente para garantir 1 ponto por ano (pega a menor nota = última chamada)
+                        # Isso resolve o problema de '2021' e '20212' virarem duplicatas de 2021
+                        df_clean = df_clean.groupby('Ano_X', as_index=False)['Min'].min()
+                        
+                        # Ordena e reseta index
+                        df_clean = df_clean.sort_values('Ano_X').reset_index(drop=True)
+
+                        # 2. Define o Y máximo para o gráfico não cortar a bolinha
+                        if not df_clean.empty:
+                            y_max = df_clean['Min'].max() 
+                            y_min = df_clean['Min'].min()
+
+                            fig = go.Figure()
+
+                            # 3. CRIAÇÃO DA LINHA
+                            # Usa listas Python puras para garantir que o Plotly não se confunda com Index ou Series
+                            x_vals = df_clean['Ano_X'].tolist()
+                            y_vals = df_clean['Min'].tolist()
+
+                            fig.add_trace(go.Scatter(
+                                x=x_vals, 
+                                y=y_vals,
+                                mode='lines+markers+text',
+                                name='Nota de Corte',
+                                line=dict(color='#003366', width=4, shape='linear'), 
+                                marker=dict(size=10, color='white', line=dict(width=2, color='#003366')),
+                                text=[f"{n:.2f}" for n in y_vals], 
+                                textposition="top center"
+                            ))
+
+                            # 4. Annotation (Destaque do valor atual)
+                            if len(x_vals) > 0:
+                                ultimo_ano = x_vals[-1]
+                                ultima_nota = y_vals[-1]
+
+                                fig.add_annotation(
+                                    x=ultimo_ano,
+                                    y=ultima_nota,
+                                    text=f"Atual: {ultima_nota:.2f}",
+                                    showarrow=True,
+                                    arrowhead=2,
+                                    ax=0,
+                                    ay=-40,
+                                    bgcolor="#003366",
+                                    bordercolor="#003366",
+                                    font=dict(color="white")
+                                )
+
+                            # 5. Layout Limpo (SEM type='category' forçado)
+                            fig.update_layout(
+                                title=dict(
+                                    text=f"Tendência: {curso_selecionado}",
+                                    font=dict(size=18, color='#003366')
+                                ),
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                xaxis=dict(
+                                    showgrid=False, 
+                                    showline=True, 
+                                    linecolor='#cccccc',
+                                    # type='category' <--- REMOVIDO para evitar bugs com "20212"
+                                    tickmode='linear' # Força mostrar todos os anos se possível
+                                ),
+                            yaxis=dict(showgrid=True, gridcolor='#f0f0f0', zeroline=False, range=[y_min - 10, y_max + 10]),
+                            margin=dict(l=20, r=20, t=60, b=20),
+                            height=350
+                        )
+
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.caption("Dados históricos insuficientes para gerar gráfico de tendência.")
+                    
+                except Exception as e:
+                    st.caption(f"Não foi possível gerar o gráfico de tendência: {e}")
+
                 # --- NOVO: HISTÓRICO DE CHAMADAS (O que você pediu) ---
-                st.markdown("##### 📉 Histórico de Chamadas (Lista de Espera)")
+                st.markdown("##### :material/history: Histórico de Chamadas (Lista de Espera)")
                 # Busca todas as chamadas deste curso/campus/turno/cota
                 df_hist = df_notas[
                     (df_notas['Trienio'] == ref_triennium) & 
@@ -1678,7 +1914,7 @@ elif page == "🔮 Preditor PAS 3":
                     st.caption("Apenas 1ª chamada registrada para este período.")
 
             # --- LISTA AUTOMÁTICA (Restaurada e Filtrada pela Cota) ---
-            st.markdown(f"#### 🏫 Cursos ao seu alcance (Top 10 no Sistema de Concorrência)")
+            st.markdown(f"#### :material/domain: Cursos ao seu alcance (Top 10 no Sistema de Concorrência)")
             
             # Recalcula probabilidades para TODOS os cursos da cota
             if not df_cota_atual.empty and calculate_approval_probability:
@@ -1713,7 +1949,7 @@ elif page == "🔮 Preditor PAS 3":
             }
             calc = TargetCalculator()
             
-            st.markdown(f"### 🎯 Meta ({semester_option} | {cota_selecionada})")
+            st.markdown(f"### :material/target: Meta ({semester_option} | {cota_selecionada})")
             
             # Filtro para Dropdown (Mesma lógica da aba 1)
             df_estrat = df_notas[
@@ -1737,7 +1973,7 @@ elif page == "🔮 Preditor PAS 3":
                 nota_alvo = notas_meta[curso_alvo_combo]
 
                 # --- NOVO: SIMULAÇÃO DE DESEMPENHO (OVERRIDES) ---
-                with st.expander("🛠️ Customizar Estimativas (Parte 1 e Redação)", expanded=False):
+                with st.expander(":material/build: Customizar Estimativas (Parte 1 e Redação)", expanded=False):
                     st.caption("Ajuste suas próprias expectativas ou use as projeções automáticas da IA.")
                     
                     # Busca predições baseadas nos modelos (p1_pas3_model e red_pas3_model)
@@ -1764,7 +2000,7 @@ elif page == "🔮 Preditor PAS 3":
                 stats_p3_usado = None
                 
                 if ciclo_aluno == "2024-2026":
-                    st.markdown("##### 🔮 Base de Projeção para o PAS 3 (Futuro)")
+                    st.markdown("##### :material/model_training: Base de Projeção para o PAS 3 (Futuro)")
                     base_projecao = st.radio(
                         "Como você quer simular a dificuldade da prova?",
                         ["Replicar Padrão 2023-2025", "Utilizar Projeção Tendência"],
@@ -1782,7 +2018,7 @@ elif page == "🔮 Preditor PAS 3":
                     # Para outros (2022-2024, etc), usa o histórico deles
                     stats_p3_usado = stats_ciclo["PAS3"]
 
-                if st.button("🔢 Calcular Caminho", type="primary"):
+                if st.button(":material/calculate: Calcular Caminho", type="primary"):
                     # Se, por algum motivo, stats_p3_usado for None (ex: erro de chave), fallback para trend
                     if stats_p3_usado is None:
                         stats_p3_usado = STATS_PAS3_TREND
@@ -1797,14 +2033,20 @@ elif page == "🔮 Preditor PAS 3":
                     
                     # Exibição Original
                     cor = "success" if result.status in ['possivel', 'garantido'] else "error"
-                    icon = "🎉" if result.status == 'garantido' else ("✅" if result.status == 'possivel' else "⚠️")
+                    icon = ":material/celebration:" if result.status == 'garantido' else (":material/check_circle:" if result.status == 'possivel' else ":material/warning:")
                     
                     getattr(st, cor)(f"{icon} {result.mensagem}")
                     
                     c1, c2, c3 = st.columns(3)
-                    c1.metric("P1 PAS 3 (Est.)", f"{result.p1_estimado:.3f}")
-                    c2.metric("Redação (Est.)", f"{result.red_estimada:.3f}")
-                    c3.metric("P2 NECESSÁRIA", f"{result.p2_necessario:.3f}")
+                    with c1:
+                        with st.container(border=True):
+                            st.metric("P1 PAS 3 (Est.)", f"{result.p1_estimado:.3f}")
+                    with c2:
+                        with st.container(border=True):
+                            st.metric("Redação (Est.)", f"{result.red_estimada:.3f}")
+                    with c3:
+                        with st.container(border=True):
+                            st.metric("P2 NECESSÁRIA", f"{result.p2_necessario:.3f}")
                     
                     # --- REALITY CHECK (COHORTE) ---
                     if calculate_cohort_evolution_probability:
@@ -1818,16 +2060,16 @@ elif page == "🔮 Preditor PAS 3":
                                 
                                 if amostra > 0:
                                     st.markdown(f"""
-                                    <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 5px solid #2196F3; margin-top: 15px;">
-                                        <p style="margin:0; color: #31333F; font-weight: bold;">📊 Reality Check (Estatística Real)</p>
-                                        <p style="margin:5px 0 0 0; color: #31333F;">
+                                    <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 5px solid #003366; margin-top: 15px;">
+                                        <div style="color: #003366; font-weight: bold; margin-bottom: 5px;">📊 Reality Check (Estatística Real)</div>
+                                        <div style="color: #31333F;">
                                             De <b>{amostra}</b> alunos com desempenho similar ao seu no PAS 1 e 2, 
                                             <b>{prob_hist:.1f}%</b> conseguiram alcançar um EB PAS 3 de <b>{eb_pas3_necessario:.2f}</b> ou superior.
-                                        </p>
+                                        </div>
                                     </div>
                                     """, unsafe_allow_html=True)
                                 else:
-                                    st.caption(f"ℹ️ Reality Check: Não encontramos alunos históricos suficientemente parecidos (Amostra: {amostra}).")
+                                    st.caption(f":material/info: Reality Check: Não encontramos alunos históricos suficientemente parecidos (Amostra: {amostra}).")
                         except Exception as e:
                             st.caption(f"Reality Check indisponível: {e}")
             else:
@@ -1840,8 +2082,8 @@ elif page == "🔮 Preditor PAS 3":
 # PÁGINA 5: ANÁLISE DA ESCOLA (NOVA)
 # =============================================================================
 
-elif page == "🏫 Análise da Escola":
-    st.markdown('<p class="main-header">🏫 Análise da Escola vs População Geral</p>', unsafe_allow_html=True)
+elif page == "escola":
+    st.title(":material/domain: Análise da Escola vs População Geral")
     
     st.markdown("""
     > **Compare o desempenho dos alunos da sua escola com a média geral do PAS/UnB.**
@@ -1861,14 +2103,14 @@ elif page == "🏫 Análise da Escola":
     
     # Upload do arquivo da escola
     uploaded_file = st.file_uploader(
-        "📤 Upload da lista de alunos da escola (Excel)",
+        ":material/upload: Upload da lista de alunos da escola (Excel)",
         type=['xlsx', 'xls'],
         help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos."
     )
     
     col1, col2 = st.columns([3, 1])
     with col2:
-        if st.button("📥 Usar Exemplo de Escola"):
+        if st.button(":material/download: Usar Exemplo de Escola"):
             example_path = Path(__file__).parent.parent / "data" / "exemplo_escola_1000_alunos.xlsx"
             if not example_path.exists():
                 # Fallback para o caso de estar rodando na raiz
@@ -1878,25 +2120,25 @@ elif page == "🏫 Análise da Escola":
                 try:
                     escola_exemplo = pd.read_excel(example_path)
                     st.session_state.escola_df = escola_exemplo
-                    st.success("✅ Carregado: 1000 alunos de exemplo")
+                    st.success(":material/check_circle: Carregado: 1000 alunos de exemplo")
                 except Exception as e:
                     st.error(f"Erro ao ler arquivo de exemplo: {e}")
             else:
-                st.error("❌ Arquivo de exemplo não encontrado. Por favor, execute o script 'scripts/generate_sample_school.py' primeiro.")
+                st.error(":material/cancel: Arquivo de exemplo não encontrado. Por favor, execute o script 'scripts/generate_sample_school.py' primeiro.")
     
     if uploaded_file is not None:
         try:
             st.session_state.escola_df = pd.read_excel(uploaded_file)
-            st.success(f"✅ Arquivo carregado: {len(st.session_state.escola_df)} nomes")
+            st.success(f":material/check_circle: Arquivo carregado: {len(st.session_state.escola_df)} nomes")
         except Exception as e:
-            st.error(f"❌ Erro ao ler arquivo: {e}")
+            st.error(f":material/cancel: Erro ao ler arquivo: {e}")
     
     # Processa se houver dados da escola
     if 'escola_df' in st.session_state and st.session_state.escola_df is not None:
         escola_nomes = st.session_state.escola_df
         
         st.markdown("---")
-        st.markdown("### 📋 Prévia dos nomes")
+        st.markdown("### :material/toc: Prévia dos nomes")
         st.dataframe(escola_nomes.head(10), use_container_width=True)
         
         # Seleciona triênio - Ordem inversa (mais recente primeiro)
@@ -1909,7 +2151,7 @@ elif page == "🏫 Análise da Escola":
         
         df_trienio = df_geral[df_geral['Ano_Trienio'] == trienio_sel]
         
-        if st.button("🔍 Analisar Escola vs População", type="primary"):
+        if st.button(":material/search: Analisar Escola vs População", type="primary"):
             # Encontra os nomes na base geral
             if 'Nome' in escola_nomes.columns:
                 nomes_escola = escola_nomes['Nome'].str.strip().str.upper()
@@ -1923,7 +2165,7 @@ elif page == "🏫 Análise da Escola":
                 n_total = len(escola_nomes)
                 
                 st.markdown("---")
-                st.markdown("### 📊 Resultados da Análise")
+                st.markdown("### :material/analytics: Resultados da Análise")
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -1935,7 +2177,7 @@ elif page == "🏫 Análise da Escola":
                     st.metric("Taxa de match", f"{taxa:.1f}%")
                 
                 if n_encontrados < 5:
-                    st.warning("⚠️ Poucos alunos encontrados. Verifique se os nomes estão corretos.")
+                    st.warning(":material/warning: Poucos alunos encontrados. Verifique se os nomes estão corretos.")
                     st.stop()
                 
                 # Calcula Escore Bruto por etapa
@@ -1953,7 +2195,7 @@ elif page == "🏫 Análise da Escola":
                 # COMPARAÇÃO DE ESCORE BRUTO POR ETAPA
                 # ======================
                 st.markdown("---")
-                st.markdown("### 📊 Comparação de Escore Bruto por Etapa")
+                st.markdown("### :material/bar_chart: Comparação de Escore Bruto por Etapa")
                 
                 # Médias por etapa
                 eb_escola_1 = df_escola['EB_PAS1'].mean()
@@ -1970,7 +2212,7 @@ elif page == "🏫 Análise da Escola":
                 with col1:
                     diff1 = eb_escola_1 - eb_geral_1
                     st.metric(
-                        "📘 PAS 1",
+                        ":material/looks_one: PAS 1",
                         f"{eb_escola_1:.1f}",
                         delta=f"{diff1:+.1f} vs média geral ({eb_geral_1:.1f})"
                     )
@@ -1978,7 +2220,7 @@ elif page == "🏫 Análise da Escola":
                 with col2:
                     diff2 = eb_escola_2 - eb_geral_2
                     st.metric(
-                        "📗 PAS 2",
+                        ":material/looks_two: PAS 2",
                         f"{eb_escola_2:.1f}",
                         delta=f"{diff2:+.1f} vs média geral ({eb_geral_2:.1f})"
                     )
@@ -1986,7 +2228,7 @@ elif page == "🏫 Análise da Escola":
                 with col3:
                     diff3 = eb_escola_3 - eb_geral_3
                     st.metric(
-                        "📙 PAS 3",
+                        ":material/looks_3: PAS 3",
                         f"{eb_escola_3:.1f}",
                         delta=f"{diff3:+.1f} vs média geral ({eb_geral_3:.1f})"
                     )
@@ -2030,25 +2272,28 @@ elif page == "🏫 Análise da Escola":
                 diff = media_escola - media_geral
                 
                 st.markdown("---")
-                st.markdown("### 📈 Comparação de Argumento Final")
+                st.markdown("### :material/trending_up: Comparação de Argumento Final")
                 
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    st.markdown("#### 🏫 Sua Escola")
-                    st.metric("Média", f"{media_escola:.2f}")
-                    st.caption(f"n = {n_encontrados}, σ = {std_escola:.2f}")
+                    with st.container(border=True):
+                        st.markdown("#### :material/domain: Sua Escola")
+                        st.metric("Média", f"{media_escola:.2f}")
+                        st.caption(f"n = {n_encontrados}, σ = {std_escola:.2f}")
                     
                 with col2:
-                    st.markdown("#### 🌍 População Geral")
-                    st.metric("Média", f"{media_geral:.2f}")
-                    st.caption(f"n = {len(df_trienio)}, σ = {std_geral:.2f}")
+                    with st.container(border=True):
+                        st.markdown("#### :material/public: População Geral")
+                        st.metric("Média", f"{media_geral:.2f}")
+                        st.caption(f"n = {len(df_trienio)}, σ = {std_geral:.2f}")
                     
                 with col3:
                     diff = media_escola - media_geral
-                    st.markdown("#### 📊 Diferença")
-                    color = "green" if diff > 0 else "red"
-                    st.metric("Sua escola está", f"{diff:+.2f}", delta=f"{diff:+.2f}")
+                    with st.container(border=True):
+                        st.markdown("#### :material/compare_arrows: Diferença")
+                        # color = "green" if diff > 0 else "red" # Unused
+                        st.metric("Sua escola está", f"{diff:+.2f}", delta=f"{diff:+.2f}")
                 
                 # Teste estatístico
                 try:
@@ -2061,62 +2306,65 @@ elif page == "🏫 Análise da Escola":
                     )
                     
                     st.markdown("---")
-                    st.markdown("### 🔬 Análise Estatística")
+                    st.markdown("### :material/science: Análise Estatística")
                     
                     p_val_display = f"{result['p_value']:.4f}" if result['p_value'] >= 0.0001 else "< 0.0001"
                     
                     if result['statistically_significant']:
                         if diff > 0:
-                            st.success(f"✅ Sua escola está **estatisticamente acima** da média geral! (p = {p_val_display})")
+                            st.success(f":material/check_circle: Sua escola está **estatisticamente acima** da média geral! (p = {p_val_display})")
                         else:
-                            st.error(f"⚠️ Sua escola está **estatisticamente abaixo** da média geral. (p = {p_val_display})")
+                            st.error(f":material/warning: Sua escola está **estatisticamente abaixo** da média geral. (p = {p_val_display})")
                     else:
-                        st.info(f"ℹ️ Não há diferença estatisticamente significativa. (p = {p_val_display})")
+                        st.info(f":material/info: Não há diferença estatisticamente significativa. (p = {p_val_display})")
                     
                     st.caption(f"Tamanho do efeito (Cohen's d): {result['effect_size']:.2f} - {result['interpretation']}")
                     
                 except Exception as e:
-                    st.warning(f"⚠️ Não foi possível realizar teste estatístico: {e}")
+                    st.warning(f":material/warning: Não foi possível realizar teste estatístico: {e}")
                 
                 # ======================
                 # VISUALIZAÇÕES DIDÁTICAS
                 # ======================
                 st.markdown("---")
-                st.markdown("### 📊 Resumo Visual")
+                st.markdown("### :material/bar_chart: Resumo Visual")
                 
                 # 2. Resumo textual didático
                 st.markdown("---")
-                st.markdown("### 📝 Resumo em Linguagem Simples")
+                st.markdown("### :material/description: Resumo em Linguagem Simples")
                 
                 if diff > 0:
-                    emoji = "🎉"
-                    cor = "green"
+                    icon_name = ":material/celebration:"
+                    cor_box = "green"
                     texto_pos = "ACIMA"
+                    callout_type = "success"
                 else:
-                    emoji = "📉"
-                    cor = "red"
+                    icon_name = ":material/trending_down:"
+                    cor_box = "red"
                     texto_pos = "ABAIXO"
+                    callout_type = "error"
+
+                # Usando componentes nativos do Streamlit para ícones limpos
+                msg_header = f"{icon_name} Sua Escola está {abs(diff):.1f} pontos {texto_pos} da média geral"
                 
-                st.markdown(f"""
-                <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; border-left: 5px solid {cor};">
-                    <h2 style="margin-top: 0;">{emoji} Sua Escola está {abs(diff):.1f} pontos {texto_pos} da média geral</h2>
-                    <p style="font-size: 18px;">
-                        <strong>O que isso significa?</strong>
-                    </p>
-                    <ul style="font-size: 16px;">
-                        <li>✅ A <strong>média da sua escola</strong> no Argumento Final é <strong>{media_escola:.1f}</strong></li>
-                        <li>📊 A <strong>média geral do PAS</strong> (todos os candidatos) é <strong>{media_geral:.1f}</strong></li>
-                        <li>📈 Isso representa uma diferença de <strong>{diff:+.1f} pontos</strong></li>
-                    </ul>
-                </div>
-                """, unsafe_allow_html=True)
+                if diff > 0:
+                    st.success(f"### {msg_header}")
+                else:
+                    st.error(f"### {msg_header}")
+                
+                st.markdown(f'''
+                **O que isso significa?**
+                - :material/check_circle: A **média da sua escola** no Argumento Final é **{media_escola:.1f}**
+                - :material/public: A **média geral do PAS** (todos os candidatos) é **{media_geral:.1f}**
+                - :material/compare_arrows: Isso representa uma diferença de **{diff:+.1f} pontos**
+                ''')
                 
                 # 3. Ranking percentual
                 percentil_escola = (df_trienio['Arg_Final'] < media_escola).mean() * 100
                 
                 st.markdown(f"""
                 <div style="background-color: #e3f2fd; padding: 20px; border-radius: 10px; margin-top: 20px;">
-                    <h3>🏆 Posição da sua escola</h3>
+                    <h3>:material/emoji_events: Posição da sua escola</h3>
                     <p style="font-size: 18px;">
                         A média da sua escola supera <strong>{percentil_escola:.0f}%</strong> dos candidatos do PAS.
                     </p>
@@ -2125,7 +2373,7 @@ elif page == "🏫 Análise da Escola":
                 
                 # 4. Histograma com destaque (avançado mas visual)
                 st.markdown("---")
-                st.markdown("### 📈 Onde sua escola se posiciona")
+                st.markdown("### :material/query_stats: Onde sua escola se posiciona")
                 
                 fig_hist = go.Figure()
                 
@@ -2177,7 +2425,7 @@ elif page == "🏫 Análise da Escola":
                 # HISTOGRAMAS POR ETAPA (PAS 1, 2, 3)
                 # ============================================
                 st.markdown("---")
-                st.markdown("### 📊 Distribuição por Etapa do PAS")
+                st.markdown("### :material/bar_chart: Distribuição por Etapa do PAS")
                 
                 # PAS 1
                 fig_pas1 = go.Figure()
@@ -2193,7 +2441,7 @@ elif page == "🏫 Análise da Escola":
                 fig_pas1.add_vline(x=eb_geral_1, line_dash="dot", line_color="#666", line_width=2,
                     annotation_text=f"Média Geral: {eb_geral_1:.1f}", annotation_position="bottom")
                 fig_pas1.update_layout(
-                    title="📘 Distribuição Escore Bruto - PAS 1",
+                    title="Distribuição Escore Bruto - PAS 1",
                     xaxis_title="Escore Bruto (P1 + P2)",
                     yaxis_title="Quantidade de candidatos",
                     showlegend=False, height=350
@@ -2214,7 +2462,7 @@ elif page == "🏫 Análise da Escola":
                 fig_pas2.add_vline(x=eb_geral_2, line_dash="dot", line_color="#666", line_width=2,
                     annotation_text=f"Média Geral: {eb_geral_2:.1f}", annotation_position="bottom")
                 fig_pas2.update_layout(
-                    title="📗 Distribuição Escore Bruto - PAS 2",
+                    title="Distribuição Escore Bruto - PAS 2",
                     xaxis_title="Escore Bruto (P1 + P2)",
                     yaxis_title="Quantidade de candidatos",
                     showlegend=False, height=350
@@ -2235,7 +2483,7 @@ elif page == "🏫 Análise da Escola":
                 fig_pas3.add_vline(x=eb_geral_3, line_dash="dot", line_color="#666", line_width=2,
                     annotation_text=f"Média Geral: {eb_geral_3:.1f}", annotation_position="bottom")
                 fig_pas3.update_layout(
-                    title="📙 Distribuição Escore Bruto - PAS 3",
+                    title="Distribuição Escore Bruto - PAS 3",
                     xaxis_title="Escore Bruto (P1 + P2)",
                     yaxis_title="Quantidade de candidatos",
                     showlegend=False, height=350
@@ -2252,8 +2500,8 @@ elif page == "🏫 Análise da Escola":
 # PÁGINA 6: COMPARAÇÃO ENTRE GRUPOS (Teste A/B)
 # =============================================================================
 
-elif page == "📈 Comparação Entre Grupos":
-    st.markdown('<p class="main-header">📈 Comparação Entre Grupos (Teste A/B)</p>', unsafe_allow_html=True)
+elif page == "comparacao":
+    st.title(":material/trending_up: Comparação Entre Grupos (Teste A/B)")
     
     if st.session_state.df is None:
         st.warning("⚠️ Primeiro faça upload dos dados na página 'Análise Temporal' ou use Dados de Exemplo.")
@@ -2276,13 +2524,13 @@ elif page == "📈 Comparação Entre Grupos":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### 🎯 Métrica")
+        st.markdown("### :material/target: Métrica")
         # Prioriza EB_PAS2 se existir
         def_idx = num_cols.index('EB_PAS2') if 'EB_PAS2' in num_cols else 0
         metric = st.selectbox("Selecione a nota para comparar:", num_cols, index=def_idx)
         
     with col2:
-        st.markdown("### 👥 Agrupamento")
+        st.markdown("### :material/group: Agrupamento")
         group_col = st.selectbox("Selecione a coluna para dividir os grupos:", cat_cols if cat_cols else ["Manual"])
         
     if group_col != "Manual":
@@ -2305,7 +2553,7 @@ elif page == "📈 Comparação Entre Grupos":
         st.info("Funcionalidade de seleção manual em desenvolvimento. Por favor, use uma coluna de agrupamento (ex: Turma, Sexo, etc).")
         st.stop()
         
-    if st.button("📊 Realizar Teste Estatístico", type="primary"):
+    if st.button(":material/analytics: Realizar Teste Estatístico", type="primary"):
         if len(group_a) < 2 or len(group_b) < 2:
             st.error("❌ Grupos insuficientes para teste estatístico (mínimo 2 alunos por grupo).")
         else:
@@ -2319,7 +2567,7 @@ elif page == "📈 Comparação Entre Grupos":
                 )
                 
                 st.markdown("---")
-                st.markdown(f"### 🔬 Resultado: {name_a} vs {name_b}")
+                st.markdown(f"### :material/science: Resultado: {name_a} vs {name_b}")
                 
                 # Cards de Resumo
                 ca, cb, cd = st.columns(3)
@@ -2329,14 +2577,14 @@ elif page == "📈 Comparação Entre Grupos":
                 
                 # Interpretação
                 if result['statistically_significant']:
-                    st.success(f"✅ **Diferença Estatisticamente Significante!**")
+                    st.success(f":material/check_circle: **Diferença Estatisticamente Significante!**")
                 else:
-                    st.info(f"ℹ️ **Diferença NÃO Significante.**")
+                    st.info(f":material/info: **Diferença NÃO Significante.**")
                     
                 st.markdown(f"> {result['interpretation']}")
                 
                 # Detalhes técnicos
-                with st.expander("📈 Detalhes Técnicos (Estatística)"):
+                with st.expander(":material/query_stats: Detalhes Técnicos (Estatística)"):
                     st.write(f"**Valor-p:** {result['p_value']:.4f}")
                     st.write(f"**Estatística t:** {result['t_statistic']:.4f}")
                     st.write(f"**Tamanho do Efeito (Cohen's d):** {result['effect_size']:.2f} ({result['effect_interpretation']})")
@@ -2356,27 +2604,48 @@ elif page == "📈 Comparação Entre Grupos":
 # PÁGINA 7: GERADOR DE PDF
 # =============================================================================
 
-elif page == "📄 Gerador de PDF":
-    st.markdown('<p class="main-header">📄 Gerador de Relatórios PDF</p>', unsafe_allow_html=True)
+elif page == "pdf":
+    st.title(":material/description: Gerador de Relatórios PDF")
     st.markdown("""
     > **Gera um PDF estilizado com sua projeção e metas.**
     > Use a calculadora na aba anterior para estimar seus valores ou preencha manualmente abaixo.
     """)
     
-    tab_manual, tab_batch = st.tabs(["✍️ Manual", "📦 Em Lote (Escola)"])
+    tab_manual, tab_batch = st.tabs([":material/edit: Manual", ":material/package: Em Lote (Escola)"])
     
     pdf_gen = PDFGenerator()
     
     with tab_manual:
         st.markdown("### Preenchimento Manual (Automático)")
         
-        # --- SELEÇÃO DE CURSO (Igual à aba Estratégia) ---
-        target_semester = 1 # Definido pelo usuário: 1º Semestre
-        ref_triennium_pdf = "2022-2024" # Definido pelo usuário
+        # --- SELEÇÃO DE CURSO (Manual) ---
+        col_f1, col_f2, col_f3 = st.columns(3)
         
-        df_cursos_pdf = load_course_stats(semester=target_semester, triennium=ref_triennium_pdf)
+        with col_f1:
+            target_semester = st.selectbox("Semestre de Ingresso", [1, 2], index=0, format_func=lambda x: f"{x}º Semestre", key="pdf_sem_manual")
+        
+        with col_f2:
+            # Vou usar as mesmas variáveis de triênio disponíveis globalmente
+            trienios_pdf_list = sorted(list(TRIENNIUM_STATS.keys()), reverse=True)
+            ref_triennium_pdf = st.selectbox("Triênio de Referência", trienios_pdf_list, index=1, key="pdf_tri_manual")
+            
+        with col_f3:
+            # Lista de cotas extraída diretamente do CSV de cortes
+            try:
+                df_corte_full = pd.read_csv(Path(__file__).parent.parent / "data" / "notas_corte_pas.csv")
+                lista_cotas_pdf = sorted(df_corte_full['Sistema_Nome'].unique().tolist())
+                if 'Sistema Universal' in lista_cotas_pdf:
+                    lista_cotas_pdf.insert(0, lista_cotas_pdf.pop(lista_cotas_pdf.index('Sistema Universal')))
+            except:
+                lista_cotas_pdf = ["Sistema Universal", "Cota para Negros"]
+            
+            cota_pdf = st.selectbox("Sistema de Concorrência", lista_cotas_pdf, key="pdf_cota_manual")
+            
+        df_cursos_pdf = load_course_stats(semester=target_semester, triennium=ref_triennium_pdf, system=cota_pdf)
         
         if df_cursos_pdf is not None:
+            # Ordena alfabeticamente para facilitar a busca no selectbox
+            df_cursos_pdf = df_cursos_pdf.sort_values('Curso')
             cursos_lista = df_cursos_pdf['Curso'].unique().tolist()
             course_scores_pdf = dict(zip(df_cursos_pdf['Curso'], df_cursos_pdf['Min']))
             
@@ -2384,13 +2653,14 @@ elif page == "📄 Gerador de PDF":
                 return f"{nome} (Corte: {course_scores_pdf.get(nome, 0):.3f})"
                 
             selected_course_name = st.selectbox(
-                "Curso Pretendido (Ref. 2022-2024 - 1º Semestre)", 
+                "Curso Pretendido", 
                 cursos_lista,
-                format_func=fmt_course_pdf
+                format_func=fmt_course_pdf,
+                help="Os cursos estão em ordem alfabética para facilitar a busca."
             )
             nota_corte_val = course_scores_pdf.get(selected_course_name, 0.0)
         else:
-            st.error("Erro ao carregar lista de cursos.")
+            st.error("Erro ao carregar lista de cursos para os filtros selecionados.")
             selected_course_name = ""
             nota_corte_val = 0.0
 
@@ -2401,7 +2671,7 @@ elif page == "📄 Gerador de PDF":
                 aluno = st.text_input("Nome do Aluno", "Estudante")
                 # curso = st.text_input("Curso Pretendido") # Substituído pelo selectbox acima
                 
-                st.markdown("#### 📝 Notas PAS 1")
+                st.markdown("#### :material/edit_note: Notas PAS 1")
                 p1_pas1 = st.number_input("PAS 1 - P1 (Língua)", 0.0, 20.0, 0.0, step=0.001, format="%.3f")
                 p2_pas1 = st.number_input("PAS 1 - P2 (Gerais)", 0.0, 100.0, 0.0, step=0.001, format="%.3f")
                 red_pas1 = st.number_input("PAS 1 - Redação", 0.0, 10.0, 0.0, step=0.001, format="%.3f")
@@ -2411,14 +2681,14 @@ elif page == "📄 Gerador de PDF":
                 st.write("") 
                 st.write("")
                 
-                st.markdown("#### 📝 Notas PAS 2")
+                st.markdown("#### :material/edit_note: Notas PAS 2")
                 p1_pas2 = st.number_input("PAS 2 - P1 (Língua)", 0.0, 20.0, 0.0, step=0.001, format="%.3f")
                 p2_pas2 = st.number_input("PAS 2 - P2 (Gerais)", 0.0, 100.0, 0.0, step=0.001, format="%.3f")
                 red_pas2 = st.number_input("PAS 2 - Redação", 0.0, 10.0, 0.0, step=0.001, format="%.3f")
                 
             st.info(f"Nota de Corte Selecionada: **{nota_corte_val:.3f}** (Calculada automaticamente)")
 
-            submitted = st.form_submit_button("Gerar PDF 📄", type="primary")
+            submitted = st.form_submit_button(":material/picture_as_pdf: Gerar PDF", type="primary")
             
         if submitted:
             # 1. Carrega Estatísticas para Cálculo (Usando 2023-2025 como base atual)
@@ -2504,7 +2774,7 @@ elif page == "📄 Gerador de PDF":
                 pdf_bytes = pdf_gen.generate_single_pdf(data)
                 st.success("PDF Gerado com Sucesso!")
                 st.download_button(
-                    label="📥 Baixar PDF",
+                    label=":material/download: Baixar PDF",
                     data=pdf_bytes,
                     file_name=f"Relatorio_PAS_{aluno.replace(' ', '_')}.pdf",
                     mime="application/pdf"
@@ -2516,7 +2786,7 @@ elif page == "📄 Gerador de PDF":
         st.markdown("### Processamento em Lote")
         st.info("Faça upload de uma planilha com colunas: **Nome, Curso, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2**.")
         
-        st.markdown("#### ⚙️ Configuração do Lote")
+        st.markdown("#### :material/settings: Configuração do Lote")
         col_b1, col_b2 = st.columns(2)
         with col_b1:
             batch_semester = st.radio("Semestre de Ingresso (para corte)", [1, 2], index=0, horizontal=True, key="batch_sem")
@@ -2640,7 +2910,7 @@ elif page == "📄 Gerador de PDF":
                     
                     st.success(f"✅ Processamento concluído: {len(processed_data)} arquivos gerados.")
                     st.download_button(
-                        label="📦 Baixar Arquivos (ZIP)",
+                        label=":material/archive: Baixar Arquivos (ZIP)",
                         data=zip_buffer,
                         file_name="relatorios_pas_batch.zip",
                         mime="application/zip"

@@ -234,7 +234,7 @@ class TargetCalculator:
             mensagem = f"Nota necessária ({p2_necessario:.1f}) ultrapassa o máximo da prova (100 pts). Este curso pode ser estatisticamente inalcançável com seu histórico atual."
         elif p2_necessario < -100:
             status = 'garantido'
-            mensagem = f"🎉 Seu histórico já é suficiente! Mesmo se você zerar ou tiver um desempenho extremamente baixo na P2, você provavelmente passará."
+            mensagem = f":material/celebration: Seu histórico já é suficiente! Mesmo se você zerar ou tiver um desempenho extremamente baixo na P2, você provavelmente passará."
             p2_necessario = -100.0
             total_pas3 = p1_pred + p2_necessario
         elif p2_necessario > 80:
