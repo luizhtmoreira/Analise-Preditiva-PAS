@@ -138,6 +138,8 @@ class PDFGenerator:
         c.setFont(self.font_bold, 12)
         c.drawString(85, 505, str(data.get('aluno', '')))
         c.drawString(430, 505, str(data.get('curso', '')))
+        c.setFont(self.font_bold, 10)
+        c.drawString(85, 490, str(data.get('sistema', '')))
         
         # --- SCORES & CALCULATIONS ---
         # Coordinates based on user provided snippet and logical estimation from grid layout
