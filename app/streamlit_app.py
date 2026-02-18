@@ -495,28 +495,29 @@ def download_models():
     models_dir = base_path / "models"
     zip_path = base_path / "models_temp.zip"
     
-    # Se já existe o principal, pula
-    if (models_dir / "modelo_lgbm.joblib").exists():
-        return
-
-    if not models_dir.exists():
-        os.makedirs(models_dir, exist_ok=True)
+    # --- MUDANÇA CRÍTICA: LIMPEZA FORÇADA ---
+    # Se a pasta já existe, DELETA ela inteira para remover arquivos corrompidos
+    if models_dir.exists():
+        import shutil
+        shutil.rmtree(models_dir)
+    
+    # Cria a pasta limpa novamente
+    os.makedirs(models_dir, exist_ok=True)
 
     try:
-        # Cria um container vazio para mostrar o status
+        # Cria um container visual para o status
         status_text = st.empty()
         progress_bar = st.progress(0)
         
-        status_text.text("⏳ Iniciando download da Inteligência Artificial...")
+        status_text.text("⏳ Iniciando download limpo da Inteligência Artificial...")
         
-        # Timeout aumentado para 10 minutos (600s) para conexões lentas
+        # Timeout de 10 minutos
         response = requests.get(url, stream=True, timeout=600)
         
         if response.status_code != 200:
             status_text.error(f"❌ Erro HTTP: {response.status_code}")
             st.stop()
             
-        # Pega o tamanho total do arquivo (se disponível)
         total_size = int(response.headers.get('content-length', 0))
         block_size = 1024 * 1024 # 1 MB
         wrote = 0
@@ -526,22 +527,21 @@ def download_models():
                 wrote = wrote + len(data)
                 f.write(data)
                 
-                # Atualiza a barra de progresso
                 if total_size > 0:
                     percent = int((wrote / total_size) * 100)
-                    # Garante que não passe de 100
                     if percent > 100: percent = 100
                     progress_bar.progress(percent)
                     status_text.text(f"📥 Baixando modelos: {percent}% ({wrote // (1024*1024)} MB de {total_size // (1024*1024)} MB)")
         
-        status_text.text("📦 Extraindo arquivos...")
+        status_text.text("📦 Extraindo e organizando arquivos...")
         
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(models_dir)
             
-        # Organiza subpastas se houver
+        # Organiza subpastas se houver (Correção do ZIP aninhado)
         nested = models_dir / "models"
         if nested.exists():
+            import shutil
             for file in os.listdir(nested):
                 shutil.move(str(nested / file), str(models_dir / file))
             os.rmdir(nested)
@@ -549,13 +549,13 @@ def download_models():
         if os.path.exists(zip_path):
             os.remove(zip_path)
             
-        progress_bar.empty() # Remove a barra
-        status_text.success("✅ Sistema pronto!")
+        progress_bar.empty()
+        status_text.success("✅ Sistema restaurado com sucesso!")
         time.sleep(1)
         st.rerun()
             
     except Exception as e:
-        st.error(f"Erro: {e}")
+        st.error(f"Erro crítico: {e}")
         st.stop()
 
 # Chama a função
