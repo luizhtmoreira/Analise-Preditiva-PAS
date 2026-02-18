@@ -42,6 +42,7 @@ from supabase import create_client, Client
 import os
 import zipfile
 import requests
+import shutil
 
 
 # Imports do pacote pas_intelligence
@@ -488,38 +489,70 @@ check_login()
 
 
 def download_models():
+    # URL do GitHub Releases
     url = 'https://github.com/luizhtmoreira/Analise-Preditiva-PAS/releases/download/v1.0/models.zip'
     
-    # Define caminhos absolutos
-    base_path = Path(__file__).resolve().parent
-    models_dir = base_path / "models"
-    zip_path = base_path / "models.zip"
+    # Define caminhos
+    base_path = Path(__file__).resolve().parent # Pasta 'app'
+    models_dir = base_path / "models"           # Pasta 'app/models'
+    zip_path = base_path / "models_temp.zip"    # Nome temporário
+    
+    # 1. Verificação Rápida: Se o arquivo principal já existe no lugar certo, não faz nada
+    if (models_dir / "modelo_lgbm.joblib").exists():
+        return
 
     # Se a pasta não existe, cria
     if not models_dir.exists():
-        os.makedirs(models_dir)
+        os.makedirs(models_dir, exist_ok=True)
 
-    # Só baixa se a pasta estiver vazia
-    if len(os.listdir(models_dir)) < 2:
-        try:
-            with st.spinner("Sincronizando modelos de IA..."):
-                response = requests.get(url, stream=True)
-                with open(zip_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=1024*1024):
-                        f.write(chunk)
+    try:
+        with st.spinner(f"Configurando ambiente de IA..."):
+            # 2. Download
+            response = requests.get(url, stream=True, timeout=60)
+            if response.status_code != 200:
+                st.error(f"Erro no download: Status {response.status_code}")
+                st.stop()
                 
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    # EXTRAI TUDO PARA A RAIZ DO APP
-                    zip_ref.extractall(base_path)
+            with open(zip_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            # 3. Extração para dentro da pasta models
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(models_dir)
+            
+            # 4. ORGANIZAÇÃO (O Corretor Automático)
+            # Verifica se criou uma subpasta 'models' indesejada (ex: app/models/models/...)
+            nested_folder = models_dir / "models"
+            if nested_folder.exists() and nested_folder.is_dir():
+                # Move tudo de models/models para models/
+                for file in os.listdir(nested_folder):
+                    shutil.move(str(nested_folder / file), str(models_dir / file))
+                os.rmdir(nested_folder) # Apaga a pasta vazia
+            
+            # 5. Limpeza do ZIP
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+            
+            # 6. Validação Final
+            arquivos = os.listdir(models_dir)
+            joblibs = [f for f in arquivos if f.endswith('.joblib')]
+            
+            if not joblibs:
+                st.error(f"Aviso: O ZIP foi extraído, mas nenhum arquivo .joblib foi encontrado em {models_dir}.")
+                st.write(f"Arquivos encontrados: {arquivos}")
+                st.stop()
                 
-                if os.path.exists(zip_path):
-                    os.remove(zip_path)
-                
-                st.success("Download concluído!")
-                # FORÇA O RECARREGAMENTO DA PÁGINA PARA O PYTHON LER OS ARQUIVOS NOVOS
-                st.rerun() 
-        except Exception as e:
-            st.error(f"Erro: {e}")
+            st.success("Modelos instalados e organizados com sucesso!")
+            time.sleep(1)
+            st.rerun()
+            
+    except Exception as e:
+        st.error(f"Erro crítico na instalação dos modelos: {e}")
+        st.stop()
+
+# Chama a função
+download_models()
 
 # =============================================================================
 # CARREGAMENTO DOS MODELOS TREINADOS (ENSEMBLE + META-MODELO)
