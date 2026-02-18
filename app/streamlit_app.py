@@ -489,66 +489,73 @@ check_login()
 
 
 def download_models():
-    # URL do GitHub Releases
     url = 'https://github.com/luizhtmoreira/Analise-Preditiva-PAS/releases/download/v1.0/models.zip'
     
-    # Define caminhos
-    base_path = Path(__file__).resolve().parent # Pasta 'app'
-    models_dir = base_path / "models"           # Pasta 'app/models'
-    zip_path = base_path / "models_temp.zip"    # Nome temporário
+    base_path = Path(__file__).resolve().parent
+    models_dir = base_path / "models"
+    zip_path = base_path / "models_temp.zip"
     
-    # 1. Verificação Rápida: Se o arquivo principal já existe no lugar certo, não faz nada
+    # Se já existe o principal, pula
     if (models_dir / "modelo_lgbm.joblib").exists():
         return
 
-    # Se a pasta não existe, cria
     if not models_dir.exists():
         os.makedirs(models_dir, exist_ok=True)
 
     try:
-        with st.spinner(f"Configurando ambiente de IA..."):
-            # 2. Download
-            response = requests.get(url, stream=True, timeout=60)
-            if response.status_code != 200:
-                st.error(f"Erro no download: Status {response.status_code}")
-                st.stop()
+        # Cria um container vazio para mostrar o status
+        status_text = st.empty()
+        progress_bar = st.progress(0)
+        
+        status_text.text("⏳ Iniciando download da Inteligência Artificial...")
+        
+        # Timeout aumentado para 10 minutos (600s) para conexões lentas
+        response = requests.get(url, stream=True, timeout=600)
+        
+        if response.status_code != 200:
+            status_text.error(f"❌ Erro HTTP: {response.status_code}")
+            st.stop()
+            
+        # Pega o tamanho total do arquivo (se disponível)
+        total_size = int(response.headers.get('content-length', 0))
+        block_size = 1024 * 1024 # 1 MB
+        wrote = 0
+        
+        with open(zip_path, 'wb') as f:
+            for data in response.iter_content(block_size):
+                wrote = wrote + len(data)
+                f.write(data)
                 
-            with open(zip_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
+                # Atualiza a barra de progresso
+                if total_size > 0:
+                    percent = int((wrote / total_size) * 100)
+                    # Garante que não passe de 100
+                    if percent > 100: percent = 100
+                    progress_bar.progress(percent)
+                    status_text.text(f"📥 Baixando modelos: {percent}% ({wrote // (1024*1024)} MB de {total_size // (1024*1024)} MB)")
+        
+        status_text.text("📦 Extraindo arquivos...")
+        
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(models_dir)
             
-            # 3. Extração para dentro da pasta models
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(models_dir)
+        # Organiza subpastas se houver
+        nested = models_dir / "models"
+        if nested.exists():
+            for file in os.listdir(nested):
+                shutil.move(str(nested / file), str(models_dir / file))
+            os.rmdir(nested)
+
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
             
-            # 4. ORGANIZAÇÃO (O Corretor Automático)
-            # Verifica se criou uma subpasta 'models' indesejada (ex: app/models/models/...)
-            nested_folder = models_dir / "models"
-            if nested_folder.exists() and nested_folder.is_dir():
-                # Move tudo de models/models para models/
-                for file in os.listdir(nested_folder):
-                    shutil.move(str(nested_folder / file), str(models_dir / file))
-                os.rmdir(nested_folder) # Apaga a pasta vazia
-            
-            # 5. Limpeza do ZIP
-            if os.path.exists(zip_path):
-                os.remove(zip_path)
-            
-            # 6. Validação Final
-            arquivos = os.listdir(models_dir)
-            joblibs = [f for f in arquivos if f.endswith('.joblib')]
-            
-            if not joblibs:
-                st.error(f"Aviso: O ZIP foi extraído, mas nenhum arquivo .joblib foi encontrado em {models_dir}.")
-                st.write(f"Arquivos encontrados: {arquivos}")
-                st.stop()
-                
-            st.success("Modelos instalados e organizados com sucesso!")
-            time.sleep(1)
-            st.rerun()
+        progress_bar.empty() # Remove a barra
+        status_text.success("✅ Sistema pronto!")
+        time.sleep(1)
+        st.rerun()
             
     except Exception as e:
-        st.error(f"Erro crítico na instalação dos modelos: {e}")
+        st.error(f"Erro: {e}")
         st.stop()
 
 # Chama a função
