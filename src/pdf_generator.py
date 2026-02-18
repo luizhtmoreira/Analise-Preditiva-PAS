@@ -17,7 +17,10 @@ class PDFGenerator:
     """
     
     def __init__(self):
-        self.assets_dir = Path("assets")
+        # Resolve assets path relative to this file
+        base_dir = Path(__file__).resolve().parent.parent
+        self.assets_dir = base_dir / "assets"
+        
         self.fonts_dir = self.assets_dir / "fonts"
         self.template_dir = self.assets_dir / "templates"
         self.template_path = self.template_dir / "MODELO PAS-UNB (ALUNOS) IMPRESSO.pdf"
@@ -79,29 +82,25 @@ class PDFGenerator:
         packet.seek(0)
         
         # Merge with template
-        try:
-            if not self.template_path.exists():
-                raise FileNotFoundError(f"Template not found at {self.template_path}")
-                
-            new_pdf = PdfReader(packet)
-            existing_pdf = PdfReader(str(self.template_path))
-            output = PdfWriter()
+        # Merge with template
+        if not self.template_path.exists():
+            raise FileNotFoundError(f"Template not found at {self.template_path}")
             
-            # Assuming single page template for now
-            page = existing_pdf.pages[0]
-            if len(new_pdf.pages) > 0:
-                page.merge_page(new_pdf.pages[0])
-            
-            output.add_page(page)
-            
-            output_stream = io.BytesIO()
-            output.write(output_stream)
-            output_stream.seek(0)
-            return output_stream.getvalue()
-            
-        except Exception as e:
-            print(f"Error merging PDF: {e}")
-            return b""
+        new_pdf = PdfReader(packet)
+        existing_pdf = PdfReader(str(self.template_path))
+        output = PdfWriter()
+        
+        # Assuming single page template for now
+        page = existing_pdf.pages[0]
+        if len(new_pdf.pages) > 0:
+            page.merge_page(new_pdf.pages[0])
+        
+        output.add_page(page)
+        
+        output_stream = io.BytesIO()
+        output.write(output_stream)
+        output_stream.seek(0)
+        return output_stream.getvalue()
 
     def generate_batch_zip(self, data_list: List[Dict[str, Union[str, float]]]) -> bytes:
         """
