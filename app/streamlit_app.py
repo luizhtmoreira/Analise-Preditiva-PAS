@@ -39,6 +39,9 @@ import joblib # type: ignore
 import unicodedata
 import time
 from supabase import create_client, Client
+import os
+import zipfile
+import requests
 
 
 # Imports do pacote pas_intelligence
@@ -484,102 +487,97 @@ def check_login():
 check_login()
 
 
+def download_models():
+    # ID que você pegou no Passo 1
+    file_id = '1ZIo1fL6aJKO7x6lQ-U5yZx8Qco7mUYUg' 
+    url = f'https://drive.google.com/uc?id={file_id}'
+    output = 'models.zip'
+    
+    # Se a pasta models não existe ou está vazia, baixa
+    if not os.path.exists('models') or len(os.listdir('models')) < 2:
+        with st.spinner("Carregando inteligência do sistema (isso ocorre apenas uma vez)..."):
+            response = requests.get(url, stream=True)
+            with open(output, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            
+            # Extrai o zip
+            with zipfile.ZipFile(output, 'r') as zip_ref:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                zip_ref.extractall(current_dir)
+            
+            os.remove(output) # Limpa o zip
+            st.success("Modelos carregados com sucesso!")
+
+# Chama a função ANTES de tentar dar o joblib.load
+download_models()
+
 # =============================================================================
 # CARREGAMENTO DOS MODELOS TREINADOS (ENSEMBLE + META-MODELO)
 # =============================================================================
 
 @st.cache_resource
+@st.cache_resource
 def load_models():
     """Carrega todos os modelos treinados para ensemble e o meta-modelo seletor."""
     
-    # Tenta múltiplos caminhos possíveis
-    possible_paths = [
-        Path(__file__).resolve().parent.parent / "models",  # Relativo ao app/
-        Path.cwd() / "models",  # Relativo ao diretório de execução
-    ]
+    # Pega o caminho da pasta onde este arquivo (Home.py) está
+    # Se o Home.py estiver na raiz, a pasta models estará em ./models
+    base_path = Path(__file__).resolve().parent
+    models_dir = base_path / "models"
     
-    models = {
-        'lgbm': None,
-        'rf': None,
-        'linear': None,
-        'mlp': None,
-    }
+    # Inicializa as variáveis
+    models = {'lgbm': None, 'rf': None, 'linear': None, 'mlp': None}
     scaler = None
     meta_model = None
     meta_scaler = None
     arg_final_model = None
     
-    for models_dir in possible_paths:
+    # Verifica se a pasta existe antes de tentar carregar
+    if not models_dir.exists():
+        st.error(f"Pasta de modelos não encontrada em: {models_dir}")
+        return models, None, None, None, None
+
+    try:
+        # Carregamento individual (Garante que se um falhar, você saiba qual foi)
         lgbm_path = models_dir / "modelo_lgbm.joblib"
-        
         if lgbm_path.exists():
-            try:
-                models['lgbm'] = joblib.load(lgbm_path)
-                
-                rf_path = models_dir / "modelo_rf.joblib"
-                if rf_path.exists():
-                    models['rf'] = joblib.load(rf_path)
-                
-                linear_path = models_dir / "modelo_linear.joblib"
-                if linear_path.exists():
-                    models['linear'] = joblib.load(linear_path)
-                
-                mlp_path = models_dir / "modelo_mlp.joblib"
-                if mlp_path.exists():
-                    models['mlp'] = joblib.load(mlp_path)
-                
-                scaler_path = models_dir / "scaler.joblib"
-                if scaler_path.exists():
-                    scaler = joblib.load(scaler_path)
-                
-                meta_model_path = models_dir / "meta_model.joblib"
-                if meta_model_path.exists():
-                    meta_model = joblib.load(meta_model_path)
-                
-                meta_scaler_path = models_dir / "meta_scaler.joblib"
-                if meta_scaler_path.exists():
-                    meta_scaler = joblib.load(meta_scaler_path)
-                
-                arg_final_path = models_dir / "modelo_arg_final.joblib"
-                if arg_final_path.exists():
-                    arg_final_model = joblib.load(arg_final_path)
-                
-                return models, scaler, meta_model, meta_scaler, arg_final_model
-            except Exception as e:
-                print(f"Erro ao carregar modelos de {models_dir}: {e}")
-                continue
-    
-    return models, None, None, None, None
-
-
-# Carrega modelos no início
-MODELS, SCALER, META_MODEL, META_SCALER, ARG_FINAL_MODEL = load_models()
-
-# Mapeamento de labels do meta-modelo
-LABEL_TO_MODEL = {0: 'lgbm', 1: 'rf', 2: 'linear', 3: 'mlp'}
-MODEL_NAMES = {
-    'lgbm': ':material/rocket_launch: LightGBM',
-    'rf': ':material/forest: Random Forest',
-    'linear': ':material/trending_up: Regressão Linear',
-    'mlp': ':material/psychology: Rede Neural MLP',
-}
-
-# MAE de cada modelo para EB_PAS3 (do notebook)
-MODEL_MAE = {
-    'lgbm': 6.8123,
-    'rf': 6.9965,
-    'linear': 6.9371,
-    'mlp': 6.8423,
-}
-
-# Pesos inversos ao MAE (modelo com menor erro tem mais peso)
-total_inverse_mae = sum(1/mae for mae in MODEL_MAE.values())
-MODEL_WEIGHTS = {name: (1/mae)/total_inverse_mae for name, mae in MODEL_MAE.items()}
-
-# Função global para formatação numérica consistente (sempre ponto decimal)
-def fmt(val, decimals=2):
-    """Formata número com ponto decimal, independente do locale."""
-    return f"{val:.{decimals}f}".replace(",", ".")
+            models['lgbm'] = joblib.load(lgbm_path)
+            
+        rf_path = models_dir / "modelo_rf.joblib"
+        if rf_path.exists():
+            models['rf'] = joblib.load(rf_path)
+            
+        linear_path = models_dir / "modelo_linear.joblib"
+        if linear_path.exists():
+            models['linear'] = joblib.load(linear_path)
+            
+        mlp_path = models_dir / "modelo_mlp.joblib"
+        if mlp_path.exists():
+            models['mlp'] = joblib.load(mlp_path)
+            
+        scaler_path = models_dir / "scaler.joblib"
+        if scaler_path.exists():
+            scaler = joblib.load(scaler_path)
+            
+        meta_model_path = models_dir / "meta_model.joblib"
+        if meta_model_path.exists():
+            meta_model = joblib.load(meta_model_path)
+            
+        meta_scaler_path = models_dir / "meta_scaler.joblib"
+        if meta_scaler_path.exists():
+            meta_scaler = joblib.load(meta_scaler_path)
+            
+        arg_final_path = models_dir / "modelo_arg_final.joblib"
+        if arg_final_path.exists():
+            arg_final_model = joblib.load(arg_final_path)
+            
+        return models, scaler, meta_model, meta_scaler, arg_final_model
+        
+    except Exception as e:
+        st.error(f"Erro crítico ao carregar arquivos .joblib: {e}")
+        return models, None, None, None, None
 
 
 
