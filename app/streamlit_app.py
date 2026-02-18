@@ -37,6 +37,8 @@ import plotly.graph_objects as go # type: ignore
 from typing import Optional, Tuple # type: ignore
 import joblib # type: ignore
 import unicodedata
+import time
+from supabase import create_client, Client
 
 
 # Imports do pacote pas_intelligence
@@ -123,12 +125,44 @@ def find_best_course_match(input_name, course_list):
         if normalized_input in normalized_course or normalized_course in normalized_input:
             matches.append(course)
     
-    # Return the longest match (most specific) to avoid false positives
     if matches:
         return max(matches, key=len)
         
+    # 3. Token-based Match (Bag of Words) - Para "Direito Noturno" vs "Direito (Brasília - Noturno)"
+    input_tokens = set(normalized_input.split())
+    best_match = None
+    max_score = 0.0
+    
+    for course in course_list:
+        normalized_course = unicodedata.normalize('NFKD', course).encode('ASCII', 'ignore').decode('utf-8').upper()
+        course_tokens = set(normalized_course.replace('(', '').replace(')', '').replace('-', '').split())
+        
+        # Interseção
+        common = input_tokens.intersection(course_tokens)
+        
+        if not input_tokens: continue
+        
+        # Score: % dos tokens do input que estão no curso
+        score = len(common) / len(input_tokens)
+        
+        # Se score alto e curso contém algo a mais (contexto), ok.
+        # Ex: Input "Direito" (1 token), Match "Direito" (1/1=1.0). Matches "Direito Noturno" (1/1=1.0).
+        # Precisamos desempatar. Preferir o que tem tamanho mais próximo? Ou o que tem mais tokens em comum?
+        
+        if score > 0.8: # Pelo menos 80% das palavras do input estão no curso alvo
+             if score > max_score:
+                 max_score = score
+                 best_match = course
+             elif score == max_score:
+                 # Desempate: Menor diferença de tamanho (mais conciso/exato)
+                 if abs(len(normalized_course) - len(normalized_input)) < abs(len(unicodedata.normalize('NFKD', best_match).encode('ASCII', 'ignore').decode('utf-8').upper()) - len(normalized_input)):
+                     best_match = course
+
+    if best_match:
+        return best_match
+
     return input_name
-def load_course_stats(semester: int = 1, triennium: Optional[str] = None, system: str = "Sistema Universal"):
+def load_course_stats(semester: int = 1, triennium: Optional[str] = None, system: Optional[str] = "Sistema Universal"):
     """
     Carrega estatísticas de nota de corte por curso do triênio especificado.
     Lê de CSVs pré-processados para carregamento instantâneo.
@@ -136,7 +170,7 @@ def load_course_stats(semester: int = 1, triennium: Optional[str] = None, system
     Args:
         semester: 1 para 1º semestre, 2 para 2º semestre
         triennium: String do triênio (ex: "2022-2024"). Se None, usa o mais recente.
-        system: Nome do sistema de concorrência. Default: "Sistema Universal".
+        system: Nome do sistema de concorrência. Se None, retorna todos. Default: "Sistema Universal".
     """
     try:
         data_dir = Path(__file__).parent.parent / "data"
@@ -165,7 +199,7 @@ def load_course_stats(semester: int = 1, triennium: Optional[str] = None, system
             stats = stats[stats['Semestre'].astype(str).str.contains(str(semester))]
 
         # Filtra por sistema
-        if 'Sistema_Nome' in stats.columns:
+        if 'Sistema_Nome' in stats.columns and system is not None:
             stats = stats[stats['Sistema_Nome'] == system]
 
         # Filtra por triênio
@@ -202,14 +236,22 @@ def load_course_stats(semester: int = 1, triennium: Optional[str] = None, system
         if semester == 1:
             # 1º Semestre: Prioridade para ÚLTIMA CHAMADA (Menor Nota = Piso de entrada)
             # Ordenamos por Min crescente e pegamos o primeiro (o menor)
+            subset_cols = ['Curso', 'Campus', 'Turno']
+            if 'Sistema_Nome' in stats.columns:
+                subset_cols.append('Sistema_Nome')
+                
             stats = stats.sort_values(['Curso', 'Campus', 'Turno', 'Min'], ascending=[True, True, True, True]).drop_duplicates(
-                subset=['Curso', 'Campus', 'Turno'], keep='first'
+                subset=subset_cols, keep='first'
             )
         else:
             # 2º Semestre: Prioridade para PRIMEIRA CHAMADA DISPONÍVEL (Maior Nota = Corte inicial)
             # Ordenamos por Chamada_Num (1ª, 2ª...) e pegamos o primeiro disponível
+            subset_cols = ['Curso', 'Campus', 'Turno']
+            if 'Sistema_Nome' in stats.columns:
+                subset_cols.append('Sistema_Nome')
+
             stats = stats.sort_values(['Curso', 'Campus', 'Turno', 'Chamada_Num'], ascending=[True, True, True, True]).drop_duplicates(
-                subset=['Curso', 'Campus', 'Turno'], keep='first'
+                subset=subset_cols, keep='first'
             )
 
         # Cria Ranking (Reset Index) após a deduplicação
@@ -387,6 +429,59 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# =============================================================================
+# SISTEMA DE LOGIN E SEGURANÇA (SUPABASE)
+# =============================================================================
+
+@st.cache_resource
+def init_connection():
+    try:
+        if "supabase" not in st.secrets:
+            st.error("Seção [supabase] não encontrada no secrets.toml")
+            return None
+        url = st.secrets["supabase"]["url"]
+        key = st.secrets["supabase"]["key"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"Erro ao inicializar Supabase: {e}")
+        return None
+
+supabase = init_connection()
+
+def check_login():
+    # Inicializa estado
+    if 'logged_in' not in st.session_state:
+        st.session_state['logged_in'] = False
+        st.session_state['user_email'] = ''
+
+    # Se NÃO estiver logado, mostra tela de bloqueio
+    if not st.session_state['logged_in']:
+        # Centraliza o login
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("## 🔒 Acesso Restrito - Coordenação")
+            email = st.text_input("Email Corporativo")
+            password = st.text_input("Senha", type="password")
+            
+            if st.button("Entrar no Sistema", use_container_width=True):
+                if supabase:
+                    try:
+                        session = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                        st.session_state['logged_in'] = True
+                        st.session_state['user_email'] = session.user.email
+                        st.toast("Login realizado com sucesso!", icon="✅")
+                        time.sleep(0.5)
+                        st.rerun()
+                    except Exception as e:
+                        st.error("❌ Email ou senha incorretos.")
+                else:
+                    st.error("Erro de conexão com Supabase. Verifique secrets.toml")
+        
+        st.stop() # 🛑 PARA TUDO AQUI SE NÃO ESTIVER LOGADO
+
+# Executa o bloqueio imediatamente
+check_login()
 
 
 # =============================================================================
@@ -686,6 +781,16 @@ else:
     )
 st.sidebar.markdown("---")
 
+
+# --- INFO DO USUÁRIO ---
+if st.session_state.get('logged_in'):
+    st.sidebar.caption(f"👤 Logado como: {st.session_state['user_email']}")
+    if st.sidebar.button("Sair (Logout)"):
+        if supabase:
+            supabase.auth.sign_out()
+        st.session_state['logged_in'] = False
+        st.rerun()
+
 # Dicionário de Páginas (ID -> Label com Ícone Material)
 PAGES = {
     "temporal": ":material/analytics: Análise Temporal",
@@ -720,6 +825,55 @@ if 'df' not in st.session_state:
 data_dir_global = Path(__file__).parent.parent / "data"
 ARQUIVO_DADOS_GLOBAL = data_dir_global / "notas_corte_pas.csv"
 
+# =============================================================================
+# CARREGAMENTO GLOBAL DE ALUNOS (SUPABASE)
+# =============================================================================
+@st.cache_data(ttl=60)
+def buscar_alunos_nuvem_global():
+    """Busca a tabela mestra do Supabase e formata para o App."""
+    if not supabase: return None
+    try:
+        # Select * all
+        response = supabase.table("tabela_mestra").select("*").execute()
+        data = response.data
+        
+        if not data: return None
+        
+        df_cloud = pd.DataFrame(data)
+        
+        # Mapeamento Banco -> App
+        rename_map = {
+            'nome': 'Nome', 
+            'inscricao': 'Inscricao',
+            'turma': 'Turma', 
+            'unidade': 'Unidade',
+            'curso_alvo': 'Curso_Alvo', 
+            'cota': 'Sistema_Nome', 
+            'trienio': 'Ano_Trienio',
+            'p1_pas1': 'P1_PAS1', 'p2_pas1': 'P2_PAS1', 'red_pas1': 'Red_PAS1',
+            'p1_pas2': 'P1_PAS2', 'p2_pas2': 'P2_PAS2', 'red_pas2': 'Red_PAS2',
+            # 'p1_pas3': 'P1_PAS3', 'p2_pas3': 'P2_PAS3', 'red_pas3': 'Red_PAS3', # Se existir
+            'eb_pas1': 'EB_PAS1', 'eb_pas2': 'EB_PAS2', 'eb_pas3': 'EB_PAS3'
+        }
+        # Renomeia os que existem
+        df_cloud = df_cloud.rename(columns=rename_map)
+        
+        return df_cloud
+    except Exception as e:
+        # st.error(f"Erro silencioso ao buscar dados da nuvem: {e}")
+        return None
+
+# Auto-Load na Inicialização
+if 'df_global_escola' not in st.session_state or st.session_state['df_global_escola'] is None:
+    df_nuvem = buscar_alunos_nuvem_global()
+    if df_nuvem is not None:
+        st.session_state['df_global_escola'] = df_nuvem
+        # Sincroniza com st.session_state.df se este estiver vazio
+        if st.session_state.df is None:
+             st.session_state.df = df_nuvem.copy()
+
+
+
 @st.cache_data
 def load_cutoff_data_global():
     if not ARQUIVO_DADOS_GLOBAL.exists():
@@ -752,13 +906,8 @@ if df_notas is None:
 if page == "temporal":
     st.title(":material/analytics: Análise Temporal")
     
-    # Seletor de Modo de Análise
-    analysis_mode = st.radio(
-        "Modo de Análise:",
-        ["Triênio Atual (Em Andamento)", "Triênios Concluídos (Histórico)"],
-        horizontal=True,
-        help="Escolha 'Triênio Atual' para turmas que ainda não fizeram o PAS 3. Escolha 'Triênios Concluídos' para analisar o ciclo completo (PAS 1, 2 e 3)."
-    )
+    # Configuração Padrão: Triênio Atual (Em Andamento)
+    analysis_mode = "Triênio Atual (Em Andamento)"
     
     col1, col2 = st.columns([2, 1])
     
@@ -766,10 +915,13 @@ if page == "temporal":
         uploaded_file = st.file_uploader(
             "Faça upload do arquivo da turma (CSV ou Excel)",
             type=['csv', 'xlsx', 'xls'],
-            help="O arquivo deve conter colunas: Nome, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2" + 
-                 (" e P1_PAS3, P2_PAS3, Red_PAS3" if analysis_mode == "Triênios Concluídos (Histórico)" else "")
+            help="O arquivo deve conter colunas: Nome, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2"
         )
         
+        # Feedback se já existe dados carregados
+        if st.session_state.df is not None:
+            st.info(f"✅ Base Atual: {len(st.session_state.df)} alunos carregados (Nuvem/Local).")
+
         if uploaded_file is not None:
             try:
                 if uploaded_file.name.endswith('.csv'):
@@ -782,8 +934,8 @@ if page == "temporal":
     
     with col2:
         if st.button(":material/download: Usar Dados de Exemplo"):
-            # Carrega dados de exemplo baseado no modo selecionado
-            include_pas3 = (analysis_mode == "Triênios Concluídos (Histórico)")
+            # Sempre carrega dados do triênio atual (sem PAS 3)
+            include_pas3 = False
             st.session_state.df = load_sample_data(include_pas3=include_pas3)
             st.success(":material/check_circle: Dados de exemplo carregados!")
             
@@ -797,6 +949,70 @@ if page == "temporal":
             
             # Notificação Discreta
             st.toast(":material/database: Base Centralizada Atualizada! Disponível no Preditor.")
+
+            # --- BOTÃO DE SALVAR NA NUVEM (SUPABASE) ---
+            if supabase:
+                if st.button("💾 Salvar Base na Nuvem", help="Salva a planilha atual no banco de dados para acesso global."):
+                    try:
+                        with st.spinner("Conectando ao banco de dados..."):
+                            # 1. Prepara o DataFrame (Normalização para SQL)
+                            df_to_upload = st.session_state['df_global_escola'].copy()
+                            
+                            # Mapeamento Explicito (App -> Banco)
+                            # Garante que só enviamos o que tem no banco
+                            col_map = {
+                                'Nome': 'nome',
+                                'Inscricao': 'inscricao',
+                                'Unidade': 'unidade',
+                                'Turma': 'turma',
+                                'Curso_Alvo': 'curso_alvo',
+                                'Curso Alvo': 'curso_alvo', # Caso tenha variação
+                                'Ano_Trienio': 'trienio',
+                                'Trienio': 'trienio',
+                                'Sistema_Nome': 'cota',
+                                'Cota': 'cota',
+                                'P1_PAS1': 'p1_pas1', 'P2_PAS1': 'p2_pas1', 'Red_PAS1': 'red_pas1',
+                                'P1_PAS2': 'p1_pas2', 'P2_PAS2': 'p2_pas2', 'Red_PAS2': 'red_pas2',
+                                # 'P1_PAS3': 'p1_pas3', 'P2_PAS3': 'p2_pas3', 'Red_PAS3': 'red_pas3' # Se tiver no banco
+                            }
+                            
+                            # Renomeia
+                            df_to_upload = df_to_upload.rename(columns=col_map)
+                            
+                            # Filtra apenas colunas que existem no banco (evita erro de coluna extra)
+                            cols_banco = [
+                                'inscricao', 'nome', 'unidade', 'turma', 'curso_alvo', 'cota', 'trienio',
+                                'p1_pas1', 'p2_pas1', 'red_pas1', 
+                                'p1_pas2', 'p2_pas2', 'red_pas2'
+                            ]
+                            
+                            # Mantém apenas as colunas que estão no df e no banco
+                            cols_to_keep = [c for c in cols_banco if c in df_to_upload.columns]
+                            df_final = df_to_upload[cols_to_keep].copy()
+
+                            # Converte NaN para None (NULL no SQL)
+                            df_final = df_final.replace({np.nan: None})
+                            
+                            # Converte para lista de dicionários
+                            data_to_insert = df_final.to_dict(orient='records')
+                            
+                            # 2. Limpa a Tabela Mestra (Reset)
+                            # Tenta limpar onde inscricao não é nula
+                            if len(data_to_insert) > 0:
+                                supabase.table("tabela_mestra").delete().neq("id", 0).execute() # Delete all rows logic
+                                
+                                # 3. Insere Novos Dados
+                                supabase.table("tabela_mestra").insert(data_to_insert).execute()
+                            
+                                st.toast("Sucesso! Dados salvos na nuvem.", icon="☁️")
+                                st.success(f"Base de {len(data_to_insert)} alunos sincronizada com sucesso!")
+                            else:
+                                st.warning("DataFrame vazio ou colunas não correspondentes.")
+                            
+                    except Exception as e:
+                        st.error(f"Erro ao salvar na nuvem: {e}")
+            else:
+                st.warning("Conexão com Supabase não disponível.")
     
     if st.session_state.df is not None:
         df = st.session_state.df.copy()
@@ -1193,7 +1409,7 @@ elif page == "ativos":
         turma = row.get('Turma', 'N/A')
         unidade = row.get('Unidade', 'N/A')
         curso_alvo = row.get('Curso_Alvo', 'Não informado')
-        cota_aluno = row.get('Cota', 'Sistema Universal')
+        cota_aluno = row.get('cota', row.get('Cota', row.get('sistema', row.get('sistema_nome', 'Sistema Universal'))))
         
         # --- Normalização Inteligente (Fuzzy Match) ---
         # 1. Normaliza Cota
@@ -1452,10 +1668,10 @@ elif page == "ativos":
             'Status_Level': status_level,
             'Nome': nome,
             'Turma': turma,
-            'Cota': cota_aluno,
-            'Curso Alvo': curso_alvo.split(' (')[0],
+            'Sistema de Concorrência': cota_aluno,
+            'Curso Alvo': curso_alvo, 
             'Gap': round(gap, 1),
-            'Chance (%)': chance_display,
+            'Chance': chance_display,
             'Histórico (%)': round(historico_pct, 1),
             'Sugestão': sugestao if sugestao else '—',
         })
@@ -1463,8 +1679,8 @@ elif page == "ativos":
     if not resultados:
         # Garante que as colunas existam mesmo que o DF esteja vazio
         df_result = pd.DataFrame(columns=[
-            'Status', 'Status_Level', 'Nome', 'Turma', 'Cota', 'Curso Alvo', 
-            'Gap', 'Chance (%)', 'Histórico (%)', 'Sugestão'
+            'Status', 'Status_Level', 'Nome', 'Turma', 'Sistema de Concorrência', 'Curso Alvo', 
+            'Gap', 'Chance', 'Histórico (%)', 'Sugestão'
         ])
     else:
         df_result = pd.DataFrame(resultados)
@@ -1530,14 +1746,15 @@ elif page == "ativos":
         'Status': st.column_config.TextColumn('Status', width='small'),
         'Nome': st.column_config.TextColumn('Nome', width='medium'),
         'Turma': st.column_config.TextColumn('Turma', width='small'),
+        'Sistema de Concorrência': st.column_config.TextColumn('Sistema de Concorrência', width='medium'),
         'Curso Alvo': st.column_config.TextColumn('Curso Alvo', width='medium'),
         'Gap': st.column_config.NumberColumn(
             'Gap',
             format="%+.1f",
             help="Distância para a nota de corte (+ = acima, - = abaixo)",
         ),
-        'Chance (%)': st.column_config.TextColumn(
-            'Chance (Univ.)',
+        'Chance': st.column_config.TextColumn(
+            'Chance',
             help="Probabilidade de aprovação baseada no modelo ML (Incerteza da Previsão)",
         ),
         'Histórico (%)': st.column_config.ProgressColumn(
@@ -1573,8 +1790,18 @@ elif page == "ativos":
 # =============================================================================
 
 elif page == "preditor":
-    st.title(":material/model_training: Preditor de Argumento Final")
-    
+    st.title(":material/model_training: Preditor PAS 3")
+
+    # --- INTEGRAÇÃO SUPABASE: JÁ REALIZADA GLOBALMENTE NO INÍCIO ---
+    # Apenas verifica se tem dados
+    if st.session_state.get('df_global_escola') is None:
+         # Tenta buscar novamente (Fallback)
+         with st.spinner("Buscando dados na nuvem..."):
+            df_nuvem = buscar_alunos_nuvem_global()
+            if df_nuvem is not None:
+                st.session_state['df_global_escola'] = df_nuvem
+                st.rerun()
+
     models_loaded = sum(1 for m in MODELS.values() if m is not None)
     if models_loaded == 0:
         st.error(":material/error: Nenhum modelo carregado. Verifique se os arquivos .joblib existem em models/")
@@ -1659,23 +1886,27 @@ elif page == "preditor":
                 # Metadados Opcionais (Cota, Curso)
                 # Verifica se existe coluna de Cota e tenta selecionar
                 col_cota = None
-                for c in ['Cota', 'Sistema', 'Sistema_Concorrencia']:
+                for c in ['Sistema_Nome', 'Cota', 'Sistema', 'Sistema_Concorrencia']:
                     if c in df_escola.columns:
                         col_cota = c
                         break
                 
                 if col_cota:
                     cota_aluno = str(aluno_selecionado[col_cota]).strip()
-                    # Tenta encontrar a cota na lista de opções (Match aproximado ou exato)
-                    # Primeiro tenta exato
-                    if cota_aluno in lista_cotas:
-                         st.session_state['input_cota'] = cota_aluno
+                    # Usa Fuzzy Match para encontrar a cota oficial
+                    match_cota = find_best_match(cota_aluno, lista_cotas)
+                    if match_cota in lista_cotas:
+                        st.session_state['input_cota'] = match_cota
                     else:
-                        # Tenta encontrar algo parecido (ex: "Universal" dentro de "Sistema Universal")
-                        for opt in lista_cotas:
-                            if cota_aluno.lower() in opt.lower() or opt.lower() in cota_aluno.lower():
-                                st.session_state['input_cota'] = opt
-                                break
+                         # Fallback (tenta conter)
+                         found = False
+                         for opt in lista_cotas:
+                             if cota_aluno.lower() in opt.lower() or opt.lower() in cota_aluno.lower():
+                                 st.session_state['input_cota'] = opt
+                                 found = True
+                                 break
+                         if not found:
+                             st.toast(f"Cota '{cota_aluno}' não encontrada na lista oficial.")
                                 
                 # Auto-fill Triênio
                 col_trienio = None
@@ -2020,7 +2251,8 @@ elif page == "preditor":
                     df_evolucao = df_notas[
                         (df_notas['Curso_Limpo'] == curso_selecionado) &
                         (df_notas['Campus'] == campus_sel) &
-                        (df_notas['Turno'] == turno_sel)
+                        (df_notas['Turno'] == turno_sel) &
+                        (df_notas['Semestre'] == semester_db)
                     ].copy()
 
                     coluna_trienio = 'Trienio' # Ajustado para o nome real
@@ -2077,9 +2309,12 @@ elif page == "preditor":
                         # Filtra apenas anos válidos (4 dígitos numéricos)
                         df_clean = df_clean[df_clean['Ano_X'].str.match(r'^\d{4}$')]
                         
-                        # CRÍTICO: Agrupa novamente para garantir 1 ponto por ano (pega a menor nota = última chamada)
-                        # Isso resolve o problema de '2021' e '20212' virarem duplicatas de 2021
-                        df_clean = df_clean.groupby('Ano_X', as_index=False)['Min'].min()
+                        # CRÍTICO: Agrupa novamente para garantir 1 ponto por ano
+                        # 1º Semestre: Nota Mínima (Última Chamada) | 2º Semestre: Nota Máxima (1ª Chamada)
+                        if semester_int == 1:
+                            df_clean = df_clean.groupby('Ano_X', as_index=False)['Min'].min()
+                        else:
+                            df_clean = df_clean.groupby('Ano_X', as_index=False)['Min'].max()
                         
                         # Ordena e reseta index
                         df_clean = df_clean.sort_values('Ano_X').reset_index(drop=True)
@@ -2436,12 +2671,42 @@ elif page == "escola":
     
     df_geral = load_pas_data()
     
-    # Upload do arquivo da escola
-    uploaded_file = st.file_uploader(
-        ":material/upload: Upload da lista de alunos da escola (Excel)",
-        type=['xlsx', 'xls'],
-        help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos."
-    )
+    # --- LÓGICA DE DADOS (AUTO-LOAD GLOBAL) ---
+    st.markdown("### 📂 Fonte de Dados")
+    
+    df_escola_input = None
+    uploaded_file = None
+    
+    # 1. Tenta carregar do Estado Global (Supabase/Upload Anterior)
+    if st.session_state.get('df_global_escola') is not None:
+        st.info("✅ Usando dados carregados globalmente (Nuvem/Upload).")
+        df_escola_input = st.session_state['df_global_escola'].copy()
+        
+        # Opção de sobrescrever
+        if st.checkbox("Substituir por arquivo local (.xlsx)"):
+            uploaded_file = st.file_uploader(
+                ":material/upload: Upload da lista de alunos da escola (Excel)",
+                type=['xlsx', 'xls'],
+                help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos."
+            )
+            if uploaded_file:
+                try:
+                     df_escola_input = pd.read_excel(uploaded_file)
+                except:
+                     df_escola_input = pd.read_csv(uploaded_file)
+    else:
+        # 2. Upload Manual (Fallback)
+        uploaded_file = st.file_uploader(
+            ":material/upload: Upload da lista de alunos da escola (Excel)",
+            type=['xlsx', 'xls'],
+            help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos."
+        )
+        if uploaded_file:
+             try:
+                 df_escola_input = pd.read_excel(uploaded_file)
+             except:
+                 df_escola_input = pd.read_csv(uploaded_file)
+
     
     col1, col2 = st.columns([3, 1])
     with col2:
@@ -2454,12 +2719,16 @@ elif page == "escola":
             if example_path.exists():
                 try:
                     escola_exemplo = pd.read_excel(example_path)
-                    st.session_state.escola_df = escola_exemplo
+                    df_escola_input = escola_exemplo # Override
                     st.success(":material/check_circle: Carregado: 1000 alunos de exemplo")
                 except Exception as e:
                     st.error(f"Erro ao ler arquivo de exemplo: {e}")
             else:
-                st.error(":material/cancel: Arquivo de exemplo não encontrado. Por favor, execute o script 'scripts/generate_sample_school.py' primeiro.")
+                st.error(":material/cancel: Arquivo de exemplo não encontrado.")
+    
+    # Processamento Principal (Se houver dados)
+    if df_escola_input is not None:
+        st.session_state.escola_df = df_escola_input
     
     if uploaded_file is not None:
         try:
@@ -2474,7 +2743,9 @@ elif page == "escola":
         
         st.markdown("---")
         st.markdown("### :material/toc: Prévia dos nomes")
-        st.dataframe(escola_nomes.head(10), use_container_width=True)
+        cols_to_hide = ['id', 'created_at']
+        df_display = escola_nomes.drop(columns=[c for c in cols_to_hide if c in escola_nomes.columns])
+        st.dataframe(df_display.head(10), use_container_width=True)
         
         # Seleciona triênio - Ordem inversa (mais recente primeiro)
         trienios = sorted(df_geral['Ano_Trienio'].unique(), reverse=True)
@@ -2857,7 +3128,9 @@ elif page == "escola":
         st.markdown("---")
         with st.expander("📂 Ver Lista de Alunos Processados e Encontrados"):
             if 'escola_nomes' in locals():
-                st.dataframe(escola_nomes, use_container_width=True)
+                cols_to_hide = ['id', 'created_at']
+                df_expander = escola_nomes.drop(columns=[c for c in cols_to_hide if c in escola_nomes.columns])
+                st.dataframe(df_expander, use_container_width=True)
             else:
                 st.info("Nenhum arquivo processado ainda.")
 
@@ -2895,29 +3168,53 @@ elif page == "comparacao":
         def_idx = num_cols.index('EB_PAS2') if 'EB_PAS2' in num_cols else 0
         metric = st.selectbox("Selecione a nota para comparar:", num_cols, index=def_idx)
         
-    with col2:
-        st.markdown("### :material/group: Agrupamento")
-        group_col = st.selectbox("Selecione a coluna para dividir os grupos:", cat_cols if cat_cols else ["Manual"])
-        
-    if group_col != "Manual":
-        unique_vals = [str(v) for v in df[group_col].unique() if pd.notna(v)]
-        if len(unique_vals) < 2:
-            st.warning(f"A coluna '{group_col}' possui apenas um valor ({unique_vals[0] if unique_vals else 'Nenhum'}). Selecione outra coluna ou use seleção manual.")
-            st.stop()
-            
-        col_a, col_b = st.columns(2)
-        with col_a:
-            val_a = st.selectbox(f"Grupo A ({group_col}):", unique_vals, index=0)
-        with col_b:
-            val_b = st.selectbox(f"Grupo B ({group_col}):", unique_vals, index=1 if len(unique_vals) > 1 else 0)
-            
-        group_a = df[df[group_col].astype(str) == val_a][metric].dropna().values
-        group_b = df[df[group_col].astype(str) == val_b][metric].dropna().values
-        name_a = f"{group_col}: {val_a}"
-        name_b = f"{group_col}: {val_b}"
-    else:
-        st.info("Funcionalidade de seleção manual em desenvolvimento. Por favor, use uma coluna de agrupamento (ex: Turma, Sexo, etc).")
+    # --- SELEÇÃO DE GRUPOS HIERÁRQUICA ---
+    st.markdown("### :material/groups: Definição dos Grupos")
+    
+    col_a, col_b = st.columns(2)
+    
+    # 1. Identifica colunas de Unidade e Turma
+    col_uni = 'Unidade' if 'Unidade' in df.columns else None
+    col_tur = 'Turma' if 'Turma' in df.columns else None
+    
+    if not col_uni and not col_tur:
+        st.warning("⚠️ Colunas 'Unidade' ou 'Turma' não encontradas para agrupamento automático.")
         st.stop()
+        
+    def get_group_data(prefix, display_name):
+        with st.container(border=True):
+            st.markdown(f"**{display_name}**")
+            
+            # Filtro Unidade
+            uni_options = ["Todas"] + sorted(df[col_uni].dropna().unique().tolist()) if col_uni else ["N/A"]
+            sel_uni = st.selectbox(f"Unidade ({display_name})", uni_options, key=f"{prefix}_uni")
+            
+            # Filtro Turma (Dependente da Unidade)
+            df_curr = df.copy()
+            if sel_uni != "Todas" and col_uni:
+                df_curr = df_curr[df_curr[col_uni] == sel_uni]
+            
+            tur_options = ["Todas"] + sorted(df_curr[col_tur].dropna().unique().tolist()) if col_tur else ["Todas"]
+            sel_tur = st.selectbox(f"Turma ({display_name})", tur_options, key=f"{prefix}_tur")
+            
+            # Filtra data final
+            df_final = df_curr.copy()
+            if sel_tur != "Todas" and col_tur:
+                df_final = df_final[df_final[col_tur] == sel_tur]
+            
+            y_vals = df_final[metric].dropna().values
+            
+            # Label para o gráfico
+            label = f"{sel_uni}" if sel_tur == "Todas" else f"{sel_uni} - {sel_tur}"
+            if sel_uni == "Todas" and sel_tur == "Todas": label = "Todos os Alunos"
+            
+            return y_vals, label
+
+    with col_a:
+        group_a, name_a = get_group_data("ga", "Grupo A")
+        
+    with col_b:
+        group_b, name_b = get_group_data("gb", "Grupo B")
         
     if st.button(":material/analytics: Realizar Teste Estatístico", type="primary"):
         if len(group_a) < 2 or len(group_b) < 2:
@@ -2937,8 +3234,8 @@ elif page == "comparacao":
                 
                 # Cards de Resumo
                 ca, cb, cd = st.columns(3)
-                ca.metric(f"Média {val_a}", f"{result['group_a_mean']:.2f}")
-                cb.metric(f"Média {val_b}", f"{result['group_b_mean']:.2f}")
+                ca.metric(f"Média {name_a}", f"{result['group_a_mean']:.2f}")
+                cb.metric(f"Média {name_b}", f"{result['group_b_mean']:.2f}")
                 cd.metric("Diferença", f"{result['difference']:+.2f}", delta=f"{result['difference']:+.2f}")
                 
                 # Interpretação Profissional
@@ -3277,6 +3574,7 @@ elif page == "pdf":
             data = {
                 'aluno': aluno, 
                 'curso': selected_course_name,
+                'sistema': pdf_cota_sel,
                 # Notas Brutas
                 'pas1_p1': f"{p1_pas1:.3f}", 'pas1_p2': f"{p2_pas1:.3f}", 'pas1_red': f"{red_pas1:.3f}", 
                 'pas1_arg': f"{arg_pas1:.3f}",
@@ -3353,28 +3651,96 @@ elif page == "pdf":
         with col_b2:
             batch_ref_triennium = st.selectbox("Triênio de Referência (Corte)", list(TRIENNIUM_STATS.keys()), index=1, key="batch_tri")
 
-        uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'])
+        # --- LÓGICA DE DADOS (AUTO-LOAD GLOBAL) ---
+        df_batch = None
         
-        if uploaded_batch:
-            if st.button("Gerar PDFs em Lote"):
+        # 1. Tenta carregar do Estado Global
+        if st.session_state.get('df_global_escola') is not None:
+            st.info("✅ Usando dados carregados globalmente (Nuvem/Upload).")
+            df_batch = st.session_state['df_global_escola'].copy()
+            
+            if st.checkbox("Substituir por arquivo local (CSV/Excel)", key="override_pdf_batch"):
+                uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch")
+                if uploaded_batch:
+                    try:
+                        df_batch = pd.read_csv(uploaded_batch) if uploaded_batch.name.endswith('.csv') else pd.read_excel(uploaded_batch)
+                    except Exception as e:
+                        st.error(f"Erro ao ler arquivo: {e}")
+                        df_batch = None
+        else:
+             # 2. Upload Manual (Fallback)
+            uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch")
+            if uploaded_batch:
                 try:
                     df_batch = pd.read_csv(uploaded_batch) if uploaded_batch.name.endswith('.csv') else pd.read_excel(uploaded_batch)
+                except Exception as e:
+                    st.error(f"Erro ao ler arquivo: {e}")
+
+        if df_batch is not None:
+            if st.button("Gerar PDFs em Lote"):
+                try:
+                    # df_batch já carregado acima
+
                     
-                    # Normaliza colunas para minúsculo
-                    df_batch.columns = df_batch.columns.str.lower().str.replace(' ', '_')
+                    # Normaliza colunas para minúsculo e remove espaços extras
+                    df_batch.columns = df_batch.columns.str.strip().str.lower().str.replace(' ', '_')
                     
-                    # Carrega notas de corte
-                    df_cursos_ref = load_course_stats(semester=batch_semester, triennium=batch_ref_triennium)
+                    # Carrega notas de corte (TODOS os sistemas) do triênio de referência (Selecionado - 1)
+                    try:
+                        start_year_b, end_year_b = map(int, batch_ref_triennium.split('-'))
+                        ref_tri_sync = f"{start_year_b - 1}-{end_year_b - 1}"
+                    except:
+                        ref_tri_sync = batch_ref_triennium # Fallback se falhar parciamento
+                        
+                    df_cursos_ref = load_course_stats(semester=batch_semester, triennium=ref_tri_sync, system=None)
                     
                     if df_cursos_ref is not None:
-                        course_map = dict(zip(df_cursos_ref['Curso'], df_cursos_ref['Min']))
-                        available_courses = list(course_map.keys())
+                        # --- FIX: Cria Combo_Nome para diferenciar Turnos/Campus ---
+                        # E garante limpeza de "Sistema_Nome"
+                        for col in ['Curso', 'Campus', 'Turno', 'Sistema_Nome']:
+                            if col in df_cursos_ref.columns:
+                                df_cursos_ref[col] = df_cursos_ref[col].astype(str).str.strip()
+                        
+                        # Cria lista de sistemas disponíveis para fuzzy match
+                        if 'Sistema_Nome' in df_cursos_ref.columns:
+                            available_systems = df_cursos_ref['Sistema_Nome'].unique().tolist()
+                        else:
+                            available_systems = ["Sistema Universal"]
+
+                        # Cria coluna combinada se possível
+                        if all(col in df_cursos_ref.columns for col in ['Curso', 'Campus', 'Turno']):
+                             df_cursos_ref['Combo_Nome'] = df_cursos_ref['Curso'] + " (" + df_cursos_ref['Campus'] + " - " + df_cursos_ref['Turno'] + ")"
+                             
+                             # Cria mapa: (Combo_Nome, Sistema_Nome) -> Min
+                             # Garante que temos as colunas
+                             if 'Sistema_Nome' in df_cursos_ref.columns:
+                                 # Remove duplicatas exatas de (Combo, Sistema) se houver (priorizando menor nota?)
+                                 df_ref_unique = df_cursos_ref.sort_values('Min', ascending=True).drop_duplicates(['Combo_Nome', 'Sistema_Nome'], keep='first')
+                                 
+                                 # Dicionário compostos
+                                 course_map = dict(zip(zip(df_ref_unique['Combo_Nome'], df_ref_unique['Sistema_Nome']), df_ref_unique['Min']))
+                             else:
+                                 # Fallback se não tiver sistema (não deveria acontecer se load_course_stats retornar tudo)
+                                 # Mas se vier antigo...
+                                 course_map = dict(zip(zip(df_cursos_ref['Combo_Nome'], ["Sistema Universal"]*len(df_cursos_ref)), df_cursos_ref['Min']))
+                                 
+                        else:
+                             # Fallback para apenas Curso
+                             if 'Sistema_Nome' in df_cursos_ref.columns:
+                                 course_map = dict(zip(zip(df_cursos_ref['Curso'], df_cursos_ref['Sistema_Nome']), df_cursos_ref['Min']))
+                             else:
+                                 course_map = dict(zip(zip(df_cursos_ref['Curso'], ["Sistema Universal"]*len(df_cursos_ref)), df_cursos_ref['Min']))
+
+                        # Lista de cursos únicos para match
+                        available_courses = sorted(list(set(k[0] for k in course_map.keys())))
                     else:
                         course_map = {}
                         available_courses = []
+                        available_systems = []
                     
-                    # Stats base para cálculo (2023-2025)
-                    stats_base = TRIENNIUM_STATS["2023-2025"]
+                    # Stats base para cálculo (Triênio Selecionado)
+                    stats_base = TRIENNIUM_STATS.get(batch_ref_triennium, TRIENNIUM_STATS["2023-2025"])
+                    stats_pas3_proj = STATS_PAS3_TREND # Fonte da verdade global para projeções
                     calc = TargetCalculator()
                     
                     processed_data = []
@@ -3382,89 +3748,110 @@ elif page == "pdf":
                     progress_bar = st.progress(0)
                     total_rows = len(df_batch)
                     
-                    for idx, row in df_batch.iterrows():
-                        # Extrai dados (com fallbacks seguros)
-                        aluno_name = str(row.get('nome', row.get('aluno', 'Estudante')))
-                        raw_course_name = str(row.get('curso', 'Não informado'))
+                    # Log de auditoria para o usuário ver na UI
+                    with st.status("🚀 Iniciando Processamento em Lote...", expanded=True) as status:
+                        status.write(f"📊 Base carregada com {total_rows} alunos.")
+                        status.write(f"🎯 Sistemas (Cotas) encontrados: {', '.join(available_systems)}")
+                        status.write(f"📚 Cursos mapeados: {len(available_courses)}")
                         
-                        # --- Fuzzy Match Logic ---
-                        # Tenta encontrar o nome oficial do curso
-                        official_course_name = find_best_course_match(raw_course_name, available_courses)
-                        nota_corte = course_map.get(official_course_name, 0.0)
-                        
-                        # Feedback no console/UI (opcional, pode poluir se muitos)
-                        # if raw_course_name != official_course_name:
-                        #    print(f"Mapped '{raw_course_name}' to '{official_course_name}'")
+                        for idx, row in df_batch.iterrows():
+                            # Extrai dados (com fallbacks seguros)
+                            aluno_name = str(row.get('nome', row.get('aluno', f'Estudante {idx+1}')))
+                            raw_course_name = str(row.get('curso', row.get('curso_alvo', 'Não informado')))
+                            
+                            # --- Fuzzy Match Logic ---
+                            official_course_name = find_best_match(raw_course_name, available_courses)
+                            
+                            # Tenta encontrar o nome oficial do sistema (Cota)
+                            raw_quota = str(row.get('cota', row.get('sistema', row.get('sistema_nome', row.get('sistema_concorrencia', 'Sistema Universal')))))
+                            official_system = find_best_match(raw_quota, available_systems)
+                            
+                            # Chave de busca: (Curso, Sistema)
+                            cutoff_key = (official_course_name, official_system)
+                            nota_corte = course_map.get(cutoff_key, 0.0)
+                            
+                            match_info = f"👤 **{aluno_name}** | {official_course_name} | {official_system}"
+                            
+                            # Se não achou exato, tenta fallback para Sistema Universal no mesmo curso
+                            if nota_corte == 0.0 and official_system != "Sistema Universal":
+                                 fallback_key = (official_course_name, "Sistema Universal")
+                                 nota_corte = course_map.get(fallback_key, 0.0)
+                                 status.write(f"{match_info} ⚠️ Quota não encontrada, usando Universal. (Corte: {nota_corte:.2f})")
+                            elif nota_corte == 0.0:
+                                 status.write(f"{match_info} ❌ Nota de corte não encontrada!")
+                            else:
+                                 status.write(f"{match_info} ✅ OK (Corte: {nota_corte:.2f})")
 
-                        # Notas PAS 1
-                        p1_1 = float(row.get('p1_pas1', 0))
-                        p2_1 = float(row.get('p2_pas1', 0))
-                        red_1 = float(row.get('red_pas1', 0))
-                        
-                        # Notas PAS 2
-                        p1_2 = float(row.get('p1_pas2', 0))
-                        p2_2 = float(row.get('p2_pas2', 0))
-                        red_2 = float(row.get('red_pas2', 0))
-                        
-                        # Cálculos
-                        arg1 = calculate_argument_etapa(p1_1, p2_1, red_1, stats_base["PAS1"])
-                        arg2 = calculate_argument_etapa(p1_2, p2_2, red_2, stats_base["PAS2"])
-                        arg_acum = arg1 + 2 * arg2
-                        
-                        # Projeção PAS 3
-                        notas_input = {
-                            'P1_PAS1': p1_1, 'P2_PAS1': p2_1, 'Red_PAS1': red_1,
-                            'P1_PAS2': p1_2, 'P2_PAS2': p2_2, 'Red_PAS2': red_2,
-                        }
-                        
-                        # Usa projeção de tendência para PAS 3
-                        result = calc.calculate_required_score(
-                            notas_input, nota_corte,
-                            stats_base["PAS1"], stats_base["PAS2"], STATS_PAS3_TREND
-                        )
-                        
-                        # --- Estatísticas de Aprovação Usando Modelo AI ---
-                        eb_b1 = p1_1 + p2_1
-                        eb_b2 = p1_2 + p2_2
-                        cb_eb = eb_b2 - eb_b1
-                        cb_red = red_2 - red_1
-                        
-                        feat_b = np.array([[eb_b1, red_1, eb_b2, red_2, cb_eb, cb_red]])
-                        
-                        arg_final_batch_pred = 0.0
-                        if ARG_FINAL_MODEL:
-                            arg_final_batch_pred = float(ARG_FINAL_MODEL.predict(feat_b)[0])
-                        else:
-                            # Fallback
-                            arg3_p = calculate_argument_etapa(result.p1_estimado, stats_pas3_proj.mean_p2, result.red_estimada, stats_pas3_proj)
-                            arg_final_batch_pred = 1*arg1 + 2*arg2 + 3*arg3_p
-                        
-                        z_score_batch = (arg_final_batch_pred - nota_corte) / ARG_FINAL_MAE
-                        prob_batch = 0.0
-                        if calculate_approval_probability:
-                            prob_batch = calculate_approval_probability(arg_final_batch_pred, nota_corte, rmse=ARG_FINAL_MAE)
+                            # Notas PAS 1
+                            p1_1 = float(row.get('p1_pas1', 0))
+                            p2_1 = float(row.get('p2_pas1', 0))
+                            red_1 = float(row.get('red_pas1', 0))
+                            
+                            # Notas PAS 2
+                            p1_2 = float(row.get('p1_pas2', 0))
+                            p2_2 = float(row.get('p2_pas2', 0))
+                            red_2 = float(row.get('red_pas2', 0))
+                            
+                            # Cálculos
+                            arg1 = calculate_argument_etapa(p1_1, p2_1, red_1, stats_base["PAS1"])
+                            arg2 = calculate_argument_etapa(p1_2, p2_2, red_2, stats_base["PAS2"])
+                            arg_acum = arg1 + 2 * arg2
+                            
+                            # Projeção PAS 3
+                            notas_input = {
+                                'P1_PAS1': p1_1, 'P2_PAS1': p2_1, 'Red_PAS1': red_1,
+                                'P1_PAS2': p1_2, 'P2_PAS2': p2_2, 'Red_PAS2': red_2,
+                            }
+                            
+                            # Usa projeção de tendência para PAS 3
+                            result = calc.calculate_required_score(
+                                notas_input, nota_corte,
+                                stats_base["PAS1"], stats_base["PAS2"], STATS_PAS3_TREND
+                            )
+                            
+                            # --- Estatísticas de Aprovação Usando Modelo AI ---
+                            eb_b1 = p1_1 + p2_1
+                            eb_b2 = p1_2 + p2_2
+                            cb_eb = eb_b2 - eb_b1
+                            cb_red = red_2 - red_1
+                            
+                            feat_b = np.array([[eb_b1, red_1, eb_b2, red_2, cb_eb, cb_red]])
+                            
+                            arg_final_batch_pred = 0.0
+                            if ARG_FINAL_MODEL:
+                                arg_final_batch_pred = float(ARG_FINAL_MODEL.predict(feat_b)[0])
+                            else:
+                                # Fallback
+                                arg3_p = calculate_argument_etapa(result.p1_estimado, stats_pas3_proj.mean_p2, result.red_estimada, stats_pas3_proj)
+                                arg_final_batch_pred = 1*arg1 + 2*arg2 + 3*arg3_p
+                            
+                            z_score_batch = (arg_final_batch_pred - nota_corte) / ARG_FINAL_MAE
+                            prob_batch = 0.0
+                            if calculate_approval_probability:
+                                prob_batch = calculate_approval_probability(arg_final_batch_pred, nota_corte, rmse=ARG_FINAL_MAE)
 
-                        # Monta dict final
-                        student_data = {
-                            'aluno': aluno_name,
-                            'curso': official_course_name, # Usa o nome oficial encontrado
-                            'pas1_p1': f"{p1_1:.3f}", 'pas1_p2': f"{p2_1:.3f}", 'pas1_red': f"{red_1:.3f}",
-                            'pas1_arg': f"{arg1:.3f}",
-                            'pas2_p1': f"{p1_2:.3f}", 'pas2_p2': f"{p2_2:.3f}", 'pas2_red': f"{red_2:.3f}",
-                            'pas2_arg': f"{arg2:.3f}",
-                            'arg_pond_1': f"{arg1:.3f}",
-                            'arg_pond_2': f"{arg2*2:.3f}",
-                            'arg_acumulado': f"{arg_acum:.3f}",
-                            'pas3_p1_est': f"{result.p1_estimado:.3f}",
-                            'pas3_red_est': f"{result.red_estimada:.3f}",
-                            'pas3_p2_necessario': f"{result.p2_necessario:.3f}",
-                            'nota_corte': f"{nota_corte:.3f}",
-                            'arg_necessario': f"{result.arg_pas3_necessario:.3f}",
-                            'probabilidade': f"{prob_batch * 100:.1f}%",
-                            'z_score': f"{z_score_batch:+.2f}"
-                        }
-                        processed_data.append(student_data)
-                        progress_bar.progress((idx + 1) / total_rows)
+                            # Monta dict final
+                            student_data = {
+                                'aluno': aluno_name,
+                                'curso': official_course_name,
+                                'sistema': official_system,
+                                'pas1_p1': f"{p1_1:.3f}", 'pas1_p2': f"{p2_1:.3f}", 'pas1_red': f"{red_1:.3f}",
+                                'pas1_arg': f"{arg1:.3f}",
+                                'pas2_p1': f"{p1_2:.3f}", 'pas2_p2': f"{p2_2:.3f}", 'pas2_red': f"{red_2:.3f}",
+                                'pas2_arg': f"{arg2:.3f}",
+                                'arg_pond_1': f"{arg1:.3f}",
+                                'arg_pond_2': f"{arg2*2:.3f}",
+                                'arg_acumulado': f"{arg_acum:.3f}",
+                                'pas3_p1_est': f"{result.p1_estimado:.3f}",
+                                'pas3_red_est': f"{result.red_estimada:.3f}",
+                                'pas3_p2_necessario': f"{result.p2_necessario:.3f}",
+                                'nota_corte': f"{nota_corte:.3f}",
+                                'arg_necessario': f"{result.arg_pas3_necessario:.3f}",
+                                'probabilidade': f"{prob_batch * 100:.1f}%",
+                                'z_score': f"{z_score_batch:+.2f}"
+                            }
+                            processed_data.append(student_data)
+                            progress_bar.progress((idx + 1) / total_rows)
                     
                     zip_buffer = pdf_gen.generate_batch_zip(processed_data)
                     
