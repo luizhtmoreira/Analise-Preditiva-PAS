@@ -13,3 +13,4 @@ pdfkit
 jinja2
 fpdf
 unidecode
+reportlab
