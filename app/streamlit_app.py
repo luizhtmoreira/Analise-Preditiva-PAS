@@ -488,8 +488,8 @@ check_login()
 
 
 def download_models():
-    file_id = '1ZIo1fL6aJKO7x6lQ-U5yZx8Qco7mUYUg'
-    url = f'https://drive.google.com/uc?id={file_id}'
+    
+    url = 'https://github.com/luizhtmoreira/Analise-Preditiva-PAS/releases/download/v1.0/models.zip'
     
     # Define o caminho para a pasta 'app/models'
     base_path = Path(__file__).resolve().parent
