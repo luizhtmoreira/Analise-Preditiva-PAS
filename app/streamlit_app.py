@@ -51,6 +51,8 @@ try:
     import importlib
     importlib.reload(pdf_generator)
     from pdf_generator import PDFGenerator
+    # Inicializa o gerador de PDF
+    pdf_gen = PDFGenerator()
 except ImportError as e:
     st.error(f":material/warning: Módulo pas_intelligence não encontrado: {e}")
     st.stop()
@@ -185,22 +187,33 @@ def load_course_stats(semester: int = 1, triennium: Optional[str] = None, system
 
         
         
-        # LÓGICA DE CORTE POR SEMESTRE (REFINAMENTO UX)
-        # 1º Semestre: Usa a ÚLTIMA CHAMADA (Menor Nota) -> "Porta de Entrada"
-        # 2º Semestre: Usa a 1ª CHAMADA (Maior Nota) -> "Critério Rigoroso"
+        # --- LÓGICA DE CORTE POR SEMESTRE (REFINADO PAS_UNB) ---
+        # Limpeza para evitar duplicatas por espaços (Sync Step 540)
+        for col in ['Curso', 'Campus', 'Turno', 'Chamada']:
+            if col in stats.columns:
+                stats[col] = stats[col].astype(str).str.strip()
         
+        # Extrai numeral da chamada para ordenação precisa
+        if 'Chamada' in stats.columns:
+            stats['Chamada_Num'] = stats['Chamada'].str.extract('(\d+)').fillna(0).astype(int)
+        else:
+            stats['Chamada_Num'] = 1
+
         if semester == 1:
-            # Ascending=True pega os menores valores primeiro (Últimas Chamadas)
-            stats = stats.sort_values('Min', ascending=True).drop_duplicates(
+            # 1º Semestre: Prioridade para ÚLTIMA CHAMADA (Menor Nota = Piso de entrada)
+            # Ordenamos por Min crescente e pegamos o primeiro (o menor)
+            stats = stats.sort_values(['Curso', 'Campus', 'Turno', 'Min'], ascending=[True, True, True, True]).drop_duplicates(
                 subset=['Curso', 'Campus', 'Turno'], keep='first'
             )
         else:
-            # Ascending=False pega os maiores valores primeiro (1ª Chamada)
-            stats = stats.sort_values('Min', ascending=False).drop_duplicates(
+            # 2º Semestre: Prioridade para PRIMEIRA CHAMADA DISPONÍVEL (Maior Nota = Corte inicial)
+            # Ordenamos por Chamada_Num (1ª, 2ª...) e pegamos o primeiro disponível
+            stats = stats.sort_values(['Curso', 'Campus', 'Turno', 'Chamada_Num'], ascending=[True, True, True, True]).drop_duplicates(
                 subset=['Curso', 'Campus', 'Turno'], keep='first'
             )
 
         # Cria Ranking (Reset Index) após a deduplicação
+        # Re-ordena por nota para o Ranking final do PDF/Dashboard
         stats = stats.sort_values('Min', ascending=False).reset_index(drop=True)
         stats.index = stats.index + 1 # Ranking 1-based
         
@@ -703,6 +716,32 @@ st.sidebar.caption("🔒 Ambiente Seguro | Desenvolvido por Vetor PAS")
 if 'df' not in st.session_state:
     st.session_state.df = None
 
+# --- CARREGAMENTO GLOBAL DO BANCO DE DADOS (CORTES) ---
+data_dir_global = Path(__file__).parent.parent / "data"
+ARQUIVO_DADOS_GLOBAL = data_dir_global / "notas_corte_pas.csv"
+
+@st.cache_data
+def load_cutoff_data_global():
+    if not ARQUIVO_DADOS_GLOBAL.exists():
+        return None
+    try:
+        df = pd.read_csv(ARQUIVO_DADOS_GLOBAL)
+        # Padronização de Colunas
+        if 'Min' in df.columns:
+            df['Min'] = pd.to_numeric(df['Min'], errors='coerce')
+        # Garante que Curso_Limpo existe (Sync Step 880)
+        if 'Curso_Limpo' not in df.columns and 'Curso' in df.columns:
+            df['Curso_Limpo'] = df['Curso']
+        return df
+    except Exception:
+        return None
+
+df_notas = load_cutoff_data_global()
+if df_notas is None:
+    st.warning("⚠️ Banco de notas de corte não encontrado. Algumas funcionalidades (Preditor, PDF) podem ser limitadas.")
+    # Initialize as empty DF to avoid NameError/AttributeError
+    df_notas = pd.DataFrame(columns=['Trienio', 'Semestre', 'Sistema_Nome', 'Curso_Limpo', 'Campus', 'Turno', 'Min', 'Chamada'])
+
 
 # =============================================================================
 # PÁGINA 1: ANÁLISE TEMPORAL
@@ -747,6 +786,17 @@ if page == "temporal":
             include_pas3 = (analysis_mode == "Triênios Concluídos (Histórico)")
             st.session_state.df = load_sample_data(include_pas3=include_pas3)
             st.success(":material/check_circle: Dados de exemplo carregados!")
+            
+        # --- PERSISTÊNCIA GLOBAL (ERP INTELIGENTE) ---
+        if st.session_state.df is not None:
+            # Salva na "Memória Global" da Escola
+            st.session_state['df_global_escola'] = st.session_state.df.copy()
+            
+            # Limpeza de Colunas (Trim spaces)
+            st.session_state['df_global_escola'].columns = st.session_state['df_global_escola'].columns.str.strip()
+            
+            # Notificação Discreta
+            st.toast(":material/database: Base Centralizada Atualizada! Disponível no Preditor.")
     
     if st.session_state.df is not None:
         df = st.session_state.df.copy()
@@ -1530,28 +1580,136 @@ elif page == "preditor":
         st.error(":material/error: Nenhum modelo carregado. Verifique se os arquivos .joblib existem em models/")
         st.stop()
 
-    # --- CARREGAMENTO DO BANCO DE DADOS PADRONIZADO ---
-    data_dir = Path(__file__).parent.parent / "data"
-    ARQUIVO_DADOS = data_dir / "notas_corte_pas.csv"
-    
-    try:
-        @st.cache_data
-        def load_data_preditor():
-            if not ARQUIVO_DADOS.exists():
-                return None
-            df = pd.read_csv(ARQUIVO_DADOS)
-            df['Min'] = pd.to_numeric(df['Min'], errors='coerce')
-            return df
-            
-        df_notas = load_data_preditor()
-        if df_notas is None:
-            st.error(f":material/error: Arquivo '{ARQUIVO_DADOS.name}' não encontrado na pasta data/.")
-            st.stop()
-    except Exception as e:
-        st.error(f":material/error: Erro ao carregar banco de dados: {e}")
-        st.stop()
-
     # --- CONFIGURAÇÃO (GLOBAL) ---
+    
+    # 0. Preparação de Listas (Cota) - Definido antes p/ uso no Auto-Fill
+    lista_cotas = sorted(df_notas['Sistema_Nome'].unique().astype(str).tolist())
+    if 'Sistema Universal' in lista_cotas:
+        lista_cotas.insert(0, lista_cotas.pop(lista_cotas.index('Sistema Universal')))
+
+    # --- MODO DE OPERAÇÃO: BUSCA vs MANUAL ---
+    st.markdown("### :material/search: Seleção do Aluno")
+    
+    # Verifica se existe base carregada
+    tem_base = 'df_global_escola' in st.session_state and st.session_state['df_global_escola'] is not None
+    
+    # Seletor de Modo
+    modo_selecao = st.radio(
+        "Modo de Entrada:",
+        ["🔍 Buscar na Base da Escola", "✍️ Entrada Manual"],
+        index=0 if tem_base else 1,
+        horizontal=True,
+        disabled=not tem_base,
+        help="Use 'Buscar' para carregar dados automaticamente da planilha da escola. Use 'Manual' para simular livremente."
+    )
+    
+    if not tem_base:
+        st.warning("⚠️ Nenhuma base escolar carregada. Vá para a aba **Análise Temporal** e faça upload da planilha para habilitar a busca.")
+
+    # --- LÓGICA DE BUSCA (DRILL-DOWN) ---
+    aluno_selecionado = None
+    
+    if modo_selecao == "🔍 Buscar na Base da Escola" and tem_base:
+        df_escola = st.session_state['df_global_escola']
+        
+        c_unidade, c_turma, c_aluno = st.columns([1, 1, 2])
+        
+        # 1. Filtro Unidade (se existir coluna)
+        if 'Unidade' in df_escola.columns:
+            unidades = sorted(df_escola['Unidade'].dropna().unique())
+            unidade_sel = c_unidade.selectbox("Unidade", ["Todas"] + list(unidades))
+            if unidade_sel != "Todas":
+                df_escola = df_escola[df_escola['Unidade'] == unidade_sel]
+        else:
+            c_unidade.info("Col. 'Unidade' não encontrada")
+
+        # 2. Filtro Turma (se existir coluna)
+        if 'Turma' in df_escola.columns:
+            turmas = sorted(df_escola['Turma'].dropna().unique())
+            turma_sel = c_turma.selectbox("Turma", ["Todas"] + list(turmas))
+            if turma_sel != "Todas":
+                df_escola = df_escola[df_escola['Turma'] == turma_sel]
+        else:
+            c_turma.info("Col. 'Turma' não encontrada")
+            
+        # 3. Filtro Aluno
+        if 'Nome' in df_escola.columns:
+            alunos = sorted(df_escola['Nome'].dropna().unique())
+            nome_aluno = c_aluno.selectbox("Aluno", ["Selecione..."] + list(alunos))
+            
+            if nome_aluno != "Selecione...":
+                aluno_selecionado = df_escola[df_escola['Nome'] == nome_aluno].iloc[0]
+                st.success(f"Dados de **{nome_aluno}** carregados!")
+                
+                # --- AUTO-PREENCHIMENTO (SYNC STATE) ---
+                # Atualiza as chaves do session_state que alimentam os inputs
+                
+                def safe_get(row, col):
+                    val = row.get(col, 0.0)
+                    return float(val) if pd.notnull(val) else 0.0
+
+                st.session_state['input_p1_pas1'] = safe_get(aluno_selecionado, 'P1_PAS1')
+                st.session_state['input_p2_pas1'] = safe_get(aluno_selecionado, 'P2_PAS1')
+                st.session_state['input_red_pas1'] = safe_get(aluno_selecionado, 'Red_PAS1')
+                
+                st.session_state['input_p1_pas2'] = safe_get(aluno_selecionado, 'P1_PAS2')
+                st.session_state['input_p2_pas2'] = safe_get(aluno_selecionado, 'P2_PAS2')
+                st.session_state['input_red_pas2'] = safe_get(aluno_selecionado, 'Red_PAS2')
+                
+                # Metadados Opcionais (Cota, Curso)
+                # Verifica se existe coluna de Cota e tenta selecionar
+                col_cota = None
+                for c in ['Cota', 'Sistema', 'Sistema_Concorrencia']:
+                    if c in df_escola.columns:
+                        col_cota = c
+                        break
+                
+                if col_cota:
+                    cota_aluno = str(aluno_selecionado[col_cota]).strip()
+                    # Tenta encontrar a cota na lista de opções (Match aproximado ou exato)
+                    # Primeiro tenta exato
+                    if cota_aluno in lista_cotas:
+                         st.session_state['input_cota'] = cota_aluno
+                    else:
+                        # Tenta encontrar algo parecido (ex: "Universal" dentro de "Sistema Universal")
+                        for opt in lista_cotas:
+                            if cota_aluno.lower() in opt.lower() or opt.lower() in cota_aluno.lower():
+                                st.session_state['input_cota'] = opt
+                                break
+                                
+                # Auto-fill Triênio
+                col_trienio = None
+                for c in ['Ano_Trienio', 'Trienio', 'Ciclo']:
+                    if c in df_escola.columns:
+                        col_trienio = c
+                        break
+                
+                if col_trienio:
+                    trienio_aluno = str(aluno_selecionado[col_trienio]).strip()
+                    # Verifica se o triênio existe nas opções disponíveis
+                    if trienio_aluno in TRIENNIUM_STATS:
+                        st.session_state['input_trienio'] = trienio_aluno
+                
+                # Nome do Aluno (Novo Sync)
+                if 'Nome' in df_escola.columns:
+                     st.session_state['input_nome_aluno'] = str(aluno_selecionado['Nome'])
+                
+        else:
+            st.error("Coluna 'Nome' obrigatória não encontrada na base.")
+
+
+    # --- CONTROLES DE SIMULAÇÃO (CARREGAR ÚLTIMA) ---
+    col_load, _ = st.columns([1, 3])
+    with col_load:
+        if st.button("🔄 Carregar Última Simulação"):
+            if 'historico_ultimo_calculo' in st.session_state:
+                hist = st.session_state['historico_ultimo_calculo']
+                for k, v in hist.items():
+                    st.session_state[k] = v
+                st.toast("Simulação anterior restaurada!")
+            else:
+                st.warning("Nenhuma simulação salva na memória.")
+
     st.markdown("### :material/settings: Configuração do Candidato")
     
     col_sem, col_tri, col_cota = st.columns([1, 1, 2])
@@ -1569,7 +1727,8 @@ elif page == "preditor":
         st.markdown("**:material/school: Triênio**")
         ciclo_aluno = st.selectbox(
             "Triênio", list(TRIENNIUM_STATS.keys()), 
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="input_trienio" # Key vinculada ao auto-fill
         )
         stats_ciclo = TRIENNIUM_STATS[ciclo_aluno]
         # Lógica de referência (Ano Anterior)
@@ -1581,45 +1740,109 @@ elif page == "preditor":
 
     with col_cota:
         st.markdown("**:material/label: Sistema de Concorrência (Cota)**")
-        # Lista de cotas ordenada com Universal no topo
-        lista_cotas = sorted(df_notas['Sistema_Nome'].unique().astype(str).tolist())
-        if 'Sistema Universal' in lista_cotas:
-            lista_cotas.insert(0, lista_cotas.pop(lista_cotas.index('Sistema Universal')))
         
-        cota_selecionada = st.selectbox("Cota", lista_cotas, label_visibility="collapsed")
+        cota_selecionada = st.selectbox(
+
+            "Cota", lista_cotas, 
+            label_visibility="collapsed",
+            key="input_cota" # Key vinculada ao auto-fill
+        )
 
     st.caption(f":material/info: Referência: **{ref_triennium}** | Cota: **{cota_selecionada}**")
+
+
 
 
     # --- ABAS ---
     tab_diagnostico, tab_estrategia = st.tabs([":material/psychology: Diagnóstico Realista", ":material/track_changes: Calculadora de Estratégia"])
 
     # =========================================================================
-    # ABA 1: DIAGNÓSTICO (ESTILO ORIGINAL RESTAURADO)
+    # ABA 1: DIAGNÓSTICO
     # =========================================================================
     with tab_diagnostico:
         
         col1, col2 = st.columns(2)
+        
+        # Helper para inicializar key se não existir (evita erro no primeiro render manual)
+        def init_key(key, default=0.0):
+            if key not in st.session_state:
+                st.session_state[key] = default
+        
+        # Init Name Key (String)
+        if 'input_nome_aluno' not in st.session_state:
+            st.session_state['input_nome_aluno'] = ""
+
+        init_key('input_p1_pas1'); init_key('input_p2_pas1'); init_key('input_red_pas1')
+        init_key('input_p1_pas2'); init_key('input_p2_pas2'); init_key('input_red_pas2')
+
+        # --- NOVO: Nome do Aluno (Manual Input) ---
+        # Só exibe input se estiver em modo Manual (Em modo busca, o nome vem do selectbox e é read-only virtualmente)
+        if modo_selecao == "✍️ Entrada Manual":
+             st.text_input("Nome do Aluno", key="input_nome_aluno", placeholder="Digite o nome do estudante...")
+        else:
+             # Mostra nome carregado apenas como info visual
+             st.info(f"Aluno Selecionado: **{st.session_state.get('input_nome_aluno', 'Estudante')}**")
+
         with col1:
             st.markdown("### :material/edit_note: Notas do PAS 1")
-            p1_pas1 = st.number_input("P1 PAS 1 (Língua Estrangeira)", -20.0, 20.0, value=None, step=0.001, key="p1_1", format="%.3f")
-            p2_pas1 = st.number_input("P2 PAS 1 (Conhecimentos)", -100.0, 100.0, value=None, step=0.001, key="p2_1", format="%.3f")
-            red_pas1 = st.number_input("Redação PAS 1", 0.0, 10.0, value=None, step=0.001, key="r_1", format="%.3f")
+            
+            p1_pas1 = st.number_input(
+                "P1 PAS 1 (Língua Estrangeira)", -20.0, 20.0, step=0.001, format="%.3f",
+                key="input_p1_pas1" # Key vinculada ao auto-fill
+            )
+            p2_pas1 = st.number_input(
+                "P2 PAS 1 (Conhecimentos)", -100.0, 100.0, step=0.001, format="%.3f",
+                key="input_p2_pas1"
+            )
+            red_pas1 = st.number_input(
+                "Redação PAS 1", 0.0, 10.0, step=0.001, format="%.3f",
+                key="input_red_pas1"
+            )
+            
         with col2:
             st.markdown("### :material/edit_note: Notas do PAS 2")
-            p1_pas2 = st.number_input("P1 PAS 2", -20.0, 20.0, value=None, step=0.001, key="p1_2", format="%.3f")
-            p2_pas2 = st.number_input("P2 PAS 2", -100.0, 100.0, value=None, step=0.001, key="p2_2", format="%.3f")
-            red_pas2 = st.number_input("Redação PAS 2", 0.0, 10.0, value=None, step=0.001, key="r_2", format="%.3f")
+            p1_pas2 = st.number_input(
+                "P1 PAS 2", -20.0, 20.0, step=0.001, format="%.3f",
+                key="input_p1_pas2"
+            )
+            p2_pas2 = st.number_input(
+                "P2 PAS 2", -100.0, 100.0, step=0.001, format="%.3f",
+                key="input_p2_pas2"
+            )
+            red_pas2 = st.number_input(
+                "Redação PAS 2", 0.0, 10.0, step=0.001, format="%.3f",
+                key="input_red_pas2"
+            )
         
         missing_data = any(v is None for v in [p1_pas1, p2_pas1, red_pas1, p1_pas2, p2_pas2, red_pas2])
         
         if not missing_data and st.button("🔮 Gerar Diagnóstico Oficial", type="primary"):
             try:
-                # Cálculo Original
-                eb_pas1, eb_pas2 = p1_pas1 + p2_pas1, p1_pas2 + p2_pas2
-                cresc_eb, cresc_red = eb_pas2 - eb_pas1, red_pas2 - red_pas1
+                # Recupera valores do session_state (garantindo float)
+                def get_val(key): return float(st.session_state.get(key, 0.0))
                 
-                features = np.array([[eb_pas1, red_pas1, eb_pas2, red_pas2, cresc_eb, cresc_red]])
+                v_p1_pas1 = get_val('input_p1_pas1')
+                v_p2_pas1 = get_val('input_p2_pas1')
+                v_red_pas1 = get_val('input_red_pas1')
+                v_p1_pas2 = get_val('input_p1_pas2')
+                v_p2_pas2 = get_val('input_p2_pas2')
+                v_red_pas2 = get_val('input_red_pas2')
+
+                # Salva snapshot para "Carregar Última"
+                # Salva snapshot para "Carregar Última"
+                st.session_state['historico_ultimo_calculo'] = {
+                    'input_p1_pas1': v_p1_pas1, 'input_p2_pas1': v_p2_pas1, 'input_red_pas1': v_red_pas1,
+                    'input_p1_pas2': v_p1_pas2, 'input_p2_pas2': v_p2_pas2, 'input_red_pas2': v_red_pas2,
+                    'input_cota': st.session_state.get('input_cota'),
+                    'input_trienio': st.session_state.get('input_trienio'),
+                    'input_nome_aluno': st.session_state.get('input_nome_aluno', '')
+                }
+
+                # Cálculo Original
+                eb_pas1, eb_pas2 = v_p1_pas1 + v_p2_pas1, v_p1_pas2 + v_p2_pas2
+                cresc_eb, cresc_red = eb_pas2 - eb_pas1, v_red_pas2 - v_red_pas1
+                
+                features = np.array([[eb_pas1, v_red_pas1, eb_pas2, v_red_pas2, cresc_eb, cresc_red]])
                 features_scaled = SCALER.transform(features) if SCALER else features
                 
                 # Predições de cada modelo para ensemble
@@ -1633,9 +1856,9 @@ elif page == "preditor":
                 recommended_model = 'lgbm' # Default
                 if META_MODEL and META_SCALER:
                     meta_features = np.array([[
-                        eb_pas1, red_pas1, eb_pas2, red_pas2,
+                        eb_pas1, v_red_pas1, eb_pas2, v_red_pas2,
                         cresc_eb, cresc_red,
-                        abs(cresc_eb)/(abs(eb_pas1)+0.01), abs(cresc_red)/(abs(red_pas1)+0.01),
+                        abs(cresc_eb)/(abs(eb_pas1)+0.01), abs(cresc_red)/(abs(v_red_pas1)+0.01),
                         (eb_pas1+eb_pas2)/2, 1 if cresc_eb > 0 else (-1 if cresc_eb < 0 else 0)
                     ]])
                     best_model_label = META_MODEL.predict(META_SCALER.transform(meta_features))[0]
@@ -1649,9 +1872,9 @@ elif page == "preditor":
                     'recommended_model': recommended_model,
                     'arg_final_pred': arg_final_pred,
                     'eb_pas1': eb_pas1, 'eb_pas2': eb_pas2,
-                    'red_pas1': red_pas1, 'red_pas2': red_pas2,
-                    'p1_pas1': p1_pas1, 'p2_pas1': p2_pas1,
-                    'p1_pas2': p1_pas2, 'p2_pas2': p2_pas2,
+                    'red_pas1': v_red_pas1, 'red_pas2': v_red_pas2,
+                    'p1_pas1': v_p1_pas1, 'p2_pas1': v_p2_pas1,
+                    'p1_pas2': v_p1_pas2, 'p2_pas2': v_p2_pas2,
                 }
             except Exception as e:
                 st.error(f"Erro: {e}")
@@ -1692,49 +1915,49 @@ elif page == "preditor":
             # --- ANÁLISE DE PROBABILIDADE (ORIGINAL + COTA) ---
             st.markdown(f"#### :material/school: Análise de Probabilidade ({semester_option})")
             
-            # 1. Filtra Dados pela COTA SELECIONADA
-            df_cota_atual = df_notas[
+            # 1. Filtra Dados pela COTA SELECIONADA (SEM FILTRO DE CHAMADA FIXA)
+            df_cota_raw = df_notas[
                 (df_notas['Trienio'] == ref_triennium) & 
                 (df_notas['Semestre'] == semester_db) &
-                (df_notas['Sistema_Nome'] == cota_selecionada) &
-                (df_notas['Chamada'] == '1ª')
-            ].sort_values(['Curso_Limpo', 'Campus', 'Turno'])
+                (df_notas['Sistema_Nome'] == cota_selecionada)
+            ].copy()
             
-            # Cria uma lista de objetos/dicionários para o selectbox para garantir unicidade
-            # Unimos Nome + Campus + Turno para a chave única
-            df_cota_atual['Combo_Nome'] = df_cota_atual['Curso_Limpo'] + " (" + df_cota_atual['Campus'] + " - " + df_cota_atual['Turno'] + ")"
-            opcoes_lista = df_cota_atual['Combo_Nome'].tolist()
+            # 2. LIMPEZA RIGOROSA (Step 540) - Evita duplicatas por espaços em branco
+            for c in ['Curso_Limpo', 'Campus', 'Turno', 'Chamada']:
+                if c in df_cota_raw.columns:
+                    df_cota_raw[c] = df_cota_raw[c].astype(str).str.strip()
             
-            # Cria dicionário com a última chamada de cada curso
-            ultimas_chamadas = {}
-            for combo in opcoes_lista:
-                curso_info = df_cota_atual[df_cota_atual['Combo_Nome'] == combo].iloc[0]
-                df_base = df_notas[
-                    (df_notas['Trienio'] == ref_triennium) & 
-                    (df_notas['Semestre'] == semester_db) &
-                    (df_notas['Curso_Limpo'] == curso_info['Curso_Limpo']) &
-                    (df_notas['Campus'] == curso_info['Campus']) &
-                    (df_notas['Turno'] == curso_info['Turno']) &
-                    (df_notas['Sistema_Nome'] == cota_selecionada)
-                ]
+            # Cria identificador único para deduplicação
+            df_cota_raw['Combo_Nome'] = df_cota_raw['Curso_Limpo'] + " (" + df_cota_raw['Campus'] + " - " + df_cota_raw['Turno'] + ")"
+            
+            # 3. DEDUPLICAÇÃO INTELIGENTE
+            if not df_cota_raw.empty:
+                # Extrai numeral da chamada para garantir ordenação correta (1ª < 2ª)
+                df_cota_raw['Chamada_Num'] = df_cota_raw['Chamada'].str.extract('(\d+)').fillna(0).astype(int)
                 
                 if semester_int == 1:
-                    # 1º Semestre: Menor Nota (Última Chamada)
-                     df_chamadas = df_base.sort_values('Min', ascending=True)
+                    # 1º Semestre: Prioridade para ÚLTIMA CHAMADA (Menor Nota = Piso de entrada)
+                    df_cota_clean = df_cota_raw.sort_values(['Combo_Nome', 'Min'], ascending=[True, True]).drop_duplicates('Combo_Nome', keep='first')
                 else:
-                    # 2º Semestre: Maior Nota (1ª Chamada)
-                     df_chamadas = df_base.sort_values('Min', ascending=False)
-                
-                if not df_chamadas.empty:
-                    ultimas_chamadas[combo] = {
-                        'nota': df_chamadas.iloc[0]['Min'],
-                        'chamada': df_chamadas.iloc[0]['Chamada']
-                    }
-                else:
-                    ultimas_chamadas[combo] = {
-                        'nota': curso_info['Min'],
-                        'chamada': '1ª'
-                    }
+                    # 2º Semestre: Prioridade para PRIMEIRA CHAMADA DISPONÍVEL (Maior Nota = Corte inicial)
+                    df_cota_clean = df_cota_raw.sort_values(['Combo_Nome', 'Chamada_Num'], ascending=[True, True]).drop_duplicates('Combo_Nome', keep='first')
+            else:
+                df_cota_clean = df_cota_raw.copy()
+
+            opcoes_lista = sorted(df_cota_clean['Combo_Nome'].unique().tolist())
+            
+            # Cria dicionário de referência para o selectbox
+            ultimas_chamadas = {}
+            for _, row in df_cota_clean.iterrows():
+                ultimas_chamadas[row['Combo_Nome']] = {
+                    'nota': row['Min'],
+                    'chamada': row['Chamada']
+                }
+            
+            # Fallback for empty dictionary if needed
+            if not ultimas_chamadas and not df_cota_clean.empty:
+                 for _, row in df_cota_clean.iterrows():
+                     ultimas_chamadas[row['Combo_Nome']] = {'nota': row['Min'], 'chamada': row['Chamada']}
             
             # Seletor de Curso
             curso_combo_sel = st.selectbox(
@@ -1745,35 +1968,30 @@ elif page == "preditor":
             
             if curso_combo_sel != "Selecione...":
                 # Extrai os dados do curso selecionado via Combo_Nome
-                row_sel = df_cota_atual[df_cota_atual['Combo_Nome'] == curso_combo_sel].iloc[0]
+                row_sel = df_cota_raw[df_cota_raw['Combo_Nome'] == curso_combo_sel].iloc[0]
                 curso_selecionado = row_sel['Curso_Limpo']
                 campus_sel = row_sel['Campus']
                 turno_sel = row_sel['Turno']
                 
-                # Busca a chamada correta baseada na regra de negócio (Min vs Max)
-                df_base_curso = df_notas[
-                    (df_notas['Trienio'] == ref_triennium) & 
-                    (df_notas['Semestre'] == semester_db) &
-                    (df_notas['Curso_Limpo'] == curso_selecionado) &
-                    (df_notas['Campus'] == campus_sel) &
-                    (df_notas['Turno'] == turno_sel) &
-                    (df_notas['Sistema_Nome'] == cota_selecionada)
-                ]
+                # Busca a chamada correta baseada na regra de negócio
+                # Reutilizamos df_cota_raw que já está filtrado por Cota/Ref/Semestre
+                # Apenas filtramos pelo curso específico
+                df_base_curso = df_cota_raw[df_cota_raw['Combo_Nome'] == curso_combo_sel]
                 
                 if semester_int == 1:
-                    # 1º Semestre: Menor Nota (Última Chamada) -> ascending=True
+                    # 1º Semestre: Menor Nota (Última Chamada)
                     df_chamadas_curso = df_base_curso.sort_values('Min', ascending=True)
                 else:
-                    # 2º Semestre: Maior Nota (1ª Chamada) -> ascending=False
-                    df_chamadas_curso = df_base_curso.sort_values('Min', ascending=False)
+                    # 2º Semestre: Primeira Chamada Disponível (Maior Nota/Mais Restritiva)
+                    df_chamadas_curso = df_base_curso.sort_values('Chamada', ascending=True)
                 
                 if not df_chamadas_curso.empty:
                     ultima_chamada = df_chamadas_curso.iloc[0]
                     nota_corte = ultima_chamada['Min']
                     chamada_ref = ultima_chamada['Chamada']
                 else:
-                    nota_corte = row_sel['Min']
-                    chamada_ref = '1ª'
+                    nota_corte = 0.0
+                    chamada_ref = 'N/A'
                 
                 # CÁLCULO ORIGINAL DE PROBABILIDADE (Mantido!)
                 if calculate_approval_probability:
@@ -1841,12 +2059,13 @@ elif page == "preditor":
                         # Remove as duplicatas de ano, mantendo apenas a primeira aparição (que será a maior/última chamada)
                         df_clean = df_sorted.drop_duplicates(subset=['Ano_X'], keep='first').copy()
                     else:
-                        # Fallback de segurança: Se não achar a coluna, pega a MENOR nota do ano (que costuma ser a última chamada)
-                        coluna_nota = 'Min' # Ajuste para Min
+                        
+                        coluna_nota = 'Min' # Ajuste para 'Min' se 'Nota' não existir
                         if not df_evolucao.empty:
                             df_clean = df_evolucao.sort_values(by=['Ano_X', coluna_nota], ascending=[True, True]).drop_duplicates(subset=['Ano_X'], keep='first')
                         else:
                             df_clean = pd.DataFrame()
+
 
                     
                     # --- BLOCO DE PLOTAGEM (CORREÇÃO DE COLUNAS - Step 944) ---
@@ -1958,17 +2177,18 @@ elif page == "preditor":
             # --- LISTA AUTOMÁTICA (Restaurada e Filtrada pela Cota) ---
             st.markdown(f"#### :material/domain: Cursos ao seu alcance (Top 10 no Sistema de Concorrência)")
             
-            # Recalcula probabilidades para TODOS os cursos da cota
-            if not df_cota_atual.empty and calculate_approval_probability:
-                df_cota_atual['Chance %'] = df_cota_atual['Min'].apply(
+            # Recalcula probabilidades para TODOS os cursos da cota (USANDO DATAFRAME LIMPO)
+            if not df_cota_clean.empty and calculate_approval_probability:
+                # Copiamos para evitar SettingWithCopyWarning
+                df_recomenda = df_cota_clean.copy()
+                
+                df_recomenda['Chance %'] = df_recomenda['Min'].apply(
                     lambda x: calculate_approval_probability(arg_ajustado, x, rmse=ARG_FINAL_MAE) * 100
                 )
                 
-                # Ordena pela maior chance, mas remove os 100% fáceis demais se quiser focar nos "próximos"
-                # Na versão original, mostrávamos os mais próximos (distância) ou maior chance. 
-                # Vou usar Distância Absoluta para mostrar o "Radar" (o que está perto da nota dele)
-                df_cota_atual['Dist'] = abs(df_cota_atual['Min'] - arg_ajustado)
-                closest = df_cota_atual.sort_values('Dist').head(10)
+                # Ordena pela proximidade da nota (Radar de cursos viáveis)
+                df_recomenda['Dist'] = abs(df_recomenda['Min'] - arg_ajustado)
+                closest = df_recomenda.sort_values('Dist').head(10)
                 
                 st.dataframe(
                     closest[['Curso_Limpo', 'Campus', 'Turno', 'Min', 'Chance %']].rename(columns={'Curso_Limpo': 'Curso', 'Min': 'Corte'}),
@@ -1995,10 +2215,16 @@ elif page == "preditor":
         
         if 'prediction_results' in st.session_state and TargetCalculator:
             res = st.session_state.prediction_results
-            # Prepara notas (usa valores reais de P1 e P2)
+            # Prepara notas (usa valores reais de P1 e P2 do session_state)
+            def get_val(key): return float(st.session_state.get(key, 0.0))
+            
             notas_validas = {
-                'P1_PAS1': res['p1_pas1'], 'P2_PAS1': res['p2_pas1'], 'Red_PAS1': res['red_pas1'],
-                'P1_PAS2': res['p1_pas2'], 'P2_PAS2': res['p2_pas2'], 'Red_PAS2': res['red_pas2']
+                'P1_PAS1': get_val('input_p1_pas1'), 
+                'P2_PAS1': get_val('input_p2_pas1'), 
+                'Red_PAS1': get_val('input_red_pas1'),
+                'P1_PAS2': get_val('input_p1_pas2'), 
+                'P2_PAS2': get_val('input_p2_pas2'), 
+                'Red_PAS2': get_val('input_red_pas2')
             }
             calc = TargetCalculator()
             
@@ -2777,20 +3003,66 @@ elif page == "pdf":
         with col_input:
             st.markdown("### Preenchimento Manual (Automático)")
             
-            # Botão para recarregar dados do Preditor
-            if st.button("🔄 Carregar Última Simulação"):
-                st.rerun()
+            # --- INICIALIZAÇÃO DE ESTADO DO GERADOR DE PDF ---
+            def init_pdf_state():
+                # Filtros principais
+                if 'pdf_sem_manual' not in st.session_state: st.session_state['pdf_sem_manual'] = 1
+                if 'pdf_tri_manual' not in st.session_state: st.session_state['pdf_tri_manual'] = "2023-2025"
+                if 'pdf_cota_manual' not in st.session_state: st.session_state['pdf_cota_manual'] = "Sistema Universal"
+                
+                # Campos do formulário
+                if 'pdf_student_name' not in st.session_state: st.session_state['pdf_student_name'] = "Estudante"
+                if 'pdf_p1_pas1' not in st.session_state: st.session_state['pdf_p1_pas1'] = 0.0
+                if 'pdf_p2_pas1' not in st.session_state: st.session_state['pdf_p2_pas1'] = 0.0
+                if 'pdf_red_pas1' not in st.session_state: st.session_state['pdf_red_pas1'] = 0.0
+                if 'pdf_p1_pas2' not in st.session_state: st.session_state['pdf_p1_pas2'] = 0.0
+                if 'pdf_p2_pas2' not in st.session_state: st.session_state['pdf_p2_pas2'] = 0.0
+                if 'pdf_red_pas2' not in st.session_state: st.session_state['pdf_red_pas2'] = 0.0
+
+            init_pdf_state()
+
+            # Botão para recarregar dados do Preditor (MOVIDO PARA O TOPO para evitar Erro de SessionState)
+            if st.button("🔄 Carregar Última Simulação", key="btn_load_last_sim_pdf_top"):
+                if 'historico_ultimo_calculo' in st.session_state:
+                    hist = st.session_state['historico_ultimo_calculo']
+                    
+                    # Mapeamento do Histórico para as Chaves do PDF
+                    st.session_state['pdf_student_name'] = hist.get('input_nome_aluno', '')
+                    st.session_state['pdf_p1_pas1'] = hist.get('input_p1_pas1', 0.0)
+                    st.session_state['pdf_p2_pas1'] = hist.get('input_p2_pas1', 0.0)
+                    st.session_state['pdf_red_pas1'] = hist.get('input_red_pas1', 0.0)
+                    st.session_state['pdf_p1_pas2'] = hist.get('input_p1_pas2', 0.0)
+                    st.session_state['pdf_p2_pas2'] = hist.get('input_p2_pas2', 0.0)
+                    st.session_state['pdf_red_pas2'] = hist.get('input_red_pas2', 0.0)
+                    
+                    # Sync de Cota e Triênio (Se houver match nas listas)
+                    # Nota: As listas ainda não foram geradas aqui, mas podemos confiar nos valores do session/histórico
+                    # Se o valor não existir na lista quando o widget for criado, o Streamlit pode reclamar ou usar default.
+                    # Mas como usamos index/key, se a key já estiver setada, ele tenta usar.
+                    
+                    cota_hist = hist.get('input_cota')
+                    if cota_hist:
+                        st.session_state['pdf_cota_manual'] = cota_hist
+                        
+                    tri_hist = hist.get('input_trienio')
+                    if tri_hist:
+                        st.session_state['pdf_tri_manual'] = tri_hist
+
+                    st.toast("Dados da simulação carregados! O formulário será atualizado.")
+                    st.rerun()
+                else:
+                    st.warning("Nenhuma simulação recente encontrada.")
 
             # --- SELEÇÃO DE CURSO (Manual) ---
             col_f1, col_f2, col_f3 = st.columns(3)
             
             with col_f1:
-                target_semester = st.selectbox("Semestre de Ingresso", [1, 2], index=0, format_func=lambda x: f"{x}º Semestre", key="pdf_sem_manual")
+                target_semester = st.selectbox("Semestre de Ingresso", [1, 2], format_func=lambda x: f"{x}º Semestre", key="pdf_sem_manual")
             
             with col_f2:
                 # Vou usar as mesmas variáveis de triênio disponíveis globalmente
                 trienios_pdf_list = sorted(list(TRIENNIUM_STATS.keys()), reverse=True)
-                ref_triennium_pdf = st.selectbox("Triênio de Referência", trienios_pdf_list, index=1, key="pdf_tri_manual")
+                ref_triennium_pdf = st.selectbox("Triênio de Referência", trienios_pdf_list, key="pdf_tri_manual")
                 
             with col_f3:
                 # Lista de cotas extraída diretamente do CSV de cortes
@@ -2804,53 +3076,127 @@ elif page == "pdf":
                 
                 cota_pdf = st.selectbox("Sistema de Concorrência", lista_cotas_pdf, key="pdf_cota_manual")
                 
-            df_cursos_pdf = load_course_stats(semester=target_semester, triennium=ref_triennium_pdf, system=cota_pdf)
+            # --- LÓGICA DE CURSO SINCRONIZADA ABAIXO (DEPOIS DO CARREGAR ÚLTIMA) ---
+
+            # Botão movido para o topo
+            col_opts_1, col_opts_2 = st.columns(2)
+
+            # ... Resto da UI ...
             
-            if df_cursos_pdf is not None:
-                # Ordena alfabeticamente para facilitar a busca no selectbox
-                df_cursos_pdf = df_cursos_pdf.sort_values('Curso')
-                cursos_lista = df_cursos_pdf['Curso'].unique().tolist()
-                course_scores_pdf = dict(zip(df_cursos_pdf['Curso'], df_cursos_pdf['Min']))
+            # --- SELEÇÃO DE CURSO (Sync Total com Page 3) ---
+            st.markdown("### Selecione o Curso Alvo")
+            
+            # Mapeia o semestre selecionado para o formato do DB
+            semester_int_pdf = target_semester
+            semester_db_pdf = "1º Semestre" if semester_int_pdf == 1 else "2º Semestre"
+            
+            # Mapeia o triênio selecionado para o formato do DB (ex: "2023-2025" -> "2022-2024")
+            pdf_tri_sel = ref_triennium_pdf
+            pdf_cota_sel = cota_pdf
+
+            trienio_ref_pdf = ""
+            start_year_pdf, end_year_pdf = map(int, pdf_tri_sel.split('-'))
+            trienio_ref_pdf = f"{start_year_pdf - 1}-{end_year_pdf - 1}"
+            
+            # 1. Filtra Dados Iniciais
+            # 1. Filtra Dados Iniciais (Usando função robusta encapsulada)
+            # Reverte para load_course_stats para garantir compatibilidade de strings (1º vs 1°)
+            df_cota_pdf = load_course_stats(semester=target_semester, triennium=trienio_ref_pdf, system=pdf_cota_sel)
+            
+            if df_cota_pdf is None:
+                df_cota_pdf = pd.DataFrame()
+            
+            # 2. LIMPEZA RIGOROSA (Mesma da Page 3)
+            # Garantir que a coluna de Curso existe (load_course_stats pode retornar 'Curso' ao invés de 'Curso_Limpo')
+            if 'Curso_Limpo' not in df_cota_pdf.columns and 'Curso' in df_cota_pdf.columns:
+                 df_cota_pdf['Curso_Limpo'] = df_cota_pdf['Curso']
+
+            for c in ['Curso_Limpo', 'Campus', 'Turno', 'Chamada']:
+                if c in df_cota_pdf.columns:
+                    df_cota_pdf[c] = df_cota_pdf[c].astype(str).str.strip()
+
+            # Cria identificador único
+            df_cota_pdf['Combo_Nome'] = df_cota_pdf['Curso_Limpo'] + " (" + df_cota_pdf['Campus'] + " - " + df_cota_pdf['Turno'] + ")"
+
+            # 3. DEDUPLICAÇÃO INTELIGENTE (Mesma da Page 3)
+            if not df_cota_pdf.empty:
+                df_cota_pdf['Chamada_Num'] = df_cota_pdf['Chamada'].str.extract(r'(\d+)').fillna(0).astype(int)
+                
+                if semester_int_pdf == 1:
+                    # 1º Semestre: Prioridade para ÚLTIMA CHAMADA (Menor Nota)
+                    df_cota_clean = df_cota_pdf.sort_values(['Combo_Nome', 'Min'], ascending=[True, True]).drop_duplicates('Combo_Nome', keep='first')
+                else:
+                    # 2º Semestre: Prioridade para PRIMEIRA CHAMADA DISPONÍVEL (Maior Nota - Conservadora)
+                    # Nota: Na Page 3 usamos Chamada_Num asc -> keep first. Vamos manter igual.
+                    df_cota_clean = df_cota_pdf.sort_values(['Combo_Nome', 'Chamada_Num'], ascending=[True, True]).drop_duplicates('Combo_Nome', keep='first')
+                    
+            else:
+                df_cota_clean = df_cota_pdf.copy()
+            
+            cursos_lista = sorted(df_cota_clean['Combo_Nome'].unique().tolist())
+
+            if cursos_lista:
+                # Dicionário de referências (Nota e Chamada) para exibição
+                course_info_pdf = {}
+                for _, row in df_cota_clean.iterrows():
+                    course_info_pdf[row['Combo_Nome']] = {
+                        'nota': row['Min'],
+                        'chamada': row.get('Chamada', 'N/A')
+                    }
                 
                 def fmt_course_pdf(nome):
-                    return f"{nome} (Corte: {course_scores_pdf.get(nome, 0):.3f})"
-                    
-                selected_course_name = st.selectbox(
+                    info = course_info_pdf.get(nome, {'nota': 0, 'chamada': 'N/A'})
+                    return f"{nome} [{info['chamada']}: {info['nota']:.3f}]"
+                
+                # Tenta pré-selecionar se houver input salvo
+                pre_index = None
+                saved_course = st.session_state.get('input_curso_alvo')
+                # Tenta match exato primeiro
+                if saved_course and saved_course in cursos_lista:
+                    pre_index = cursos_lista.index(saved_course)
+                
+                selected_combo = st.selectbox(
                     "Curso Pretendido", 
                     cursos_lista,
+                    index=pre_index if pre_index is not None else 0, # Default to first if no saved course or not found
                     format_func=fmt_course_pdf,
-                    help="Os cursos estão em ordem alfabética para facilitar a busca."
+                    help="Lista sincronizada com a regra: 1º Semestre (Última Chamada) | 2º Semestre (1ª Chamada)."
                 )
-                nota_corte_val = course_scores_pdf.get(selected_course_name, 0.0)
+                
+                # Extrai nome limpo para o PDF e nota de corte
+                if selected_combo:
+                    selected_course_name = selected_combo
+                    nota_corte_val = course_info_pdf.get(selected_combo, {}).get('nota', 0.0)
             else:
-                st.error("Erro ao carregar lista de cursos para os filtros selecionados.")
+                st.warning("Nenhum curso encontrado para os filtros selecionados.")
+                selected_combo = None
                 selected_course_name = ""
                 nota_corte_val = 0.0
+            
+            st.markdown("---")
 
             with st.form("pdf_manual_form"):
                 col1, col2 = st.columns(2)
                 
-                # Default values from Session State (Smart Filling)
-                def get_smart_val(key, default=0.0):
-                    return float(st.session_state.get(key, default))
+                # Helper para inicializar chaves do PDF no session state se não existirem
+                def init_pdf_key(key, default):
+                    if key not in st.session_state:
+                        st.session_state[key] = default
 
                 with col1:
-                    aluno = st.text_input("Nome do Aluno", "Estudante")
+                    aluno = st.text_input("Nome do Aluno", key="pdf_student_name")
                     
                     st.markdown("#### :material/edit_note: Notas PAS 1")
-                    p1_pas1 = st.number_input("PAS 1 - P1 (Língua)", 0.0, 20.0, get_smart_val('p1_pas1', 0.0), step=0.001, format="%.3f")
-                    p2_pas1 = st.number_input("PAS 1 - P2 (Gerais)", 0.0, 100.0, get_smart_val('p2_pas1', 0.0), step=0.001, format="%.3f")
-                    red_pas1 = st.number_input("PAS 1 - Redação", 0.0, 10.0, get_smart_val('red_pas1', 0.0), step=0.001, format="%.3f")
+                    p1_pas1 = st.number_input("PAS 1 - P1 (Língua)", 0.0, 20.0, step=0.001, format="%.3f", key="pdf_p1_pas1")
+                    p2_pas1 = st.number_input("PAS 1 - P2 (Gerais)", 0.0, 100.0, step=0.001, format="%.3f", key="pdf_p2_pas1")
+                    red_pas1 = st.number_input("PAS 1 - Redação", 0.0, 10.0, step=0.001, format="%.3f", key="pdf_red_pas1")
                     
                 with col2:
-                    # Spacer
-                    st.write("") 
-                    st.write("")
-                    
+                    st.empty() # Spacer
                     st.markdown("#### :material/edit_note: Notas PAS 2")
-                    p1_pas2 = st.number_input("PAS 2 - P1 (Língua)", 0.0, 20.0, get_smart_val('p1_pas2', 0.0), step=0.001, format="%.3f")
-                    p2_pas2 = st.number_input("PAS 2 - P2 (Gerais)", 0.0, 100.0, get_smart_val('p2_pas2', 0.0), step=0.001, format="%.3f")
-                    red_pas2 = st.number_input("PAS 2 - Redação", 0.0, 10.0, get_smart_val('red_pas2', 0.0), step=0.001, format="%.3f")
+                    p1_pas2 = st.number_input("PAS 2 - P1 (Língua)", 0.0, 20.0, step=0.001, format="%.3f", key="pdf_p1_pas2")
+                    p2_pas2 = st.number_input("PAS 2 - P2 (Gerais)", 0.0, 100.0, step=0.001, format="%.3f", key="pdf_p2_pas2")
+                    red_pas2 = st.number_input("PAS 2 - Redação", 0.0, 10.0, step=0.001, format="%.3f", key="pdf_red_pas2")
                     
                 st.info(f"Nota de Corte Selecionada: **{nota_corte_val:.3f}** (Calculada automaticamente)")
 
@@ -2951,8 +3297,16 @@ elif page == "pdf":
                 'z_score': reality_check_str # Substituído pelo Reality Check
             }
             
+            # DEBUG: Mostra os dados que estão indo para o PDF
+            with st.expander("🕵️ Dados brutos do PDF (Debug)", expanded=False):
+                st.json(data)
+
             try:
                 pdf_bytes = pdf_gen.generate_single_pdf(data)
+                
+                if not pdf_bytes:
+                    raise ValueError("O gerador retornou um PDF vazio. Verifique os logs do terminal.")
+                
                 st.success("PDF Gerado com Sucesso!")
                 st.download_button(
                     label=":material/download: Baixar PDF",
