@@ -602,9 +602,26 @@ def load_models():
 # Chamamos a função e garantimos que as variáveis globais existam
 MODELS, SCALER, META_MODEL, META_SCALER, ARG_FINAL_MODEL = load_models()
 
+# --- CONFIGURAÇÕES DOS MODELOS (Adicione logo abaixo do load_models) ---
 
+# Mapeamento: O Meta-Modelo devolve um número (0-3), precisamos traduzir para texto
+LABEL_TO_MODEL = {0: 'lgbm', 1: 'rf', 2: 'linear', 3: 'mlp'}
 
+# Erro Médio Absoluto (MAE) de cada modelo (para exibir a margem de erro)
+MODEL_MAE = {
+    'lgbm': 6.8123,
+    'rf': 6.9965,
+    'linear': 6.9371,
+    'mlp': 6.8423,
+}
 
+# Nomes bonitos para exibir na tela (opcional, mas bom ter)
+MODEL_NAMES = {
+    'lgbm': ':material/rocket_launch: LightGBM (Gradient Boosting)',
+    'rf': ':material/forest: Random Forest',
+    'linear': ':material/trending_up: Regressão Linear',
+    'mlp': ':material/psychology: Rede Neural MLP',
+}
 
 # =============================================================================
 # ESTATÍSTICAS POR TRIÊNIO (Régua Histórica)
