@@ -488,33 +488,38 @@ check_login()
 
 
 def download_models():
-    
     url = 'https://github.com/luizhtmoreira/Analise-Preditiva-PAS/releases/download/v1.0/models.zip'
     
-    # Define o caminho para a pasta 'app/models'
+    # Define caminhos absolutos
     base_path = Path(__file__).resolve().parent
     models_dir = base_path / "models"
     zip_path = base_path / "models.zip"
 
-    if not models_dir.exists() or len(os.listdir(models_dir)) < 2:
-        with st.spinner("Baixando inteligência do sistema..."):
-            response = requests.get(url, stream=True)
-            with open(zip_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                # Extrai dentro da pasta onde o script está
-                zip_ref.extractall(base_path)
-            
-            if os.path.exists(zip_path):
-                os.remove(zip_path)
+    # Se a pasta não existe, cria
+    if not models_dir.exists():
+        os.makedirs(models_dir)
 
-# CHAME A FUNÇÃO LOGO ABAIXO DA DEFINIÇÃO
-download_models()
-
-# Chama a função ANTES de tentar dar o joblib.load
-download_models()
+    # Só baixa se a pasta estiver vazia
+    if len(os.listdir(models_dir)) < 2:
+        try:
+            with st.spinner("Sincronizando modelos de IA..."):
+                response = requests.get(url, stream=True)
+                with open(zip_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=1024*1024):
+                        f.write(chunk)
+                
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    # EXTRAI TUDO PARA A RAIZ DO APP
+                    zip_ref.extractall(base_path)
+                
+                if os.path.exists(zip_path):
+                    os.remove(zip_path)
+                
+                st.success("Download concluído!")
+                # FORÇA O RECARREGAMENTO DA PÁGINA PARA O PYTHON LER OS ARQUIVOS NOVOS
+                st.rerun() 
+        except Exception as e:
+            st.error(f"Erro: {e}")
 
 # =============================================================================
 # CARREGAMENTO DOS MODELOS TREINADOS (ENSEMBLE + META-MODELO)
