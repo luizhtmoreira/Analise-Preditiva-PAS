@@ -1,7 +1,8 @@
-
+.streamlit/secrets.toml
 __pycache__/
 *.joblib
 *.pkl
+*.pyc
 .env
 .venv
 env/
