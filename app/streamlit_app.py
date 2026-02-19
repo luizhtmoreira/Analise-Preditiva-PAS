@@ -620,7 +620,10 @@ def check_login():
                         time.sleep(0.5)
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Erro real do Supabase: {e}")
+                        # Vamos descobrir o que o Render está lendo de verdade
+                        chave_secreta = os.getenv("SUPABASE_KEY")
+                        debug_chave = chave_secreta[:10] + "..." if chave_secreta else "TOTALMENTE VAZIA"
+                        st.error(f"Erro real: {e} | Render leu a chave: {debug_chave}")
                 else:
                     st.error("Erro de conexão com Supabase. Verifique secrets.toml")
         
