@@ -644,7 +644,7 @@ check_login()
 
 
 def download_models():
-    url = 'https://github.com/luizhtmoreira/Analise-Preditiva-PAS/releases/download/v1.0/models.zip'
+    url = 'https://www.dropbox.com/scl/fi/r2f427gr46ogyjjmmukfp/models.zip?rlkey=ni0csoom6sqwttlb79wozz429&st=19jwhpol&dl=1'
     
     base_path = Path(__file__).resolve().parent
     models_dir = base_path / "models"
