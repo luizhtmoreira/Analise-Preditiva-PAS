@@ -16,3 +16,4 @@ unidecode
 reportlab
 pypdf
 requests
+statsmodels
