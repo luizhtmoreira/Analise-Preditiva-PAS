@@ -568,8 +568,8 @@ def plot_distribution_overlay(df: pd.DataFrame):
 def init_connection():
     try:
         # Puxando as chaves diretamente do servidor (Render)
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_KEY")
+        url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
+        key = st.secrets.get("SUPABASE_KEY") or os.getenv("SUPABASE_KEY")
         
         # Trava de segurança para avisar se esquecermos de colocar no Render
         if not url or not key:
