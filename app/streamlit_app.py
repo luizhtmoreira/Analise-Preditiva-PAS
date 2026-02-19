@@ -436,7 +436,13 @@ st.markdown("""
         color: #1565C0;
         margin-bottom: 1rem;
     }
-</style>
+    
+    /* --- WHITE-LABEL CSS --- */
+    #MainMenu {visibility: hidden;}
+    [data-testid="stToolbar"] {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
 </style>
 """, unsafe_allow_html=True)
 
@@ -1439,12 +1445,19 @@ elif page == "ativos":
     
     with col_f3:
         # Triênios Disponíveis (Dinâmico + Defaults)
-        default_trienniums = ["2024-2026", "2023-2025"]
-        available_trienniums = set(default_trienniums)
+        # Triênios Disponíveis
+        available_trienniums = set()
         
+        # 1. Pega do DataFrame se existir
         if 'Ano_Trienio' in df.columns:
-            available_trienniums.update(df['Ano_Trienio'].dropna().unique())
+            unique_in_data = df['Ano_Trienio'].dropna().unique()
+            if len(unique_in_data) > 0:
+                available_trienniums.update(unique_in_data)
             
+        # 2. Fallback: Se não achou NADA nos dados, usa defaults
+        if not available_trienniums:
+             available_trienniums = {"2024-2026", "2023-2025"}
+
         # Ordena: Mais recente primeiro
         trienios_disp = sorted(list(available_trienniums), reverse=True)
         trienio_sel = st.selectbox(":material/calendar_today: Triênio", trienios_disp, key="ga_trienio")
