@@ -438,11 +438,18 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
-    /* --- WHITE-LABEL CSS (OPÇÃO NUCLEAR) --- */
-    [data-testid="stHeader"] {display: none !important;}
-    [data-testid="stToolbar"] {display: none !important;}
-    #MainMenu {display: none !important;}
-    footer {display: none !important;}
+    /* --- WHITE-LABEL CSS (O Exterminador Definitivo) --- */
+    /* 1. Esconde a barra superior inteira (Fork, GitHub, Menu) */
+    .stApp > header { display: none !important; }
+    [data-testid="stHeader"] { display: none !important; }
+    
+    /* 2. Esconde o ícone flutuante do Streamlit no canto inferior (Barquinho vermelho) */
+    .viewerBadge_container { display: none !important; }
+    .viewerBadge_link { display: none !important; }
+    
+    /* 3. Esconde opções extras do rodapé e menu interno */
+    #MainMenu { display: none !important; }
+    footer { display: none !important; }
     
 </style>
 """, unsafe_allow_html=True)
