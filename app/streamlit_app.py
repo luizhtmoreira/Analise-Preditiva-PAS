@@ -426,6 +426,7 @@ st.set_page_config(
 # CSS customizado
 st.markdown("""
 <style>
+    /* --- SEUS ESTILOS ORIGINAIS (MANTIDOS) --- */
     .stMetric { padding: 15px; border-radius: 10px; }
     .risk-high { background-color: #FFCDD2; }
     .risk-medium { background-color: #FFF9C4; }
@@ -437,11 +438,11 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
-    /* --- WHITE-LABEL CSS --- */
-    #MainMenu {visibility: hidden;}
-    [data-testid="stToolbar"] {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* --- WHITE-LABEL CSS (OPÇÃO NUCLEAR) --- */
+    [data-testid="stHeader"] {display: none !important;}
+    [data-testid="stToolbar"] {display: none !important;}
+    #MainMenu {display: none !important;}
+    footer {display: none !important;}
     
 </style>
 """, unsafe_allow_html=True)
