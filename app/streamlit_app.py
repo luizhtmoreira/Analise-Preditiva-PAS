@@ -3663,10 +3663,7 @@ elif page == "pdf":
                 'z_score': reality_check_str # Substituído pelo Reality Check
             }
             
-            # DEBUG: Mostra os dados que estão indo para o PDF
-            with st.expander("🕵️ Dados brutos do PDF (Debug)", expanded=False):
-                st.json(data)
-
+            # Gerar PDF
             try:
                 pdf_bytes = pdf_gen.generate_single_pdf(data)
                 
