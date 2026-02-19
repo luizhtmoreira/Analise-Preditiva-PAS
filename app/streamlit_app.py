@@ -41,6 +41,10 @@ import unicodedata
 import time
 from supabase import create_client, Client
 import os
+
+# --- CONFIGURAÇÃO DE AMBIENTE (TRIAL MODE) ---
+ENV = os.getenv('ENV', 'DEV')
+MODO_TRIAL = (ENV == 'PROD')
 import zipfile
 import requests
 import shutil
@@ -1091,10 +1095,14 @@ if page == "temporal":
     col1, col2 = st.columns([2, 1])
     
     with col1:
+        if MODO_TRIAL:
+            st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
+
         uploaded_file = st.file_uploader(
             "Faça upload do arquivo da turma (CSV ou Excel)",
             type=['csv', 'xlsx', 'xls'],
-            help="O arquivo deve conter colunas: Nome, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2"
+            help="O arquivo deve conter colunas: Nome, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2",
+            disabled=MODO_TRIAL
         )
         
         # Feedback se já existe dados carregados
@@ -2857,10 +2865,14 @@ elif page == "escola":
         
         # Opção de sobrescrever
         if st.checkbox("Substituir por arquivo local (.xlsx)"):
+            if MODO_TRIAL:
+                st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
+
             uploaded_file = st.file_uploader(
                 ":material/upload: Upload da lista de alunos da escola (Excel)",
                 type=['xlsx', 'xls'],
-                help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos."
+                help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos.",
+                disabled=MODO_TRIAL
             )
             if uploaded_file:
                 try:
@@ -2869,10 +2881,14 @@ elif page == "escola":
                      df_escola_input = pd.read_csv(uploaded_file)
     else:
         # 2. Upload Manual (Fallback)
+        if MODO_TRIAL:
+            st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
+
         uploaded_file = st.file_uploader(
             ":material/upload: Upload da lista de alunos da escola (Excel)",
             type=['xlsx', 'xls'],
-            help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos."
+            help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos.",
+            disabled=MODO_TRIAL
         )
         if uploaded_file:
              try:
@@ -3830,7 +3846,10 @@ elif page == "pdf":
             df_batch = st.session_state['df_global_escola'].copy()
             
             if st.checkbox("Substituir por arquivo local (CSV/Excel)", key="override_pdf_batch"):
-                uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch")
+                if MODO_TRIAL:
+                    st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
+                
+                uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch", disabled=MODO_TRIAL)
                 if uploaded_batch:
                     try:
                         df_batch = pd.read_csv(uploaded_batch) if uploaded_batch.name.endswith('.csv') else pd.read_excel(uploaded_batch)
@@ -3839,7 +3858,10 @@ elif page == "pdf":
                         df_batch = None
         else:
              # 2. Upload Manual (Fallback)
-            uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch")
+            if MODO_TRIAL:
+                st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
+
+            uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch", disabled=MODO_TRIAL)
             if uploaded_batch:
                 try:
                     df_batch = pd.read_csv(uploaded_batch) if uploaded_batch.name.endswith('.csv') else pd.read_excel(uploaded_batch)
