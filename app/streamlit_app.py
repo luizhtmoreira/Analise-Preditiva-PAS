@@ -620,7 +620,7 @@ def check_login():
                         time.sleep(0.5)
                         st.rerun()
                     except Exception as e:
-                        st.error("❌ Email ou senha incorretos.")
+                        st.error(f"Erro real do Supabase: {e}")
                 else:
                     st.error("Erro de conexão com Supabase. Verifique secrets.toml")
         
