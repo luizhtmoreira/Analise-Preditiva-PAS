@@ -34,6 +34,7 @@ import pandas as pd # type: ignore
 import numpy as np # type: ignore
 import plotly.express as px # type: ignore
 import plotly.graph_objects as go # type: ignore
+import plotly.figure_factory as ff # type: ignore
 from typing import Optional, Tuple # type: ignore
 import joblib # type: ignore
 import unicodedata
@@ -432,7 +433,114 @@ st.markdown("""
         margin-bottom: 1rem;
     }
 </style>
+</style>
 """, unsafe_allow_html=True)
+
+def plot_correlation(df: pd.DataFrame):
+    """
+    Gera um gráfico de dispersão (Moneyball) correlacionando PAS 1 e PAS 2.
+    """
+    if 'EB_PAS1' not in df.columns or 'EB_PAS2' not in df.columns:
+        return None
+    
+    # Define cor baseada na Turma se existir, senão usa azul padrão
+    color_col = 'Turma' if 'Turma' in df.columns and df['Turma'].nunique() > 1 else None
+    
+    # Cria o gráfico base
+    fig = px.scatter(
+        df,
+        x='EB_PAS1',
+        y='EB_PAS2',
+        color=color_col,
+        hover_data=['Nome'],
+        trendline="ols", # Adiciona linha de tendência linear
+        title="Correlação de Desempenho: PAS 1 vs PAS 2",
+        labels={'EB_PAS1': 'Escore Bruto PAS 1', 'EB_PAS2': 'Escore Bruto PAS 2'},
+        color_discrete_sequence=['#00AEEF'] if color_col is None else None # Brand Blue se não houver turma
+    )
+    
+    # Adiciona linha diagonal de referência (x=y)
+    # Para isso, precisamos saber os limites do gráfico
+    max_val = max(df['EB_PAS1'].max(), df['EB_PAS2'].max())
+    min_val = min(df['EB_PAS1'].min(), df['EB_PAS2'].min())
+    
+    # Adiciona a linha de identidade (y=x)
+    fig.add_shape(
+        type="line",
+        x0=min_val, y0=min_val,
+        x1=max_val, y1=max_val,
+        line=dict(color="Gray", width=2, dash="dash"),
+        name="Identidade (Manutenção)"
+    )
+    
+    # Ajustes visuais
+    fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(showgrid=True, gridcolor='#f0f0f0'),
+        yaxis=dict(showgrid=True, gridcolor='#f0f0f0'),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    
+    return fig
+
+    return fig
+
+def plot_distribution_overlay(df: pd.DataFrame):
+    """
+    Gera um gráfico de distribuição (KDE + Histograma) comparativo entre PAS 1 e PAS 2 using figure_factory.
+    """
+    if 'EB_PAS1' not in df.columns or 'EB_PAS2' not in df.columns:
+        return None
+
+    # Prepara os dados (remove NaNs para o cálculo do KDE)
+    x1 = df['EB_PAS1'].dropna()
+    x2 = df['EB_PAS2'].dropna()
+    
+    if len(x1) < 2 or len(x2) < 2:
+         return None # Precisa de dados para KDE
+
+    hist_data = [x1, x2]
+    group_labels = ['PAS 1', 'PAS 2']
+    colors = ['#00AEEF', '#1B3B6F'] # Cyan e Navy
+
+    # Cria o distplot (Histograma + KDE)
+    fig = ff.create_distplot(
+        hist_data, 
+        group_labels, 
+        bin_size=5, 
+        show_hist=True, 
+        show_rug=False,
+        colors=colors
+    )
+
+    # Layout Settings
+    fig.update_layout(
+        title={
+            'text': "Evolução de Performance: PAS 1 vs PAS 2",
+            'y': 0.9,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        xaxis_title="Nota (Escore Bruto)",
+        yaxis_title="Densidade / Frequência",
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False),
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="right",
+            x=0.99,
+            bgcolor="rgba(255, 255, 255, 0.5)" # Semi-transparent legend bg
+        ),
+        margin=dict(l=20, r=20, t=50, b=20)
+    )
+
+    return fig
+
 
 # =============================================================================
 # SISTEMA DE LOGIN E SEGURANÇA (SUPABASE)
@@ -1147,16 +1255,13 @@ if page == "temporal":
                         st.metric("Tendência (P1 → P2)", f"{trend:+.2f}", delta=f"{trend:+.2f}")
                 
                 # Gráfico de distribuição (Apenas PAS 1 e 2)
-                fig = px.histogram(
-                    df.melt(value_vars=['EB_PAS1', 'EB_PAS2'], var_name='Etapa', value_name='Escore Bruto'),
-                    x='Escore Bruto',
-                    color='Etapa',
-                    barmode='overlay',
-                    title='Distribuição de Escores Brutos (PAS 1 vs PAS 2)',
-                    opacity=0.7,
-                    color_discrete_map={'EB_PAS1': '#87CEEB', 'EB_PAS2': '#4682B4'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                # Gráfico: Histograma Comparativo (Overlay)
+                fig = plot_distribution_overlay(df)
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("Dados insuficientes para gerar histograma comparativo.")
+
 
             else: # Triênios Concluídos
                 df['EB_PAS3'] = df['P1_PAS3'] + df['P2_PAS3']
