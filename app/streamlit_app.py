@@ -567,11 +567,15 @@ def plot_distribution_overlay(df: pd.DataFrame):
 @st.cache_resource
 def init_connection():
     try:
-        if "supabase" not in st.secrets:
-            st.error("Seção [supabase] não encontrada no secrets.toml")
+        # Puxando as chaves diretamente do servidor (Render)
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+        
+        # Trava de segurança para avisar se esquecermos de colocar no Render
+        if not url or not key:
+            st.error("Variáveis SUPABASE_URL ou SUPABASE_KEY não encontradas no servidor.")
             return None
-        url = st.secrets["supabase"]["url"]
-        key = st.secrets["supabase"]["key"]
+            
         return create_client(url, key)
     except Exception as e:
         st.error(f"Erro ao inicializar Supabase: {e}")
