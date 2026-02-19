@@ -461,6 +461,18 @@ def check_login():
 
     # Se NÃO estiver logado, mostra tela de bloqueio
     if not st.session_state['logged_in']:
+        # --- CSS PERSONALIZADO PARA LOGIN ---
+        st.markdown("""
+            <style>
+            /* Hover effect for the login button */
+            div.stButton > button:first-child:hover {
+                background-color: #007bff !important;
+                color: white !important;
+                border-color: #007bff !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
         # Centraliza o login
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
@@ -481,6 +493,16 @@ def check_login():
                         st.error("❌ Email ou senha incorretos.")
                 else:
                     st.error("Erro de conexão com Supabase. Verifique secrets.toml")
+        
+        # Footer Branding
+        st.markdown(
+            """
+            <div style="text-align: center; margin-top: 50px; color: #666; font-size: 0.85rem;">
+                🔒 Ambiente Seguro | <b>Vetor PAS</b>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         
         st.stop() # 🛑 PARA TUDO AQUI SE NÃO ESTIVER LOGADO
 
@@ -820,14 +842,7 @@ else:
 st.sidebar.markdown("---")
 
 
-# --- INFO DO USUÁRIO ---
-if st.session_state.get('logged_in'):
-    st.sidebar.caption(f"👤 Logado como: {st.session_state['user_email']}")
-    if st.sidebar.button("Sair (Logout)"):
-        if supabase:
-            supabase.auth.sign_out()
-        st.session_state['logged_in'] = False
-        st.rerun()
+# (Bloco de info do usuário movido para o final da sidebar)
 
 # Dicionário de Páginas (ID -> Label com Ícone Material)
 PAGES = {
@@ -849,7 +864,25 @@ selection = st.sidebar.radio(
 page = next(key for key, value in PAGES.items() if value == selection)
 
 st.sidebar.markdown("---")
-st.sidebar.caption("🔒 Ambiente Seguro | Desenvolvido por Vetor PAS")
+
+# --- INFO DO USUÁRIO (Final da Sidebar) ---
+if st.session_state.get('logged_in'):
+    st.sidebar.caption(f"👤 Logado como: {st.session_state['user_email']}")
+    if st.sidebar.button("Sair (Logout)"):
+        if supabase:
+            supabase.auth.sign_out()
+        st.session_state['logged_in'] = False
+        st.rerun()
+
+# Espaçador e Footer com CSS para não quebrar linha
+st.sidebar.markdown(
+    """
+    <div style="white-space: nowrap; font-size: 0.8rem; color: gray;">
+        🔒 Ambiente Seguro | Desenvolvido por Vetor PAS
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # =============================================================================
@@ -967,6 +1000,16 @@ if page == "temporal":
                 else:
                     st.session_state.df = pd.read_excel(uploaded_file)
                 st.success(f":material/check_circle: Arquivo carregado: {len(st.session_state.df)} alunos")
+                
+                # --- Normalização de Colunas de Cota (Novo Mapeamento) ---
+                # Garante que colunas com nomes variados sejam mapeadas para 'Cota'
+                df_temp = st.session_state.df
+                possible_quota_cols = ['Sistema', 'Sistema_Nome', 'sistema', 'cota']
+                for col in possible_quota_cols:
+                    if col in df_temp.columns and 'Cota' not in df_temp.columns:
+                        df_temp = df_temp.rename(columns={col: 'Cota'})
+                st.session_state.df = df_temp
+
             except Exception as e:
                 st.error(f":material/error: Erro ao ler arquivo: {e}")
     
@@ -1252,28 +1295,15 @@ elif page == "ativos":
             'ADMINISTRAÇÃO (BACHARELADO)', 'PSICOLOGIA (BACHARELADO)', 'CIÊNCIA DA COMPUTAÇÃO (BACHARELADO)',
         ], n_rows, p=[0.20, 0.20, 0.15, 0.15, 0.15, 0.15])
     if 'Cota' not in df.columns:
-        np.random.seed(45)
-        # O banco do usuário só tem 2 sistemas: Universal e Cota para Negros
-        # Distribuição estimada: 80% Universal, 20% Negros
-        df['Cota'] = np.random.choice(
-            ['Sistema Universal', 'Cota para Negros'], 
-            n_rows, p=[0.8, 0.2]
-        )
+        # Fallback Determinístico: Se não tem coluna Cota, assume Universal para todos
+        # (Usuário optou por remover a aleatoriedade)
+        df['Cota'] = 'Sistema Universal'
     else:
-        # Preenche valores nulos com Sistema Universal (segurança)
-        if df['Cota'].isnull().any():
-             # Gera valores apenas para os nulos se quiser aleatório ou default
-             # Aqui vou assumir default Universal para evitar problemas, ou manter aleatório para mocks
-             # Vamos preencher NaN com aleatório para manter a lógica de mock misturado
-             mask_null = df['Cota'].isnull()
-             n_null = mask_null.sum()
-             if n_null > 0:
-                 np.random.seed(45)
-                 fill_values = np.random.choice(
-                    ['Sistema Universal', 'Cota para Negros'], 
-                    n_null, p=[0.8, 0.2]
-                 )
-                 df.loc[mask_null, 'Cota'] = fill_values
+        # Se existe a coluna, preenche apenas os buracos (NaN) com Universal
+        df['Cota'] = df['Cota'].fillna('Sistema Universal')
+
+    # Removemos a lógica de np.random.choice que causava discrepância
+    # (Código legado de mock removido/substituído acima)
     
     # =================================================================
     # FILTROS HIERÁRQUICOS

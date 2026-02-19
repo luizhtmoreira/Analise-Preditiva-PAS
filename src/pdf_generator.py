@@ -168,9 +168,9 @@ class PDFGenerator:
         # Set color to Blue #184283 for PAS 3 data
         c.setFillColor(HexColor("#184283"))
         
-        c.drawString(540, 110, f"{data.get('pas3_p1_est', '')}*")
-        c.drawString(540, 93, str(data.get('pas3_p2_necessario', '')))
-        c.drawString(540, 75, f"{data.get('pas3_red_est', '')}*")
+        c.drawString(550, 105, f"{data.get('pas3_p1_est', '')}*")
+        c.drawString(550, 86, str(data.get('pas3_p2_necessario', '')))
+        c.drawString(550, 65, f"{data.get('pas3_red_est', '')}*")
         
         # --- RESULTS ---
         c.setFillColor(HexColor("#FFFFFF"))
