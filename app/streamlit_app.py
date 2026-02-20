@@ -2888,7 +2888,7 @@ elif page == "escola":
     st.markdown("""
     > **Compare o desempenho dos alunos da sua escola com a média geral do PAS/UnB.**
     > 
-    > Faça upload de um arquivo Excel (.xlsx) contendo os **nomes dos alunos** da sua escola.
+    > Faça upload de um arquivo Excel (.xlsx) contendo as **inscrições dos alunos** da sua escola.
     """)
     
     # Carrega dataset completo
@@ -2920,7 +2920,7 @@ elif page == "escola":
             uploaded_file = st.file_uploader(
                 ":material/upload: Upload da lista de alunos da escola (Excel)",
                 type=['xlsx', 'xls'],
-                help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos.",
+                help="O arquivo deve ter uma coluna 'Inscricao' com os números de inscrição dos alunos.",
                 disabled=MODO_TRIAL
             )
             if uploaded_file:
@@ -2936,7 +2936,7 @@ elif page == "escola":
         uploaded_file = st.file_uploader(
             ":material/upload: Upload da lista de alunos da escola (Excel)",
             type=['xlsx', 'xls'],
-            help="O arquivo deve ter uma coluna 'Nome' com os nomes dos alunos.",
+            help="O arquivo deve ter uma coluna 'Inscricao' com os números de inscrição dos alunos.",
             disabled=MODO_TRIAL
         )
         if uploaded_file:
@@ -2980,7 +2980,7 @@ elif page == "escola":
         escola_nomes = st.session_state.escola_df
         
         st.markdown("---")
-        st.markdown("### :material/toc: Prévia dos nomes")
+        st.markdown("### :material/toc: Prévia dos dados")
         cols_to_hide = ['id', 'created_at']
         df_display = escola_nomes.drop(columns=[c for c in cols_to_hide if c in escola_nomes.columns])
         st.dataframe(df_display.head(10), use_container_width=True)
@@ -2996,24 +2996,17 @@ elif page == "escola":
         df_trienio = df_geral[df_geral['Ano_Trienio'] == trienio_sel]
         
         if st.button(":material/search: Analisar Escola vs População", type="primary"):
-            # Encontra os nomes na base geral
-            if 'Nome' in escola_nomes.columns:
-                nomes_escola = escola_nomes['Nome'].str.strip().str.upper()
-                df_trienio_upper = df_trienio.copy()
-                df_trienio_upper['Nome_Upper'] = df_trienio['Nome'].str.strip().str.upper()
+            if 'Inscricao' in escola_nomes.columns:
+                inscricoes_escola = escola_nomes['Inscricao'].astype(str).str.strip()
                 
-                # Match por nome (inclui homônimos) mas remove duplicatas para contagem única de ALUNOS
-                # Se um aluno da escola chama "JOAO SILVA" e na lista do PAS tem 2 "JOAO SILVA", conta como 1 encontrado.
-                df_encontrados_unique = df_trienio_upper[df_trienio_upper['Nome_Upper'].isin(nomes_escola)].drop_duplicates(subset=['Nome_Upper'])
+                # Garante que a coluna na base geral também é string para comparação
+                df_trienio = df_trienio.copy()
+                df_trienio['Inscricao'] = df_trienio['Inscricao'].astype(str).str.strip()
                 
-                # Mas para a análise de NOTAS, queremos todos os matches? 
-                # Se a escola enviou "JOAO SILVA" e tem 2 no PAS, qual é o dele?
-                # Por segurança, vamos manter todos os matches para cálculo de média (pode ser qualquer um dos dois),
-                # mas para a TAXA DE MATCH, usamos o unique.
+                # Match por inscrição (Mais seguro que nome)
+                df_escola = df_trienio[df_trienio['Inscricao'].isin(inscricoes_escola)]
                 
-                df_escola = df_trienio_upper[df_trienio_upper['Nome_Upper'].isin(nomes_escola)]
-                
-                n_encontrados = len(df_encontrados_unique) # Conta CPFs únicos achados (pelo nome)
+                n_encontrados = df_escola['Inscricao'].nunique() 
                 n_total = len(escola_nomes)
                 
                 # Garante que não passa de 100%
@@ -3360,7 +3353,7 @@ elif page == "escola":
                 st.caption("📌 **Como ler:** As linhas **COLORIDAS TRACEJADAS** mostram a média da sua escola em cada etapa. A linha cinza pontilhada mostra a média geral.")
                 
             else:
-                st.warning("⚠️ O arquivo enviado não possui uma coluna 'Nome' válida.")
+                st.warning("⚠️ O arquivo enviado não possui uma coluna 'Inscricao' válida.")
                 
         # Rodapé: Tabela de Nomes
         st.markdown("---")
