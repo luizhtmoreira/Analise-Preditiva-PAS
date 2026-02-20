@@ -1,21 +1,16 @@
+# Streamlit secrets
 .streamlit/secrets.toml
-__pycache__/
-*.joblib
-*.pkl
-*.pyc
-.env
-.venv
-env/
-venv/
-.DS_Store
-pdf_debug.txt
-debug_*.py
-inspect_*.py
-test_extract*.py
-test_gap.py
-test_global.py
-test_hybrid.py
+app/.streamlit/secrets.toml
 
-# Data
-data/**/*.pdf
-data/pdfs/
+# Bytes compiled
+__pycache__/
+*.py[cod]
+
+# Excel Data Files (Generated or Temporary)
+*.xlsx
+*.xls
+~$*
+
+# OS specific
+.DS_Store
+Thumbs.db
