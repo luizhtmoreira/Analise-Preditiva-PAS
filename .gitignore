@@ -15,6 +15,16 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Machine Learning Models (Hosted on Dropbox)
+models/
+*.joblib
+
+# Temporary Data/Logs
+extracted_students.csv
+found_students.txt
+students_extracted.txt
+git_status.txt
+
 # Virtual Environment
 .venv/
 venv/

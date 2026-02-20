@@ -646,7 +646,7 @@ check_login()
 def download_models():
     url = 'https://www.dropbox.com/scl/fi/r2f427gr46ogyjjmmukfp/models.zip?rlkey=ni0csoom6sqwttlb79wozz429&st=19jwhpol&dl=1'
     
-    base_path = Path(__file__).resolve().parent
+    base_path = Path(__file__).resolve().parent.parent
     models_dir = base_path / "models"
     zip_path = base_path / "models_temp.zip"
     
@@ -716,7 +716,7 @@ download_models()
 @st.cache_resource
 def load_models():
     # Garante que busca na pasta correta onde o script está
-    base_path = Path(__file__).resolve().parent
+    base_path = Path(__file__).resolve().parent.parent
     models_dir = base_path / "models"
     
     # Inicializa tudo como None para evitar o NameError
@@ -1387,10 +1387,10 @@ elif page == "ativos":
     st.title(":material/work: Gestão de Ativos")
     
     st.info("""
-    :material/target: **Lógica de Classificação (Duplo Corte: 1º e 2º Semestre):**
-    - 🟢 **Baixo Risco**: Argumento previsto ≥ nota de corte do **1º Semestre** → Aprovado direto
-    - 🟡 **Médio Risco / Oportunidade**: Argumento < corte do 1º Sem, mas ≥ corte do **2º Semestre** → Salvo pelo 2º Semestre
-    - 🔴 **Alto Risco**: Argumento < ambos os cortes → Considerar redirecionamento
+    :material/target: **Lógica de Classificação (Cascata de Probabilidades):**
+    - 🟢 **Baixo Risco (Confortável)**: Probabilidade 1º Sem ≥ 50% OU 2º Sem ≥ 75%
+    - 🟡 **Oportunidade (2º Sem)**: Probabilidade 1º Sem < 50% E 2º Sem ≥ 30%
+    - 🔴 **Alto Risco**: Probabilidade 2º Sem < 30%
     """)
 
     
