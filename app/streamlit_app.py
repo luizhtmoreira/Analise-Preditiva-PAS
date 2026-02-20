@@ -1392,6 +1392,7 @@ elif page == "ativos":
     - 🟡 **Médio Risco / Oportunidade**: Argumento < corte do 1º Sem, mas ≥ corte do **2º Semestre** → Salvo pelo 2º Semestre
     - 🔴 **Alto Risco**: Argumento < ambos os cortes → Considerar redirecionamento
     """)
+
     
     if st.session_state.df is None:
         st.warning(":material/warning: Primeiro faça upload dos dados na página 'Análise Temporal'")
@@ -1710,6 +1711,18 @@ elif page == "ativos":
                 gap = -999.0
                 chance = 0.0
         
+        # --- CÁLCULO DE PROBABILIDADES PARA CLASSIFICAÇÃO (NOVO) ---
+        prob_1_sem = 0.0
+        prob_2_sem = 0.0
+        
+        if calculate_approval_probability and ARG_FINAL_MODEL is not None:
+             try:
+                 if nota_corte_1sem:
+                     prob_1_sem = calculate_approval_probability(arg_pred, nota_corte_1sem, rmse=ARG_FINAL_MAE) * 100
+                 if nota_corte_2sem:
+                     prob_2_sem = calculate_approval_probability(arg_pred, nota_corte_2sem, rmse=ARG_FINAL_MAE) * 100
+             except: pass
+
         # Reality Check (coorte histórica) - AGORA PADRONIZADO COM A CALCULADORA
         historico_pct = 0.0
         historico_err = ""
@@ -1795,48 +1808,23 @@ elif page == "ativos":
             'Cohort Size': f"{len(df_hist_cohort_debug)}" if not df_hist_cohort_debug.empty else "0",
         })
         
-        # =============================================================
-        # CLASSIFICAÇÃO DUPLO CORTE (1º e 2º Semestre)
-        # =============================================================
-        sugestao = ""
-        
-        if nota_corte_1sem is not None and arg_pred >= nota_corte_1sem:
-            # Cenário 1: Aprovado direto no 1º semestre
-            status = "🟢"
-            status_level = 'green'
-        elif nota_corte_2sem is not None and arg_pred >= nota_corte_2sem:
-            # Cenário 2: Não passa no 1º, mas passa no 2º semestre
-            status = "🟡"
-            status_level = 'yellow'
-            sugestao = "Aprovado no 2º Semestre"
-        else:
-            # Cenário 3: Não passa em nenhum dos dois
-            status = "🔴"
-            status_level = 'red'
-        
         # Sugestão DUPLA (1º e 2º Semestre)
-        # Se status for RED ou YELLOW, buscamos opções melhores.
+        # Se probabilidade for baixa, buscamos opções melhores.
         sugestao_1sem = None
         sugestao_2sem = None
         
-        if status_level in ['red', 'yellow'] and calculate_approval_probability:
+        # Lógica simplificada de sugestão baseada na nova classificação de risco
+        # Se prob < 50% no 1º sem, tenta achar
+        if prob_1_sem < 50 and calculate_approval_probability:
             # Busca melhor opção para 1º Semestre (que seja GREEN)
-            melhor_gap_1 = -float('inf')
-            
-            # Ordena cursos por corte (do maior pro menor) para pegar o "melhor" possível que ele passa
-            # Ou pegar o mais difícil que ele passa? Normalmente queremos o curso de maior prestígio (maior nota) que ele passa.
             for curso_alt, corte_alt in sorted(corte_1sem.items(), key=lambda x: x[1], reverse=True):
                  if curso_alt == curso_matched_1: continue
-                 
-                 # Checa se passa com segurança (ex: > 80% chance ou gap positivo)
-                 # Usando gap positivo como critério base de "Green" simplificado
                  if arg_pred >= corte_alt:
-                     # Verifica probabilidade para garantir
                      try:
                          prob = calculate_approval_probability(arg_pred, corte_alt, rmse=ARG_FINAL_MAE)
                          if prob >= 0.8:
                              sugestao_1sem = curso_alt.split(' (')[0]
-                             break # Achou o curso com maior nota de corte que ele passa
+                             break 
                      except: pass
             
             # Busca melhor opção para 2º Semestre (que seja GREEN)
@@ -1862,19 +1850,12 @@ elif page == "ativos":
         else:
             sugestao = ""
             
-        # Se status for YELLOW, mostra a chance do 2º semestre explicitamente
+        # Display probability info
         chance_display = f"{chance:.1f}%"
-        if status_level == 'yellow':
-             # Recalcula chance para o 2º semestre usando nota_corte_2sem
-             if nota_corte_2sem:
-                 try:
-                     chance_2sem = calculate_approval_probability(arg_pred, nota_corte_2sem, rmse=ARG_FINAL_MAE) * 100
-                     chance_display = f"1º: {chance:.1f}% | 2º: {chance_2sem:.1f}%"
-                 except: pass
+        if prob_2_sem > 0:
+             chance_display = f"1º: {prob_1_sem:.1f}% | 2º: {prob_2_sem:.1f}%"
         
         resultados.append({
-            'Status': status,
-            'Status_Level': status_level,
             'Nome': nome,
             'Turma': turma,
             'Sistema de Concorrência': cota_aluno,
@@ -1883,16 +1864,41 @@ elif page == "ativos":
             'Chance': chance_display,
             'Histórico (%)': round(historico_pct, 1),
             'Sugestão': sugestao if sugestao else '—',
+            'prob_1_sem': prob_1_sem,
+            'prob_2_sem': prob_2_sem
         })
     
     if not resultados:
         # Garante que as colunas existam mesmo que o DF esteja vazio
         df_result = pd.DataFrame(columns=[
             'Status', 'Status_Level', 'Nome', 'Turma', 'Sistema de Concorrência', 'Curso Alvo', 
-            'Gap', 'Chance', 'Histórico (%)', 'Sugestão'
+            'Gap', 'Chance', 'Histórico (%)', 'Sugestão', 'prob_1_sem', 'prob_2_sem'
         ])
     else:
         df_result = pd.DataFrame(resultados)
+        
+    # --- NOVA LÓGICA VETORIAL DE RISCO (Casata de Probabilidade) ---
+    # 🟢 Verde (Confortável): Se prob_1_sem >= 50 OU prob_2_sem >= 75.
+    # 🟡 Amarelo (Competitivo / Atenção): Se prob_1_sem < 50 E prob_2_sem >= 30.
+    # 🔴 Vermelho (Alto Risco): Se prob_2_sem < 30.
+    
+    conditions = [
+        (df_result['prob_1_sem'] >= 50) | (df_result['prob_2_sem'] >= 75),
+        (df_result['prob_1_sem'] < 50) & (df_result['prob_2_sem'] >= 30),
+        (df_result['prob_2_sem'] < 30)
+    ]
+    
+    choices_status = ["🟢 Baixo Risco", "🟡 Oportunidade (2º Sem)", "🔴 Alto Risco"]
+    choices_level = ["green", "yellow", "red"]
+    
+    # Aplica np.select (Default para red se nenhuma condição bater, embora a lógica cubra tudo)
+    df_result['Status'] = np.select(conditions, choices_status, default="🔴 Alto Risco")
+    df_result['Status_Level'] = np.select(conditions, choices_level, default="red")
+    
+    # [CUSTOMIZATION]
+    # 1. Limpa sugestões caso o status seja Green (Baixo Risco)
+    mask_green = df_result['Status_Level'] == 'green'
+    df_result.loc[mask_green, 'Sugestão'] = '—'
     
     # Aplica filtro de status
     if status_filter == "🔴 Alto Risco":
@@ -1947,8 +1953,23 @@ elif page == "ativos":
     
     # Ordena: red primeiro, depois yellow, depois green
     order_map = {'red': 0, 'yellow': 1, 'green': 2}
-    df_result['_order'] = df_result['Status_Level'].map(order_map)
-    df_display = df_result.sort_values('_order').drop(columns=['Status_Level', '_order'])
+    if 'Status_Level' in df_result.columns:
+         df_result['_order'] = df_result['Status_Level'].map(order_map)
+         df_display = df_result.sort_values('_order').drop(columns=['Status_Level', '_order', 'prob_1_sem', 'prob_2_sem'])
+    else:
+         df_display = df_result
+    
+    # [CUSTOMIZATION]
+    # 2. Reordena colunas para ter 'Status' como primeira coluna
+    # Definir ordem explícita desejada
+    desired_order = ['Status', 'Nome', 'Turma', 'Sistema de Concorrência', 'Curso Alvo', 'Gap', 'Chance', 'Histórico (%)', 'Sugestão']
+    
+    # Interseção
+    available_cols = [c for c in desired_order if c in df_display.columns]
+    # Restantes (se houver alguma coluna nova no futuro)
+    remaining_cols = [c for c in df_display.columns if c not in available_cols]
+    
+    df_display = df_display[available_cols + remaining_cols]
     
     # Configuração profissional das colunas
     column_config = {
