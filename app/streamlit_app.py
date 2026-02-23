@@ -440,8 +440,8 @@ st.markdown("""
     
     /* --- WHITE-LABEL CSS (O Exterminador Definitivo) --- */
     /* 1. Esconde a barra superior inteira (Fork, GitHub, Menu) */
-    .stApp > header { display: none !important; }
-    [data-testid="stHeader"] { display: none !important; }
+    /*.stApp > header { display: none !important; }/*
+    /*[data-testid="stHeader"] { display: none !important; }/*
     
     /* 2. Esconde o ícone flutuante do Streamlit no canto inferior (Barquinho vermelho) */
     .viewerBadge_container { display: none !important; }
