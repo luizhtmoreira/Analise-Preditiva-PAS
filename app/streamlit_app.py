@@ -1722,7 +1722,6 @@ elif page == "ativos":
 
         # Reality Check (coorte histórica) - AGORA PADRONIZADO COM A CALCULADORA
         historico_pct = 0.0
-        amostra_h = 0
         historico_err = ""
         df_hist_cohort_debug = pd.DataFrame() 
         
@@ -1859,7 +1858,7 @@ elif page == "ativos":
             'Curso Alvo': curso_alvo, 
             'Gap': round(gap, 1),
             'Chance': chance_display,
-            'Histórico (%)': f"{historico_pct:.1f}% (n={amostra_h})" if amostra_h > 0 else "—",
+            'Histórico (%)': round(historico_pct, 1),
             'Sugestão': sugestao if sugestao else '—',
             'prob_1_sem': prob_1_sem,
             'prob_2_sem': prob_2_sem
@@ -1984,8 +1983,11 @@ elif page == "ativos":
             'Chance',
             help="Probabilidade de aprovação baseada no modelo ML (Incerteza da Previsão)",
         ),
-        'Histórico (%)': st.column_config.TextColumn(
-            'Histórico (%)',
+        'Histórico (%)': st.column_config.ProgressColumn(
+            'Histórico',
+            format="%.1f%%",
+            min_value=0,
+            max_value=100,
             help="Reality Check: % de alunos similares que alcançaram a Nota Exata necessária para este curso",
         ),
         'Sugestão': st.column_config.TextColumn(
