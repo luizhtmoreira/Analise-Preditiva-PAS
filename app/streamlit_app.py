@@ -620,10 +620,7 @@ def check_login():
                         time.sleep(0.5)
                         st.rerun()
                     except Exception as e:
-                        # Vamos descobrir o que o Render está lendo de verdade
-                        chave_secreta = os.getenv("SUPABASE_KEY")
-                        debug_chave = chave_secreta[:10] + "..." if chave_secreta else "TOTALMENTE VAZIA"
-                        st.error(f"Erro real: {e} | Render leu a chave: {debug_chave}")
+                        st.error("Credenciais inválidas. Por favor, tente novamente.")
                 else:
                     st.error("Erro de conexão com Supabase. Verifique secrets.toml")
         
@@ -1725,6 +1722,7 @@ elif page == "ativos":
 
         # Reality Check (coorte histórica) - AGORA PADRONIZADO COM A CALCULADORA
         historico_pct = 0.0
+        amostra_h = 0
         historico_err = ""
         df_hist_cohort_debug = pd.DataFrame() 
         
@@ -1763,12 +1761,11 @@ elif page == "ativos":
                     
                     if stats_ciclo_calc:
                         # Lógica para determinar qual corte usar no Histórico
-                        # Se o aluno é "Yellow" (não passa no 1º mas passa no 2º), usamos a nota do 2º sem
+                        # Verde usa o 1º Semestre. Amarelo e Vermelho usam o 2º Semestre.
+                        is_green = (prob_1_sem >= 50) or (prob_2_sem >= 75)
                         cutoff_historico = nota_corte
-                        if gap < 0 and nota_corte_2sem is not None:
-                            # Verifica se passaria no 2º (Gap 2 >= 0)
-                            if arg_pred >= nota_corte_2sem:
-                                cutoff_historico = nota_corte_2sem
+                        if not is_green and nota_corte_2sem is not None:
+                            cutoff_historico = nota_corte_2sem
                         
                         # Calcula o caminho exato para a nota de corte selecionada
                         result_path = calc.calculate_required_score(
@@ -1862,7 +1859,7 @@ elif page == "ativos":
             'Curso Alvo': curso_alvo, 
             'Gap': round(gap, 1),
             'Chance': chance_display,
-            'Histórico (%)': round(historico_pct, 1),
+            'Histórico (%)': f"{historico_pct:.1f}% (n={amostra_h})" if amostra_h > 0 else "—",
             'Sugestão': sugestao if sugestao else '—',
             'prob_1_sem': prob_1_sem,
             'prob_2_sem': prob_2_sem
@@ -1987,11 +1984,8 @@ elif page == "ativos":
             'Chance',
             help="Probabilidade de aprovação baseada no modelo ML (Incerteza da Previsão)",
         ),
-        'Histórico (%)': st.column_config.ProgressColumn(
-            'Histórico',
-            format="%.1f%%",
-            min_value=0,
-            max_value=100,
+        'Histórico (%)': st.column_config.TextColumn(
+            'Histórico (%)',
             help="Reality Check: % de alunos similares que alcançaram a Nota Exata necessária para este curso",
         ),
         'Sugestão': st.column_config.TextColumn(
@@ -3355,15 +3349,7 @@ elif page == "escola":
             else:
                 st.warning("⚠️ O arquivo enviado não possui uma coluna 'Inscricao' válida.")
                 
-        # Rodapé: Tabela de Nomes
-        st.markdown("---")
-        with st.expander("📂 Ver Lista de Alunos Processados e Encontrados"):
-            if 'escola_nomes' in locals():
-                cols_to_hide = ['id', 'created_at']
-                df_expander = escola_nomes.drop(columns=[c for c in cols_to_hide if c in escola_nomes.columns])
-                st.dataframe(df_expander, use_container_width=True)
-            else:
-                st.info("Nenhum arquivo processado ainda.")
+
 
 
 # =============================================================================
