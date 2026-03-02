@@ -616,6 +616,11 @@ def check_login():
                         session = supabase.auth.sign_in_with_password({"email": email, "password": password})
                         st.session_state['logged_in'] = True
                         st.session_state['user_email'] = session.user.email
+                        
+                        # Salva JWT tokens na sessão do Streamlit para reidratar o cliente no Rerun
+                        st.session_state['supabase_access_token'] = session.session.access_token
+                        st.session_state['supabase_refresh_token'] = session.session.refresh_token
+                        
                         st.toast("Login realizado com sucesso!", icon="✅")
                         time.sleep(0.5)
                         st.rerun()
@@ -636,6 +641,17 @@ def check_login():
         
         st.stop() # 🛑 PARA TUDO AQUI SE NÃO ESTIVER LOGADO
 
+    # Se já estivemos logados (o app recarregou pq passamos da checagem acima),
+    # re-injetamos o token JWT no singleton do supabase
+    elif 'supabase_access_token' in st.session_state and 'supabase_refresh_token' in st.session_state:
+        try:
+            supabase.auth.set_session(
+                access_token=st.session_state['supabase_access_token'],
+                refresh_token=st.session_state['supabase_refresh_token']
+            )
+        except Exception as e:
+            st.error(f"Erro ao restaurar sessão no banco: {e}")
+            
 # Executa o bloqueio imediatamente
 check_login()
 
@@ -1002,6 +1018,21 @@ if st.session_state.get('logged_in'):
         if supabase:
             supabase.auth.sign_out()
         st.session_state['logged_in'] = False
+        st.session_state['user_email'] = ''
+        
+        # Limpeza agressiva de dados do tenante da sessão atual
+        if 'supabase_access_token' in st.session_state:
+            del st.session_state['supabase_access_token']
+        if 'supabase_refresh_token' in st.session_state:
+            del st.session_state['supabase_refresh_token']
+            
+        # Impede que um arquivo ficasse preso no st.file_uploader entre logins no mesmo navegador
+        if 'aluno_file_uploader' in st.session_state:
+            del st.session_state['aluno_file_uploader']
+            
+        st.session_state['df_global_escola'] = None
+        st.session_state.df = None
+        
         st.rerun()
 
 # Espaçador e Footer com CSS para não quebrar linha
@@ -1029,18 +1060,35 @@ ARQUIVO_DADOS_GLOBAL = data_dir_global / "notas_corte_pas.csv"
 # =============================================================================
 # CARREGAMENTO GLOBAL DE ALUNOS (SUPABASE)
 # =============================================================================
-@st.cache_data(ttl=60)
+# Sem cache global: Leitura em tempo real isolada por Tenant
 def buscar_alunos_nuvem_global():
-    """Busca a tabela mestra do Supabase e formata para o App."""
+    """Busca a tabela mestra do Supabase e formata para o App isolando o Tenante."""
     if not supabase: return None
     try:
-        # Select * all
-        response = supabase.table("tabela_mestra").select("*").execute()
-        data = response.data
-        
-        if not data: return None
-        
-        df_cloud = pd.DataFrame(data)
+        # Segurança RLS: Checa Logged_in Session antes do select
+        if 'supabase_access_token' in st.session_state and st.session_state.get('logged_in', False):
+            try:
+                # Forca a sessao do usuario autenticado ANTES da query
+                supabase.auth.set_session(
+                    access_token=st.session_state['supabase_access_token'],
+                    refresh_token=st.session_state['supabase_refresh_token']
+                )
+            except Exception as e:
+                return None
+                
+            user_response = supabase.auth.get_user()
+            user_id = user_response.user.id if user_response and hasattr(user_response, 'user') else None
+            
+            if not user_id: 
+                return None # Bloqueia silent fail
+                
+            # Select * all (Postgres RLS policy using auth.uid() fara o filtro)
+            response = supabase.table("tabela_mestra").select("*").execute()
+            data = response.data
+            
+            if not data: return None
+            
+            df_cloud = pd.DataFrame(data)
         
         # Mapeamento Banco -> App
         rename_map = {
@@ -1064,14 +1112,20 @@ def buscar_alunos_nuvem_global():
         # st.error(f"Erro silencioso ao buscar dados da nuvem: {e}")
         return None
 
-# Auto-Load na Inicialização
-if 'df_global_escola' not in st.session_state or st.session_state['df_global_escola'] is None:
-    df_nuvem = buscar_alunos_nuvem_global()
-    if df_nuvem is not None:
-        st.session_state['df_global_escola'] = df_nuvem
-        # Sincroniza com st.session_state.df se este estiver vazio
-        if st.session_state.df is None:
-             st.session_state.df = df_nuvem.copy()
+# Auto-Load ou Bloqueio Inicial
+if 'logged_in' in st.session_state and st.session_state['logged_in']:
+    if 'df_global_escola' not in st.session_state or st.session_state['df_global_escola'] is None:
+        df_nuvem = buscar_alunos_nuvem_global()
+        if df_nuvem is not None:
+            st.session_state['df_global_escola'] = df_nuvem
+            # Sincroniza com st.session_state.df se este estiver vazio
+            if st.session_state.df is None or len(st.session_state.df) == 0:
+                 st.session_state.df = df_nuvem.copy()
+else:
+    # Garante que deslogados perdem o cache explicitamente
+    st.session_state['df_global_escola'] = None
+    if 'df' in st.session_state:
+        st.session_state.df = None
 
 
 
@@ -1120,7 +1174,8 @@ if page == "temporal":
             "Faça upload do arquivo da turma (CSV ou Excel)",
             type=['csv', 'xlsx', 'xls'],
             help="O arquivo deve conter colunas: Nome, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2",
-            disabled=MODO_TRIAL
+            disabled=MODO_TRIAL,
+            key="aluno_file_uploader"
         )
         
         # Feedback se já existe dados carregados
@@ -1208,27 +1263,67 @@ if page == "temporal":
                             # Converte NaN para None (NULL no SQL)
                             df_final = df_final.replace({np.nan: None})
                             
-                            # Converte para lista de dicionários
-                            data_to_insert = df_final.to_dict(orient='records')
-                            
-                            # 2. Limpa a Tabela Mestra (Reset)
-                            # Tenta limpar onde inscricao não é nula
-                            if len(data_to_insert) > 0:
-                                supabase.table("tabela_mestra").delete().neq("id", 0).execute() # Delete all rows logic
+                            try:
+                                # Captura do Usuário
+                                user_response = supabase.auth.get_user()
+                                user_id = user_response.user.id if user_response and hasattr(user_response, 'user') else None
                                 
-                                # 3. Insere Novos Dados
-                                supabase.table("tabela_mestra").insert(data_to_insert).execute()
-                            
-                                st.toast("Sucesso! Dados salvos na nuvem.", icon="☁️")
-                                st.success(f"Base de {len(data_to_insert)} alunos sincronizada com sucesso!")
-                            else:
-                                st.warning("DataFrame vazio ou colunas não correspondentes.")
-                            
+                                if not user_id:
+                                    st.error("Erro: Usuário não autenticado. Faça login novamente para prosseguir.")
+                                else:
+                                    # Injeção do ID
+                                    df_final['user_id'] = user_id
+                                    
+                                    # Converte para lista de dicionários
+                                    data_to_insert = df_final.to_dict(orient='records')
+                                    
+                                    # Configura Cliente com a Sessão Ativa para o Upload
+                                    try:
+                                        upload_client = init_connection()
+                                        if 'supabase_access_token' in st.session_state:
+                                            upload_client.auth.set_session(
+                                                access_token=st.session_state['supabase_access_token'],
+                                                refresh_token=st.session_state['supabase_refresh_token']
+                                            )
+                                    except Exception as e:
+                                        st.error(f"Falha ao reconstruir cliente Supabase: {e}")
+                                        st.stop()
+                                    
+                                    # 2. Limpeza Opcional (Evita duplicidade por tenant)
+                                    if len(data_to_insert) > 0:
+                                        st.write(f"Injetando {len(data_to_insert)} alunos. User ID capturado: {user_id}")
+                                        upload_client.table("tabela_mestra").delete().eq("user_id", user_id).execute() 
+                                        
+                                        # 3. Insere Novos Dados
+                                        upload_client.table("tabela_mestra").insert(data_to_insert).execute()
+                                    
+                                        st.toast("Sucesso! Dados salvos na nuvem.", icon="☁️")
+                                        
+                                        # FORÇAR RECARREGAMENTO GERAL: Invalida variaveis para nova leitura segura
+                                        st.session_state['df_global_escola'] = None
+                                        st.session_state['df_global_escola'] = buscar_alunos_nuvem_global()
+                                        if st.session_state['df_global_escola'] is not None:
+                                            st.session_state.df = st.session_state['df_global_escola'].copy()
+                                            st.success(f"Base de {len(data_to_insert)} alunos sincronizada com sucesso e pronta na tela!")
+                                            time.sleep(1) # Aguarda leitura visual do suceesso
+                                            st.rerun() # Atualiza os graficos
+                                        else:
+                                            st.success(f"Base de {len(data_to_insert)} alunos sincronizada com sucesso. Recarregue a página.")
+                                            
+                                    else:
+                                        st.warning("DataFrame vazio ou colunas não correspondentes.")
+                            except Exception as e:
+                                st.error(f"Erro de sessão/inserção. Por favor, faça login novamente. Detalhes: {e}")
                     except Exception as e:
                         st.error(f"Erro ao salvar na nuvem: {e}")
             else:
                 st.warning("Conexão com Supabase não disponível.")
     
+    if not st.session_state.get('logged_in', False):
+        st.warning("⚠️ Modo de Segurança RLS Ativo")
+        st.info("O banco de dados de Gestão de Ativos está bloqueado. **Por favor, faça login no menu lateral** para puxar e visualizar sua base exclusiva de alunos.")
+        st.stop() # Congela a renderização para usuários anônimos
+
     if st.session_state.df is not None:
         df = st.session_state.df.copy()
         
@@ -1236,6 +1331,7 @@ if page == "temporal":
         if 'Turma' in df.columns:
             cols = [c for c in df.columns if c != 'Turma'] + ['Turma']
             df = df[cols]
+
         
         # Estatísticas gerais (Prioridade para o Diretor)
         st.markdown("### :material/trending_up: Estatísticas Gerais")
@@ -1433,6 +1529,12 @@ elif page == "ativos":
     else:
         # Se existe a coluna, preenche apenas os buracos (NaN) com Universal
         df['Cota'] = df['Cota'].fillna('Sistema Universal')
+        
+    # Previne que linhas vindas do Supabase com 'Ano_Trienio' = None sejam deletadas no filtro
+    if 'Ano_Trienio' not in df.columns or df['Ano_Trienio'].isnull().all():
+        df['Ano_Trienio'] = "2024-2026"
+    else:
+        df['Ano_Trienio'] = df['Ano_Trienio'].fillna("2024-2026")
 
     # Removemos a lógica de np.random.choice que causava discrepância
     # (Código legado de mock removido/substituído acima)
