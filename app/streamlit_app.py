@@ -3109,22 +3109,25 @@ elif page == "escola":
         df_display = escola_nomes.drop(columns=[c for c in cols_to_hide if c in escola_nomes.columns])
         st.dataframe(df_display.head(10), use_container_width=True)
         
-        # Filtra os triênios para aparecerem apenas aqueles que têm alunos da escola
-        trienios = []
-        if 'Inscricao' in escola_nomes.columns:
-            inscricoes_escola = escola_nomes['Inscricao'].astype(str).str.strip()
-            df_geral_escola = df_geral[df_geral['Inscricao'].astype(str).str.strip().isin(inscricoes_escola)]
-            if not df_geral_escola.empty:
-                trienios = sorted(df_geral_escola['Ano_Trienio'].unique(), reverse=True)
+        # --- Lógica de Triênios baseada em Gestão de Ativos ---
+        available_trienniums = set()
+        
+        # 1. Pega do DataFrame se existir
+        if 'Ano_Trienio' in escola_nomes.columns:
+            unique_in_data = escola_nomes['Ano_Trienio'].dropna().unique()
+            if len(unique_in_data) > 0:
+                available_trienniums.update(unique_in_data)
                 
-        # Fallback de segurança se falhar o cruzamento prévio ou arquivo mal formatado
-        if not trienios:
-             trienios = sorted(df_geral['Ano_Trienio'].unique(), reverse=True)
-             
-        # Seleciona triênio - Ordem inversa (mais recente primeiro)
+        # 2. Fallback: Se não achou NADA nos dados, exibe os principais
+        if not available_trienniums:
+             available_trienniums = {"2024-2026", "2023-2025", "2022-2024", "2021-2023"}
+
+        # Ordena: Mais recente primeiro
+        trienios_disp = sorted(list(available_trienniums), reverse=True)
+        
         trienio_sel = st.selectbox(
             "Selecione o triênio para comparação:",
-            trienios,
+            trienios_disp,
             index=0
         )
         
