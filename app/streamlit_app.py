@@ -42,9 +42,9 @@ import time
 from supabase import create_client, Client
 import os
 
-# --- CONFIGURAÇÃO DE AMBIENTE (TRIAL MODE) ---
+# --- CONFIGURAÇÃO DE AMBIENTE (PROD x DEV) ---
 ENV = os.getenv('ENV', 'DEV')
-MODO_TRIAL = (ENV == 'PROD')
+IS_PROD = (ENV == 'PROD')
 import zipfile
 import requests
 import shutil
@@ -110,6 +110,23 @@ STATS_PAS3 = HistoricalStats(
 # ESTATÍSTICAS DE CURSOS PARA RECOMENDAÇÃO
 # =============================================================================
 ARG_FINAL_MAE = 13.49 # Erro médio do modelo para cálculos de probabilidade
+
+# --- CONFIGURAÇÃO DE B2B MULTI-TENANT (SaaS) ---
+# Mapeamento de Domínios para Whitelabel (Logo e PDF)
+DOMAINS_CONFIG = {
+    "marista": {
+        "logo": "assets/templates/logo_marista.png",
+        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO.pdf"
+    },
+    "ideal": {
+        "logo": "assets/templates/logo_ideal.png",
+        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) DIGITAL.pdf"
+    },
+    "default": {
+        "logo": "assets/templates/logo_vetorpas.png",
+        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO.pdf"
+    }
+}
 
 @st.cache_data
 def find_best_course_match(input_name, course_list):
@@ -968,24 +985,34 @@ def load_sample_data(include_pas3: bool = False) -> pd.DataFrame:
 # SIDEBAR - NAVEGAÇÃO
 # =============================================================================
 
-# Logo do Colégio Ideal (Centralizado)
-logo_path = Path(__file__).parent.parent / "assets" / "templates" / "logo_ideal.png"
+# Whitelabel Visual na Barra Lateral
+user_email_sidebar = st.session_state.get('user_email', '').lower()
+
+# Busca configuração do domínio ou usa default
+domain_key = next((k for k in DOMAINS_CONFIG if k in user_email_sidebar), "default")
+config = DOMAINS_CONFIG[domain_key]
+
+# Resolução de caminho absoluto para a raiz do projeto
+root_dir = Path(__file__).resolve().parent.parent
+logo_path = root_dir / config["logo"]
+
 if logo_path.exists():
-    # Usa colunas para centralizar
     c1, c2, c3 = st.sidebar.columns([1, 4, 1])
     with c2:
         st.image(str(logo_path), use_container_width=True)
 else:
     st.sidebar.markdown(
-        """
+        f"""
         <div style="text-align: center; padding: 10px;">
-            <h2 style="color: #003366;">COLÉGIO IDEAL</h2>
-            <p style="font-size: 0.8em; color: gray;">SISTEMA DE GESTÃO ESTRATÉGICA</p>
+            <h2 style="color: #003366;">SISTEMA B2B</h2>
+            <p style="font-size: 0.8em; color: gray;">{domain_key.upper()} - GESTÃO ESTRATÉGICA</p>
         </div>
         """,
         unsafe_allow_html=True
     )
+
 st.sidebar.markdown("---")
+
 
 
 # (Bloco de info do usuário movido para o final da sidebar)
@@ -1160,23 +1187,25 @@ if df_notas is None:
 
 if page == "temporal":
     st.title(":material/analytics: Análise Temporal")
-    
+
     # Configuração Padrão: Triênio Atual (Em Andamento)
     analysis_mode = "Triênio Atual (Em Andamento)"
     
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        if MODO_TRIAL:
-            st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
-
-        uploaded_file = st.file_uploader(
-            "Faça upload do arquivo da turma (CSV ou Excel)",
-            type=['csv', 'xlsx', 'xls'],
-            help="O arquivo deve conter colunas: Nome, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2",
-            disabled=MODO_TRIAL,
-            key="aluno_file_uploader"
-        )
+        uploaded_file = None
+        if IS_PROD:
+            if st.session_state.df is None:
+                st.warning("⚠️ **Base Vazia:** Os dados da turma ainda não foram integrados no sistema.")
+                st.info("Para o envio de novos lotes de alunos, entre em contato com o suporte da sua rede.")
+        else:
+            uploaded_file = st.file_uploader(
+                "Faça upload do arquivo da turma (CSV ou Excel)",
+                type=['csv', 'xlsx', 'xls'],
+                help="O arquivo deve conter colunas: Nome, P1_PAS1, P2_PAS1, Red_PAS1, P1_PAS2, P2_PAS2, Red_PAS2",
+                key="aluno_file_uploader"
+            )
         
         # Feedback se já existe dados carregados
         if st.session_state.df is not None:
@@ -3011,33 +3040,30 @@ elif page == "escola":
         df_escola_input = st.session_state['df_global_escola'].copy()
         
         # Opção de sobrescrever
-        if st.checkbox("Substituir por arquivo local (.xlsx)"):
-            if MODO_TRIAL:
-                st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
-
+        if not IS_PROD:
+            if st.checkbox("Substituir por arquivo local (.xlsx)"):
+                uploaded_file = st.file_uploader(
+                    ":material/upload: Upload da lista de alunos da escola (Excel)",
+                    type=['xlsx', 'xls'],
+                    help="O arquivo deve ter uma coluna 'Inscricao' com os números de inscrição dos alunos."
+                )
+                if uploaded_file:
+                    try:
+                         df_escola_input = pd.read_excel(uploaded_file)
+                    except:
+                         df_escola_input = pd.read_csv(uploaded_file)
+    else:
+        # 2. Upload Manual (Fallback)
+        if IS_PROD:
+            st.warning("⚠️ **Lista de Alunos Vazia:** Os inscritos da sua escola não foram carregados.")
+            st.info("Para enviar a lista de inscrições para integração, entre em contato com o suporte da sua rede.")
+        else:
             uploaded_file = st.file_uploader(
                 ":material/upload: Upload da lista de alunos da escola (Excel)",
                 type=['xlsx', 'xls'],
-                help="O arquivo deve ter uma coluna 'Inscricao' com os números de inscrição dos alunos.",
-                disabled=MODO_TRIAL
+                help="O arquivo deve ter uma coluna 'Inscricao' com os números de inscrição dos alunos."
             )
             if uploaded_file:
-                try:
-                     df_escola_input = pd.read_excel(uploaded_file)
-                except:
-                     df_escola_input = pd.read_csv(uploaded_file)
-    else:
-        # 2. Upload Manual (Fallback)
-        if MODO_TRIAL:
-            st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
-
-        uploaded_file = st.file_uploader(
-            ":material/upload: Upload da lista de alunos da escola (Excel)",
-            type=['xlsx', 'xls'],
-            help="O arquivo deve ter uma coluna 'Inscricao' com os números de inscrição dos alunos.",
-            disabled=MODO_TRIAL
-        )
-        if uploaded_file:
              try:
                  df_escola_input = pd.read_excel(uploaded_file)
              except:
@@ -3916,22 +3942,31 @@ elif page == "pdf":
                 'z_score': reality_check_str # Substituído pelo Reality Check
             }
             
+            # Whitelabel: aponta o gerador direto para o template da escola
+            root_dir = Path(__file__).resolve().parent.parent
+            user_email_pdf = st.session_state.get('user_email', '').lower()
+            domain_key_pdf = next((k for k in DOMAINS_CONFIG if k in user_email_pdf), "default")
+            pdf_gen.template_path = root_dir / DOMAINS_CONFIG[domain_key_pdf]["pdf"]
+
             # Gerar PDF
             try:
                 pdf_bytes = pdf_gen.generate_single_pdf(data)
-                
+
                 if not pdf_bytes:
                     raise ValueError("O gerador retornou um PDF vazio. Verifique os logs do terminal.")
-                
+
                 st.success("PDF Gerado com Sucesso!")
                 st.download_button(
-                    label=":material/download: Baixar PDF",
+                    label="📥 Baixar PDF",
                     data=pdf_bytes,
-                    file_name=f"Relatorio_PAS_{aluno.replace(' ', '_')}.pdf",
-                    mime="application/pdf"
+                    file_name="relatorio_pas.pdf",
+                    mime="application/pdf",
                 )
             except Exception as e:
                 st.error(f"Erro ao gerar PDF: {e}")
+
+
+
 
     # ==========================================
     # 2. BATCH MODE (ESCOLA)
@@ -3977,28 +4012,27 @@ elif page == "pdf":
             st.info("✅ Usando dados carregados globalmente (Nuvem/Upload).")
             df_batch = st.session_state['df_global_escola'].copy()
             
-            if st.checkbox("Substituir por arquivo local (CSV/Excel)", key="override_pdf_batch"):
-                if MODO_TRIAL:
-                    st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
-                
-                uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch", disabled=MODO_TRIAL)
+            if not IS_PROD:
+                if st.checkbox("Substituir por arquivo local (CSV/Excel)", key="override_pdf_batch"):
+                    uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch")
+                    if uploaded_batch:
+                        try:
+                            df_batch = pd.read_csv(uploaded_batch) if uploaded_batch.name.endswith('.csv') else pd.read_excel(uploaded_batch)
+                        except Exception as e:
+                            st.error(f"Erro ao ler arquivo: {e}")
+                            df_batch = None
+        else:
+             # 2. Upload Manual (Fallback)
+            if IS_PROD:
+                st.warning("⚠️ **Arquivo não carregado:** A planilha mestre para os PDFs não foi detectada.")
+                st.info("Para envio de dados e geração em lote, entre em contato com o suporte da sua rede.")
+            else:
+                uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch")
                 if uploaded_batch:
                     try:
                         df_batch = pd.read_csv(uploaded_batch) if uploaded_batch.name.endswith('.csv') else pd.read_excel(uploaded_batch)
                     except Exception as e:
                         st.error(f"Erro ao ler arquivo: {e}")
-                        df_batch = None
-        else:
-             # 2. Upload Manual (Fallback)
-            if MODO_TRIAL:
-                st.info("💡 Modo de Demonstração Ativo - O sistema está operando com a base de dados de amostra. O upload de novos lotes é exclusivo para licenças ativas.")
-
-            uploaded_batch = st.file_uploader("Upload de Arquivo de Dados", type=['csv', 'xlsx'], key="upload_pdf_batch", disabled=MODO_TRIAL)
-            if uploaded_batch:
-                try:
-                    df_batch = pd.read_csv(uploaded_batch) if uploaded_batch.name.endswith('.csv') else pd.read_excel(uploaded_batch)
-                except Exception as e:
-                    st.error(f"Erro ao ler arquivo: {e}")
 
         if df_batch is not None:
             if st.button("Gerar PDFs em Lote"):
@@ -4177,7 +4211,14 @@ elif page == "pdf":
                             processed_data.append(student_data)
                             progress_bar.progress((idx + 1) / total_rows)
                     
+                    # Whitelabel: aponta o gerador direto para o template da escola
+                    root_dir = Path(__file__).resolve().parent.parent
+                    user_email_pdf = st.session_state.get('user_email', '').lower()
+                    domain_key_pdf = next((k for k in DOMAINS_CONFIG if k in user_email_pdf), "default")
+                    pdf_gen.template_path = root_dir / DOMAINS_CONFIG[domain_key_pdf]["pdf"]
+
                     zip_buffer = pdf_gen.generate_batch_zip(processed_data)
+
                     
                     st.success(f"✅ Processamento concluído: {len(processed_data)} arquivos gerados.")
                     st.download_button(
