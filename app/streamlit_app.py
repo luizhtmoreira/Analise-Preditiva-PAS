@@ -1346,7 +1346,8 @@ if page == "temporal":
                     except Exception as e:
                         st.error(f"Erro ao salvar na nuvem: {e}")
             else:
-                st.warning("Conexão com Supabase não disponível.")
+                if not IS_PROD:
+                    st.warning("Conexão com Supabase não disponível.")
     
     if not st.session_state.get('logged_in', False):
         st.warning("⚠️ Modo de Segurança RLS Ativo")
