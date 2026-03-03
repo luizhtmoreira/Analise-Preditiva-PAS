@@ -1250,7 +1250,7 @@ if page == "temporal":
             st.toast(":material/database: Base Centralizada Atualizada! Disponível no Preditor.")
 
             # --- BOTÃO DE SALVAR NA NUVEM (SUPABASE) ---
-            if supabase:
+            if supabase and not IS_PROD:
                 if st.button("💾 Salvar Base na Nuvem", help="Salva a planilha atual no banco de dados para acesso global."):
                     try:
                         with st.spinner("Conectando ao banco de dados..."):
@@ -3987,28 +3987,6 @@ elif page == "pdf":
     # ==========================================
     with tab_batch:
         st.markdown("### Processamento em Lote")
-        
-        # --- DOWNLOAD TEMPLATE BUTTON ---
-        # Cria um DataFrame vazio com as colunas necessárias
-        df_model = pd.DataFrame(columns=['Nome', 'Curso', 'P1_PAS1', 'P2_PAS1', 'Red_PAS1', 'P1_PAS2', 'P2_PAS2', 'Red_PAS2'])
-        # Converte para Excel em memória
-        from io import BytesIO
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df_model.to_excel(writer, index=False, sheet_name='Modelo')
-        model_data = output.getvalue()
-        
-        col_b_dl, col_b_info = st.columns([1, 3])
-        with col_b_dl:
-             st.download_button(
-                label="📥 Baixar Planilha Modelo (.xlsx)",
-                data=model_data,
-                file_name="modelo_dados_alunos.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                help="Baixe este arquivo para preencher os dados corretamente."
-            )
-        with col_b_info:
-            st.info("Para evitar erros, baixe o modelo padrão ao lado, preencha com os dados dos alunos e faça o upload.")
         
         st.markdown("---")
         st.markdown("#### :material/settings: Configuração do Lote")
