@@ -3105,12 +3105,23 @@ elif page == "escola":
         
         st.markdown("---")
         st.markdown("### :material/toc: Prévia dos dados")
-        cols_to_hide = ['id', 'created_at']
+        cols_to_hide = ['id', 'created_at', 'user_id']
         df_display = escola_nomes.drop(columns=[c for c in cols_to_hide if c in escola_nomes.columns])
         st.dataframe(df_display.head(10), use_container_width=True)
         
+        # Filtra os triênios para aparecerem apenas aqueles que têm alunos da escola
+        trienios = []
+        if 'Inscricao' in escola_nomes.columns:
+            inscricoes_escola = escola_nomes['Inscricao'].astype(str).str.strip()
+            df_geral_escola = df_geral[df_geral['Inscricao'].astype(str).str.strip().isin(inscricoes_escola)]
+            if not df_geral_escola.empty:
+                trienios = sorted(df_geral_escola['Ano_Trienio'].unique(), reverse=True)
+                
+        # Fallback de segurança se falhar o cruzamento prévio ou arquivo mal formatado
+        if not trienios:
+             trienios = sorted(df_geral['Ano_Trienio'].unique(), reverse=True)
+             
         # Seleciona triênio - Ordem inversa (mais recente primeiro)
-        trienios = sorted(df_geral['Ano_Trienio'].unique(), reverse=True)
         trienio_sel = st.selectbox(
             "Selecione o triênio para comparação:",
             trienios,
