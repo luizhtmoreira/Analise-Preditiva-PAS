@@ -56,7 +56,8 @@ class PDFGenerator:
     def generate_single_pdf(
         self, 
         data: Dict[str, Union[str, float]], 
-        output_filename: str = None
+        output_filename: str = None,
+        template_override: str = None
     ) -> bytes:
         """
         Generates a single PDF in memory and returns the bytes.
@@ -72,37 +73,38 @@ class PDFGenerator:
         packet = io.BytesIO()
         c = canvas.Canvas(packet, pagesize=landscape(A4))
         
-        # Draw all content on the canvas
-        # DEBUG: Print data keys to console to verify receipt
-        print("DEBUG PDF DATA KEYS:", data.keys())
-        print("DEBUG PDF DATA:", data)
-        self._draw_content(c, data)
-        
+        # Resolve template path (suporte a whitelabel por escola)
+        actual_template_path = self.template_path
+        if template_override:
+            base_dir = Path(__file__).resolve().parent.parent
+            actual_template_path = (base_dir / template_override).resolve()
+
+        if not actual_template_path.exists():
+            raise FileNotFoundError(f"Template não encontrado em: {actual_template_path}")
+
+        # Draw content on canvas
+        self._draw_content(c, data, template_path=actual_template_path)
+
         c.save()
         packet.seek(0)
-        
-        # Merge with template
-        # Merge with template
-        if not self.template_path.exists():
-            raise FileNotFoundError(f"Template not found at {self.template_path}")
-            
+
+        # Lógica original comprovada: merge overlay sobre template
         new_pdf = PdfReader(packet)
-        existing_pdf = PdfReader(str(self.template_path))
+        existing_pdf = PdfReader(str(actual_template_path))
         output = PdfWriter()
-        
-        # Assuming single page template for now
+
         page = existing_pdf.pages[0]
         if len(new_pdf.pages) > 0:
             page.merge_page(new_pdf.pages[0])
-        
+
         output.add_page(page)
-        
+
         output_stream = io.BytesIO()
         output.write(output_stream)
         output_stream.seek(0)
         return output_stream.getvalue()
 
-    def generate_batch_zip(self, data_list: List[Dict[str, Union[str, float]]]) -> bytes:
+    def generate_batch_zip(self, data_list: List[Dict[str, Union[str, float]]], template_override: str = None) -> bytes:
         """
         Generates multiple PDFs and returns a ZIP file as bytes.
         
@@ -116,28 +118,40 @@ class PDFGenerator:
         
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
             for student_data in data_list:
-                # Use student name for filename, sanitize it
+                # Use student name for filename — sanitize with stdlib (no extra deps)
+                import unicodedata
                 name = str(student_data.get('aluno', 'aluno')).strip()
-                safe_name = "".join([c for c in name if c.isalnum() or c in (' ', '-', '_')]).strip()
+                # Remove acentos e caracteres especiais para compatibilidade máxima de ZIP/Windows
+                safe_name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
+                safe_name = "".join([c for c in safe_name if c.isalnum() or c in (' ', '-', '_')]).strip()
+                safe_name = safe_name.replace(" ", "_").upper()
                 filename = f"{safe_name}.pdf"
                 
-                pdf_bytes = self.generate_single_pdf(student_data)
+                pdf_bytes = self.generate_single_pdf(student_data, template_override=template_override)
                 if pdf_bytes:
                     zip_file.writestr(filename, pdf_bytes)
                     
         zip_buffer.seek(0)
         return zip_buffer.getvalue()
 
-    def _draw_content(self, c: canvas.Canvas, data: Dict[str, Union[str, float]]):
+    def _draw_content(self, c: canvas.Canvas, data: Dict[str, Union[str, float]], template_path: str = ""):
         """Helper to draw text at specific coordinates."""
         
-        # Common settings
-        c.setFillColor(HexColor("#FFFFFF"))
+        # Determina cor base conforme o template (Branco para Digital, Preto para Impresso/Default)
+        base_color = "#FFFFFF" # Padrão para Digital (fundo azul)
+        if "IMPRESSO" in str(template_path).upper() or "DEFAULT" in str(template_path).upper():
+            base_color = "#000000" # Preto para fundo branco
+            # Os templates IMPRESSO / GENERICO possuem arte e MediaBox levemente deslocados 
+            # em relação ao DIGITAL. Para que as coordenadas originais continuem corretas, 
+            # aplicamos um pequeno offset (x, y) no Canvas.
+            c.translate(0, 8.8)
+            
+        c.setFillColor(HexColor(base_color))
         
         # --- HEADER INFO ---
         c.setFont(self.font_bold, 12)
-        c.drawString(85, 505, str(data.get('aluno', '')))
-        c.drawString(430, 505, str(data.get('curso', '')))
+        c.drawString(85, 506, str(data.get('aluno', '')))
+        c.drawString(430, 506, str(data.get('curso', '')))
         c.setFont(self.font_bold, 10)
         
         # --- SCORES & CALCULATIONS ---
@@ -155,14 +169,14 @@ class PDFGenerator:
         # Using keys that will be mapped from inputs
         
         # --- PAS 1 ---
-        c.drawString(140, 341.9, str(data.get('pas1_p1', ''))) # Parte 1
-        c.drawString(140, 341.9 - 18, str(data.get('pas1_p2', ''))) # Parte 2
-        c.drawString(140, 341.9 - 36, str(data.get('pas1_red', '')))  # Redação
+        c.drawString(140, 342.9, str(data.get('pas1_p1', ''))) # Parte 1
+        c.drawString(140, 342.9 - 18, str(data.get('pas1_p2', ''))) # Parte 2
+        c.drawString(140, 343.4 - 36, str(data.get('pas1_red', '')))  # Redação (+0.5)
         
         # --- PAS 2 ---
-        c.drawString(275, 341.9, str(data.get('pas2_p1', '')))
-        c.drawString(275, 341.9 - 18, str(data.get('pas2_p2', '')))
-        c.drawString(275, 341.9 - 36, str(data.get('pas2_red', '')))
+        c.drawString(275, 342.9, str(data.get('pas2_p1', '')))
+        c.drawString(275, 342.9 - 18, str(data.get('pas2_p2', '')))
+        c.drawString(275, 343.4 - 36, str(data.get('pas2_red', ''))) # Redação (+0.5)
         
         # --- PAS 3 ---
         # Set color to Blue #184283 for PAS 3 data
@@ -170,7 +184,7 @@ class PDFGenerator:
         
         c.drawString(550, 105, f"{data.get('pas3_p1_est', '')}*")
         c.drawString(550, 86, str(data.get('pas3_p2_necessario', '')))
-        c.drawString(550, 65, f"{data.get('pas3_red_est', '')}*")
+        c.drawString(550, 66.5, f"{data.get('pas3_red_est', '')}*") # Redação (+0.5)
         
         # --- RESULTS ---
         c.setFillColor(HexColor("#FFFFFF"))
@@ -178,13 +192,13 @@ class PDFGenerator:
         # Weighted Arguments & Accumulated
         # Ensure these keys exist in 'data' dict sent from streamlit_app.py
         # Adjusted X to 480 because 650 is off-page for A4 (width ~595)
-        c.drawString(720, 390, str(data.get('arg_pond_1', '')))
-        c.drawString(720, 348, str(data.get('arg_pond_2', '')))
-        c.drawString(720, 303, str(data.get('arg_acumulado', '')))
+        c.drawString(720, 391, str(data.get('arg_pond_1', ''))) # Arg. Pond. 1 inc by 1
+        c.drawString(720, 348, str(data.get('arg_pond_2', ''))) # EXCETO: Arg. Pond. 2
+        c.drawString(720, 303, str(data.get('arg_acumulado', ''))) # EXCETO: Arg. Acumulado
         
         # Nota Corte and Arg Necessario (Multiplied by 3 as requested)
-        c.drawString(160, 160, str(data.get('nota_corte', '-')))
-        c.drawString(220, 143, str(data.get('arg_acumulado', '-'))) 
+        c.drawString(160, 161, str(data.get('nota_corte', '-')))
+        c.drawString(220, 143, str(data.get('arg_acumulado', '-'))) # EXCETO: Arg. Acumulado
         
         # Calculate Arg Necessario * 3 for display if it's a number
         arg_nec = data.get('arg_necessario', '-')
@@ -194,7 +208,7 @@ class PDFGenerator:
         except:
             arg_nec_display = str(arg_nec)
             
-        c.drawString(250, 117, arg_nec_display)
+        c.drawString(250, 119, arg_nec_display) # Arg. Necessário (+1)
         
         # --- PROBABILITY AND Z-SCORE ---
         # User requested: (400, 250) for probability and (400, 230) for Z-score
