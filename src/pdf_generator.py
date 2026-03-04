@@ -137,10 +137,10 @@ class PDFGenerator:
     def _draw_content(self, c: canvas.Canvas, data: Dict[str, Union[str, float]], template_path: str = ""):
         """Helper to draw text at specific coordinates."""
         
-        # Determina cor base conforme o template (Branco para Digital, Preto para Impresso/Default)
-        base_color = "#FFFFFF" # Padrão para Digital (fundo azul)
+        # O texto dessas áreas superiores (Aluno, Curso, PAS 1 e 2) é sempre branco,
+        # visto que o template novo Genérico também tem os banners azuis.
+        base_color = "#FFFFFF" 
         if "IMPRESSO" in str(template_path).upper() or "DEFAULT" in str(template_path).upper():
-            base_color = "#000000" # Preto para fundo branco
             # Os templates IMPRESSO / GENERICO possuem arte e MediaBox levemente deslocados 
             # em relação ao DIGITAL. Para que as coordenadas originais continuem corretas, 
             # aplicamos um pequeno offset (x, y) no Canvas.
