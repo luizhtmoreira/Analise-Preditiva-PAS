@@ -3971,10 +3971,15 @@ elif page == "pdf":
                     raise ValueError("O gerador retornou um PDF vazio. Verifique os logs do terminal.")
 
                 st.success("PDF Gerado com Sucesso!")
+                
+                # Format name safely for filename
+                safe_name = aluno.strip().replace(" ", "_").lower()
+                pdf_filename = f"relatorio_{safe_name}.pdf" if safe_name else "relatorio_pas.pdf"
+
                 st.download_button(
                     label="📥 Baixar PDF",
                     data=pdf_bytes,
-                    file_name="relatorio_pas.pdf",
+                    file_name=pdf_filename,
                     mime="application/pdf",
                 )
             except Exception as e:
