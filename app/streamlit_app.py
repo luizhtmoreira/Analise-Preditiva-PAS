@@ -116,7 +116,7 @@ ARG_FINAL_MAE = 13.49 # Erro médio do modelo para cálculos de probabilidade
 DOMAINS_CONFIG = {
     "marista": {
         "logo": "assets/templates/logo_marista.png",
-        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO.pdf"
+        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO GENERICO.pdf"
     },
     "ideal": {
         "logo": "assets/templates/logo_ideal.png",
@@ -124,7 +124,7 @@ DOMAINS_CONFIG = {
     },
     "default": {
         "logo": "assets/templates/logo_vetorpas.png",
-        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO.pdf"
+        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO GENERICO.pdf"
     }
 }
 
