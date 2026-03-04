@@ -120,7 +120,7 @@ DOMAINS_CONFIG = {
     },
     "ideal": {
         "logo": "assets/templates/logo_ideal.png",
-        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) DIGITAL.pdf"
+        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO.pdf"
     },
     "default": {
         "logo": "assets/templates/logo_vetorpas.png",
