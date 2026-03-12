@@ -440,36 +440,234 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# CSS customizado
+# ════════════════════════════════════════════════════════════
+# TEMA GLOBAL — "Quiet Luxury" — Vetor PAS (versão cirúrgica)
+# ════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-    /* --- SEUS ESTILOS ORIGINAIS (MANTIDOS) --- */
-    .stMetric { padding: 15px; border-radius: 10px; }
-    .risk-high { background-color: #FFCDD2; }
-    .risk-medium { background-color: #FFF9C4; }
-    .risk-low { background-color: #C8E6C9; }
-    .main-header { 
-        font-size: 2.5rem; 
-        font-weight: bold; 
-        color: #1565C0;
-        margin-bottom: 1rem;
-    }
-    
-    /* --- WHITE-LABEL CSS (O Exterminador Definitivo) --- */
-    /* 1. Esconde a barra superior inteira (Fork, GitHub, Menu) */
-    /*.stApp > header { display: none !important; }/*
-    /*[data-testid="stHeader"] { display: none !important; }/*
-    
-    /* 2. Esconde o ícone flutuante do Streamlit no canto inferior (Barquinho vermelho) */
-    .viewerBadge_container { display: none !important; }
-    .viewerBadge_link { display: none !important; }
-    
-    /* 3. Esconde opções extras do rodapé e menu interno */
-    #MainMenu { display: none !important; }
-    footer { display: none !important; }
-    
+
+/* ══════════════════════════════════════════════════
+   1. BACKGROUND — Canvas ice-grey
+══════════════════════════════════════════════════ */
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewContainer"] > .main {
+    background-color: #F5F5F7 !important;
+}
+
+[data-testid="stAppViewContainer"] > .main > .block-container {
+    padding-top: 2rem !important;
+    padding-bottom: 3rem !important;
+}
+
+/* ══════════════════════════════════════════════════
+   2. SIDEBAR — Branca com borda direita sutil
+   (Não alteramos display/padding internos)
+══════════════════════════════════════════════════ */
+[data-testid="stSidebar"],
+[data-testid="stSidebar"] > div:first-child {
+    background-color: #FFFFFF !important;
+    border-right: 1px solid #E6E6E8 !important;
+}
+
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #003366 !important;
+    font-weight: 700 !important;
+}
+
+/* ══════════════════════════════════════════════════
+   3. MÉTRICAS — Card branco com sombra tátil
+   (Apenas background/shadow/radius, sem tocar em display)
+══════════════════════════════════════════════════ */
+[data-testid="metric-container"],
+div[data-testid="stMetric"] {
+    background: #FFFFFF !important;
+    border-radius: 12px !important;
+    padding: 20px 22px !important;
+    border: none !important;
+    box-shadow:
+        rgba(50, 50, 93, 0.06) 0px 15px 35px 0px,
+        rgba(0,   0,  0, 0.04) 0px  5px 15px 0px !important;
+}
+
+[data-testid="stMetricLabel"] p {
+    color: #6E6E73 !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: #1D1D1F !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+}
+
+/* ══════════════════════════════════════════════════
+   4. EXPANDERS — Sombra suave, SEM tocar no summary
+   ou nos filhos diretos (preserva ícone de seta)
+══════════════════════════════════════════════════ */
+[data-testid="stExpander"] {
+    background: #FFFFFF !important;
+    border-radius: 10px !important;
+    box-shadow:
+        rgba(50, 50, 93, 0.04) 0px 10px 25px 0px,
+        rgba(0,   0,  0, 0.02) 0px  4px 10px 0px !important;
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ══════════════════════════════════════════════════
+   5. INPUTS — Ultra-minimalistas com foco azul
+   (base-input cobre tanto stTextInput quanto stPasswordInput)
+══════════════════════════════════════════════════ */
+div[data-baseweb="base-input"] {
+    background-color: #F0F0F5 !important;
+    border: 1.5px solid transparent !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+}
+
+div[data-baseweb="base-input"]:focus-within {
+    background-color: #FFFFFF !important;
+    border-color: #003366 !important;
+    box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.12) !important;
+}
+
+div[data-baseweb="base-input"] input {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: #1D1D1F !important;
+}
+
+/* Selectbox */
+div[data-baseweb="select"] > div:first-child {
+    background-color: #F0F0F5 !important;
+    border: 1.5px solid transparent !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}
+
+div[data-baseweb="select"]:focus-within > div:first-child {
+    background-color: #FFFFFF !important;
+    border-color: #003366 !important;
+    box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.12) !important;
+}
+
+/* Dropdown de opções */
+[data-baseweb="menu"],
+[data-baseweb="popover"] {
+    border-radius: 10px !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow:
+        rgba(50, 50, 93, 0.10) 0px 20px 40px -10px,
+        rgba(0,   0,  0, 0.05) 0px  8px 20px  -8px !important;
+}
+
+/* Labels de inputs (scoped — não vaza para botões) */
+div[data-testid="stTextInput"]   label p,
+div[data-testid="stNumberInput"] label p,
+div[data-testid="stSelectbox"]   label p,
+div[data-testid="stSlider"]      label p,
+div[data-testid="stDateInput"]   label p {
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    color: #6E6E73 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+}
+
+/* ══════════════════════════════════════════════════
+   6. BOTÕES — Azul #003366, texto BRANCO explícito
+   (targeta todas as variantes nativas do Streamlit)
+══════════════════════════════════════════════════ */
+div.stButton > button,
+[data-testid="baseButton-secondary"],
+[data-testid="baseButton-primary"] {
+    background: #003366 !important;
+    color: #FFFFFF !important;           /* texto branco garantido */
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.88rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    box-shadow:
+        0 4px 6px rgba(0, 51, 102, 0.18),
+        0 1px 3px rgba(0,   0,   0, 0.08) !important;
+}
+
+/* Garante que o <p> ou <span> dentro do botão também fique branco */
+div.stButton > button p,
+div.stButton > button span,
+[data-testid="baseButton-secondary"] p,
+[data-testid="baseButton-primary"] p {
+    color: #FFFFFF !important;
+}
+
+div.stButton > button:hover,
+[data-testid="baseButton-secondary"]:hover,
+[data-testid="baseButton-primary"]:hover {
+    background: #004080 !important;
+    color: #FFFFFF !important;
+    transform: translateY(-2px) !important;
+    box-shadow:
+        0  8px 16px rgba(0, 51, 102, 0.26),
+        0  3px  6px rgba(0,   0,   0, 0.10) !important;
+    outline: none !important;
+}
+
+div.stButton > button:active,
+[data-testid="baseButton-secondary"]:active,
+[data-testid="baseButton-primary"]:active {
+    background: #002147 !important;
+    color: #FFFFFF !important;
+    transform: scale(0.98) translateY(1px) !important;
+    box-shadow:
+        0 0 0 5px rgba(0, 51, 102, 0.12),
+        0 2px 4px rgba(0, 51, 102, 0.18) !important;
+    outline: none !important;
+}
+
+div.stButton > button:focus,
+[data-testid="baseButton-secondary"]:focus,
+[data-testid="baseButton-primary"]:focus {
+    outline: none !important;
+    color: #FFFFFF !important;
+    box-shadow:
+        0 0 0 3px rgba(0, 51, 102, 0.20),
+        0 4px 6px rgba(0, 51, 102, 0.16) !important;
+}
+
+/* ══════════════════════════════════════════════════
+   7. TIPOGRAFIA — Apenas h1/h2/h3 (scoped, seguro)
+══════════════════════════════════════════════════ */
+h1 { color: #1D1D1F !important; font-weight: 800 !important; letter-spacing: -0.03em !important; }
+h2 { color: #1D1D1F !important; font-weight: 700 !important; letter-spacing: -0.025em !important; }
+h3 { color: #3A3A3C !important; font-weight: 600 !important; letter-spacing: -0.02em !important; }
+
+/* ══════════════════════════════════════════════════
+   8. HOUSEKEEPING — Oculta chrome nativo Streamlit
+══════════════════════════════════════════════════ */
+#MainMenu { display: none !important; }
+footer    { display: none !important; }
+.viewerBadge_container { display: none !important; }
+.viewerBadge_link      { display: none !important; }
+
+/* Classes de risco (legado) */
+.risk-high   { background-color: #FFCDD2; border-radius: 6px; padding: 4px 8px; }
+.risk-medium { background-color: #FFF9C4; border-radius: 6px; padding: 4px 8px; }
+.risk-low    { background-color: #C8E6C9; border-radius: 6px; padding: 4px 8px; }
+
 </style>
 """, unsafe_allow_html=True)
+
+
+
 
 def plot_correlation(df: pd.DataFrame):
     """
@@ -585,8 +783,14 @@ def plot_distribution_overlay(df: pd.DataFrame):
 def init_connection():
     try:
         # Puxando as chaves diretamente do servidor (Render)
-        url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
-        key = st.secrets.get("SUPABASE_KEY") or os.getenv("SUPABASE_KEY")
+        # Tenta pegar do st.secrets (formato plano ou aninhado [supabase]) ou de variáveis de ambiente
+        url = (st.secrets.get("SUPABASE_URL") or 
+               st.secrets.get("supabase", {}).get("url") or 
+               os.getenv("SUPABASE_URL"))
+               
+        key = (st.secrets.get("SUPABASE_KEY") or 
+               st.secrets.get("supabase", {}).get("key") or 
+               os.getenv("SUPABASE_KEY"))
         
         # Trava de segurança para avisar se esquecermos de colocar no Render
         if not url or not key:
@@ -608,55 +812,254 @@ def check_login():
 
     # Se NÃO estiver logado, mostra tela de bloqueio
     if not st.session_state['logged_in']:
-        # --- CSS PERSONALIZADO PARA LOGIN ---
+
+        # =====================================================================
+        # STRIPE-AESTHETIC LOGIN — Mesh Gradient + Card + Purple CTA
+        # =====================================================================
+
         st.markdown("""
             <style>
-            /* Hover effect for the login button */
-            div.stButton > button:first-child:hover {
-                background-color: #007bff !important;
-                color: white !important;
-                border-color: #007bff !important;
+            /* ── Google Fonts (Inter) ── */
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+            /* ── Oculta chrome do Streamlit ── */
+            [data-testid="stSidebar"],
+            [data-testid="stHeader"],
+            #MainMenu, footer { display: none !important; }
+
+            /* ══════════════════════════════════════════════════
+               1. FUNDO — Mesh Gradient azul-gelo
+            ══════════════════════════════════════════════════ */
+            [data-testid="stAppViewContainer"] {
+                background-color: #F0F4F8 !important;
+                background-image:
+                    radial-gradient(ellipse at 0%   0%,   rgba(0,  80, 160, 0.10) 0%, transparent 55%),
+                    radial-gradient(ellipse at 100%  0%,   rgba(0, 160, 220, 0.10) 0%, transparent 50%),
+                    radial-gradient(ellipse at 100% 100%,  rgba(0,  51, 102, 0.07) 0%, transparent 50%),
+                    radial-gradient(ellipse at 0%  100%,   rgba(0, 120, 200, 0.08) 0%, transparent 55%) !important;
+                background-attachment: fixed !important;
+                min-height: 100vh !important;
+            }
+
+            [data-testid="stAppViewContainer"] > .main {
+                background: transparent !important;
+                min-height: 100vh !important;
+            }
+
+            /* Tipografia global */
+            [data-testid="stAppViewContainer"] * {
+                font-family: 'Inter', sans-serif !important;
+                box-sizing: border-box !important;
+            }
+
+            /* ══════════════════════════════════════════════════
+               2. CARD — white card (4 seletores cobre toda versão Streamlit)
+            ══════════════════════════════════════════════════ */
+
+            /* Regra base na própria coluna do meio */
+            div[data-testid="column"]:nth-child(2) {
+                overflow: visible !important;   /* sombra não corta */
+            }
+
+            /* Seletor A: filho direto (qualquer div) */
+            div[data-testid="column"]:nth-child(2) > div:first-child,
+            /* Seletor B: stVerticalBlockBorderWrapper (Streamlit 1.30+) */
+            div[data-testid="column"]:nth-child(2) > [data-testid="stVerticalBlockBorderWrapper"],
+            /* Seletor C: stVerticalBlock filho direto (versões anteriores) */
+            div[data-testid="column"]:nth-child(2) > div[data-testid="stVerticalBlock"],
+            /* Seletor D: stVerticalBlock 2 níveis abaixo (wrapper extra) */
+            div[data-testid="column"]:nth-child(2) > div > div[data-testid="stVerticalBlock"] {
+                background: #FFFFFF !important;
+                border-radius: 16px !important;
+                padding: 48px 40px 40px !important;
+                box-shadow:
+                    rgba(50,  50,  93, 0.10) 0px 30px 60px -12px,
+                    rgba(0,   0,   0,  0.05) 0px 18px 36px -18px,
+                    rgba(0,   51, 102, 0.04) 0px  2px  4px   0px !important;
+                border: 1px solid rgba(0, 0, 0, 0.04) !important;
+            }
+
+            /* ══════════════════════════════════════════════════
+               3. INPUTS — wrapper unificado (email + senha + olho)
+            ══════════════════════════════════════════════════ */
+
+            /* O wrapper externo do Streamlit: sem borda própria */
+            div[data-testid="stTextInput"] > div {
+                border: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+            }
+
+            /* BaseWeb "base-input": envolve campo + ícone do olho */
+            div[data-baseweb="base-input"] {
+                /* ── Diretriz 3: Ultra-minimalista — sem borda, fill cinza gelo ── */
+                background-color: #F5F5F7 !important;
+                border: 1.5px solid transparent !important;
+                border-radius: 8px !important;
+                overflow: hidden !important;
+                transition: all 0.2s ease !important;
+                box-shadow: none !important;
+                width: 100% !important;
+            }
+
+            div[data-baseweb="base-input"]:focus-within {
+                background-color: #FFFFFF !important;
+                border-color: #003366 !important;
+                box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.14) !important;
+            }
+
+            /* O <input> em si: sem borda própria, fundo transparente */
+            div[data-baseweb="base-input"] input {
+                background: transparent !important;
+                border: none !important;
+                outline: none !important;
+                box-shadow: none !important;
+                color: #1A1A2E !important;
+                font-size: 0.92rem !important;
+                font-weight: 400 !important;
+                padding: 11px 14px !important;
+                width: 100% !important;
+            }
+
+            /* Ícone do olho (botão): herda fundo do wrapper, sem borda */
+            div[data-baseweb="base-input"] button,
+            div[data-baseweb="base-input"] [role="button"] {
+                background: transparent !important;
+                border: none !important;
+                outline: none !important;
+                color: #8E8E93 !important;
+                cursor: pointer !important;
+                padding: 0 12px !important;
+                display: flex !important;
+                align-items: center !important;
+            }
+
+            /* ── Diretriz 2: Labels — Medium, desaturado, menor ── */
+            div[data-testid="stTextInput"] label p {
+                font-size: 0.73rem !important;
+                font-weight: 500 !important;
+                color: #6E6E73 !important;
+                letter-spacing: 0.06em !important;
+                text-transform: uppercase !important;
+                margin-bottom: 5px !important;
+            }
+
+            /* ══════════════════════════════════════════════════
+               4. BOTÃO CTA — Azul Corporativo #003366
+            ══════════════════════════════════════════════════ */
+            div.stButton > button {
+                background: #003366 !important;
+                color: #FFFFFF !important;
+                border: none !important;
+                border-radius: 7px !important;
+                font-weight: 600 !important;
+                font-size: 0.93rem !important;
+                letter-spacing: 0.01em !important;
+                padding: 13px 20px !important;
+                width: 100% !important;
+                margin-top: 10px !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                box-shadow:
+                    0 4px 6px  rgba(0, 51, 102, 0.20),
+                    0 1px 3px  rgba(0,  0,   0, 0.10) !important;
+            }
+
+            /* ── Diretriz 4: Micro-interações táteis ── */
+            div.stButton > button:hover {
+                background: #004080 !important;
+                transform: translateY(-2px) !important;
+                box-shadow:
+                    0  8px 16px rgba(0,  51, 102, 0.28),
+                    0  4px  6px rgba(0,   0,   0, 0.10) !important;
+                outline: none !important;
+                border: none !important;
+            }
+
+            div.stButton > button:active {
+                background: #002147 !important;
+                /* Compressão tátil — simula clique físico */
+                transform: scale(0.98) translateY(1px) !important;
+                box-shadow:
+                    /* Halo expandido ao pressionar */
+                    0 0 0 6px rgba(0,  51, 102, 0.12),
+                    0 2px 4px rgba(0,  51, 102, 0.20) !important;
+                outline: none !important;
+                border: none !important;
+            }
+
+            div.stButton > button:focus {
+                background: #003366 !important;
+                box-shadow:
+                    0 0 0 3px rgba(0,  51, 102, 0.22),
+                    0 4px 6px rgba(0,  51, 102, 0.18) !important;
+                outline: none !important;
+                border: none !important;
             }
             </style>
         """, unsafe_allow_html=True)
 
-        # Centraliza o login
-        col1, col2, col3 = st.columns([1, 2, 1])
+
+        # ── Layout: 3 colunas, card na central ──────────────────────────────
+        col1, col2, col3 = st.columns([1, 1.5, 1])
         with col2:
-            st.markdown("## 🔒 Acesso Restrito - Coordenação")
-            email = st.text_input("Email Corporativo")
-            password = st.text_input("Senha", type="password")
-            
-            if st.button("Entrar no Sistema", use_container_width=True):
+
+            # ── Cabeçalho do Card ────────────────────────────────────────────
+            st.markdown("""
+                <div style="text-align: center; margin-bottom: 32px;">
+                    <p style="
+                        font-size: 1.6rem;
+                        font-weight: 700;
+                        color: #0F172A;
+                        margin: 0 0 8px 0;
+                        letter-spacing: -0.025em;
+                        line-height: 1.2;
+                    ">Vetor PAS</p>
+                    <p style="
+                        font-size: 0.875rem;
+                        color: #6B7280;
+                        margin: 0;
+                        font-weight: 400;
+                        line-height: 1.5;
+                    ">Insira suas credenciais para acessar a plataforma.</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # ── Campos ───────────────────────────────────────────────────────
+            email    = st.text_input("Email corporativo", placeholder="nome@escola.com.br")
+            password = st.text_input("Senha", type="password", placeholder="••••••••")
+
+            # ── CTA ──────────────────────────────────────────────────────────
+            if st.button("Entrar no sistema", use_container_width=True):
                 if supabase:
                     try:
                         session = supabase.auth.sign_in_with_password({"email": email, "password": password})
                         st.session_state['logged_in'] = True
                         st.session_state['user_email'] = session.user.email
-                        
-                        # Salva JWT tokens na sessão do Streamlit para reidratar o cliente no Rerun
-                        st.session_state['supabase_access_token'] = session.session.access_token
+                        st.session_state['supabase_access_token']  = session.session.access_token
                         st.session_state['supabase_refresh_token'] = session.session.refresh_token
-                        
                         st.toast("Login realizado com sucesso!", icon="✅")
                         time.sleep(0.5)
                         st.rerun()
-                    except Exception as e:
+                    except Exception:
                         st.error("Credenciais inválidas. Por favor, tente novamente.")
                 else:
-                    st.error("Erro de conexão com Supabase. Verifique secrets.toml")
-        
-        # Footer Branding
-        st.markdown(
-            """
-            <div style="text-align: center; margin-top: 50px; color: #666; font-size: 0.85rem;">
-                🔒 Ambiente Seguro | <b>Vetor PAS</b>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        st.stop() # 🛑 PARA TUDO AQUI SE NÃO ESTIVER LOGADO
+                    st.error("Erro de conexão com o servidor. Verifique secrets.toml.")
+
+            # ── Rodapé discreto ──────────────────────────────────────────────
+            st.markdown("""
+                <p style="
+                    text-align: center;
+                    font-size: 0.72rem;
+                    color: #9CA3AF;
+                    margin-top: 32px;
+                    margin-bottom: 0;
+                    letter-spacing: 0.02em;
+                ">© 2026 Vetor PAS · Plataforma de Análise Preditiva</p>
+            """, unsafe_allow_html=True)
+
+        st.stop()  # 🛑 PARA TUDO AQUI SE NÃO ESTIVER LOGADO
 
     # Se já estivemos logados (o app recarregou pq passamos da checagem acima),
     # re-injetamos o token JWT no singleton do supabase
