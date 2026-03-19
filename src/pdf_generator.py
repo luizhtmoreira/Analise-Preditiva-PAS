@@ -134,6 +134,104 @@ class PDFGenerator:
         zip_buffer.seek(0)
         return zip_buffer.getvalue()
 
+    def generate_courses_pdf(
+        self,
+        courses_data: Dict[str, list],
+        template_override: str = None
+    ) -> bytes:
+        """
+        Generates a PDF with top 3 courses per semester overlaid on the CURSOS template.
+        
+        Args:
+            courses_data: Dict with keys 'sem1' and 'sem2', each a list of up to 3 dicts
+                          with keys 'curso' (str) and 'chance' (str, e.g. "85.3%").
+            template_override: Optional path to template (relative to project root).
+            
+        Returns:
+            bytes: The content of the final PDF.
+        """
+        # Resolve template
+        if template_override:
+            base_dir = Path(__file__).resolve().parent.parent
+            template_path = (base_dir / template_override).resolve()
+        else:
+            template_path = self.template_dir / "MODELO PAS-UNB (CURSOS) IMPRESSO.pdf"
+
+        if not template_path.exists():
+            raise FileNotFoundError(f"Template de cursos não encontrado em: {template_path}")
+
+        # Coordinates for each slot (curso_x, chance_x, y)
+        coords_sem1 = [
+            (190, 614, 415),  # 1º curso
+            (190, 614, 380),  # 2º curso
+            (190, 614, 346),  # 3º curso
+        ]
+        coords_sem2 = [
+            (190, 614, 184),  # 1º curso
+            (190, 614, 149),  # 2º curso
+            (190, 614, 116),  # 3º curso
+        ]
+
+        # Create overlay canvas
+        packet = io.BytesIO()
+        c = canvas.Canvas(packet, pagesize=landscape(A4))
+
+        # Apply the same offset used for IMPRESSO templates
+        if "IMPRESSO" in str(template_path).upper():
+            c.translate(0, 8.8)
+
+        c.setFillColor(HexColor("#FFFFFF"))
+        c.setFont(self.font_bold, 10)
+
+        max_w = 550 - 190 # Largura máxima para o curso (começa em 190, não pode passar de 550)
+
+        def draw_truncated_course(canvas_obj, x, y, text, max_width):
+            """Desenha o texto truncando com '...' se exceder a largura."""
+            if canvas_obj.stringWidth(text, self.font_bold, 10) <= max_width:
+                canvas_obj.drawString(x, y, text)
+            else:
+                # Truncamento simples
+                while canvas_obj.stringWidth(text + "...", self.font_bold, 10) > max_width and len(text) > 0:
+                    text = text[:-1]
+                canvas_obj.drawString(x, y, text + "...")
+
+        # Draw 1º Semestre courses
+        for i, slot in enumerate(coords_sem1):
+            curso_x, chance_x, y = slot
+            items = courses_data.get('sem1', [])
+            if i < len(items):
+                curso_nome = str(items[i].get('curso', ''))
+                draw_truncated_course(c, curso_x, y, curso_nome, max_w)
+                c.drawString(chance_x, y, str(items[i].get('chance', '')))
+
+        # Draw 2º Semestre courses
+        for i, slot in enumerate(coords_sem2):
+            curso_x, chance_x, y = slot
+            items = courses_data.get('sem2', [])
+            if i < len(items):
+                curso_nome = str(items[i].get('curso', ''))
+                draw_truncated_course(c, curso_x, y, curso_nome, max_w)
+                c.drawString(chance_x, y, str(items[i].get('chance', '')))
+
+        c.save()
+        packet.seek(0)
+
+        # Merge overlay onto template (same proven logic)
+        new_pdf = PdfReader(packet)
+        existing_pdf = PdfReader(str(template_path))
+        output = PdfWriter()
+
+        page = existing_pdf.pages[0]
+        if len(new_pdf.pages) > 0:
+            page.merge_page(new_pdf.pages[0])
+
+        output.add_page(page)
+
+        output_stream = io.BytesIO()
+        output.write(output_stream)
+        output_stream.seek(0)
+        return output_stream.getvalue()
+
     def _draw_content(self, c: canvas.Canvas, data: Dict[str, Union[str, float]], template_path: str = ""):
         """Helper to draw text at specific coordinates."""
         

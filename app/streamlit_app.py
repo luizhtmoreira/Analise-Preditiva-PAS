@@ -124,7 +124,8 @@ DOMAINS_CONFIG = {
     },
     "default": {
         "logo": "assets/templates/logo_vetorpas.png",
-        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO GENERICO.pdf"
+        "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO GENERICO.pdf",
+        "pdf_cursos": "assets/templates/MODELO PAS-UNB (CURSOS) IMPRESSO.pdf"
     }
 }
 
@@ -1979,13 +1980,13 @@ elif page == "ativos":
     col_f1, col_f2, col_f3, col_f4 = st.columns(4)
     
     with col_f1:
-        unidades_disp = ["Todas"] + sorted(df['Unidade'].unique().tolist())
+        unidades_disp = ["Todas"] + sorted(df['Unidade'].dropna().astype(str).unique().tolist())
         unidade_sel = st.selectbox(":material/business: Unidade", unidades_disp, key="ga_unidade")
     
     df_filtrado = df if unidade_sel == "Todas" else df[df['Unidade'] == unidade_sel]
     
     with col_f2:
-        turmas_disp = ["Todas"] + sorted(df_filtrado['Turma'].unique().tolist())
+        turmas_disp = ["Todas"] + sorted(df_filtrado['Turma'].dropna().astype(str).unique().tolist())
         turma_sel = st.selectbox(":material/school: Turma", turmas_disp, key="ga_turma")
     
     if turma_sel != "Todas":
@@ -2604,7 +2605,7 @@ elif page == "preditor":
         
         # 1. Filtro Unidade (se existir coluna)
         if 'Unidade' in df_escola.columns:
-            unidades = sorted(df_escola['Unidade'].dropna().unique())
+            unidades = sorted(df_escola['Unidade'].dropna().astype(str).unique().tolist())
             unidade_sel = c_unidade.selectbox("Unidade", ["Todas"] + list(unidades))
             if unidade_sel != "Todas":
                 df_escola = df_escola[df_escola['Unidade'] == unidade_sel]
@@ -2613,7 +2614,7 @@ elif page == "preditor":
 
         # 2. Filtro Turma (se existir coluna)
         if 'Turma' in df_escola.columns:
-            turmas = sorted(df_escola['Turma'].dropna().unique())
+            turmas = sorted(df_escola['Turma'].dropna().astype(str).unique().tolist())
             turma_sel = c_turma.selectbox("Turma", ["Todas"] + list(turmas))
             if turma_sel != "Todas":
                 df_escola = df_escola[df_escola['Turma'] == turma_sel]
@@ -2622,7 +2623,7 @@ elif page == "preditor":
             
         # 3. Filtro Aluno
         if 'Nome' in df_escola.columns:
-            alunos = sorted(df_escola['Nome'].dropna().unique())
+            alunos = sorted(df_escola['Nome'].dropna().astype(str).unique().tolist())
             nome_aluno = c_aluno.selectbox("Aluno", ["Selecione..."] + list(alunos))
             
             if nome_aluno != "Selecione...":
@@ -2936,7 +2937,7 @@ elif page == "preditor":
             else:
                 df_cota_clean = df_cota_raw.copy()
 
-            opcoes_lista = sorted(df_cota_clean['Combo_Nome'].unique().tolist())
+            opcoes_lista = sorted(df_cota_clean['Combo_Nome'].dropna().astype(str).unique().tolist())
             
             # Cria dicionário de referência para o selectbox
             ultimas_chamadas = {}
@@ -3951,7 +3952,7 @@ elif page == "comparacao":
             st.markdown(f"**{display_name}**")
             
             # Filtro Unidade
-            uni_options = ["Todas"] + sorted(df[col_uni].dropna().unique().tolist()) if col_uni else ["N/A"]
+            uni_options = ["Todas"] + sorted(df[col_uni].dropna().astype(str).unique().tolist()) if col_uni else ["N/A"]
             sel_uni = st.selectbox(f"Unidade ({display_name})", uni_options, key=f"{prefix}_uni")
             
             # Filtro Turma (Dependente da Unidade)
@@ -3959,7 +3960,7 @@ elif page == "comparacao":
             if sel_uni != "Todas" and col_uni:
                 df_curr = df_curr[df_curr[col_uni] == sel_uni]
             
-            tur_options = ["Todas"] + sorted(df_curr[col_tur].dropna().unique().tolist()) if col_tur else ["Todas"]
+            tur_options = ["Todas"] + sorted(df_curr[col_tur].dropna().astype(str).unique().tolist()) if col_tur else ["Todas"]
             sel_tur = st.selectbox(f"Turma ({display_name})", tur_options, key=f"{prefix}_tur")
             
             # Filtra data final
@@ -4130,7 +4131,7 @@ elif page == "pdf":
                 # Lista de cotas extraída diretamente do CSV de cortes
                 try:
                     df_corte_full = pd.read_csv(Path(__file__).parent.parent / "data" / "notas_corte_pas.csv")
-                    lista_cotas_pdf = sorted(df_corte_full['Sistema_Nome'].unique().tolist())
+                    lista_cotas_pdf = sorted(df_corte_full['Sistema_Nome'].dropna().astype(str).unique().tolist())
                     if 'Sistema Universal' in lista_cotas_pdf:
                         lista_cotas_pdf.insert(0, lista_cotas_pdf.pop(lista_cotas_pdf.index('Sistema Universal')))
                 except:
@@ -4195,7 +4196,7 @@ elif page == "pdf":
             else:
                 df_cota_clean = df_cota_pdf.copy()
             
-            cursos_lista = sorted(df_cota_clean['Combo_Nome'].unique().tolist())
+            cursos_lista = sorted(df_cota_clean['Combo_Nome'].dropna().astype(str).unique().tolist())
 
             if cursos_lista:
                 # Dicionário de referências (Nota e Chamada) para exibição
@@ -4385,6 +4386,56 @@ elif page == "pdf":
                     file_name=pdf_filename,
                     mime="application/pdf",
                 )
+
+                # --- GERAÇÃO DO PDF DE CURSOS (Top 3 por semestre) ---
+                if domain_key_pdf == "default" and calculate_approval_probability:
+                    try:
+                        courses_data = {'sem1': [], 'sem2': []}
+                        for sem_iter in [1, 2]:
+                            sem_key = f'sem{sem_iter}'
+                            df_iter = load_course_stats(semester=sem_iter, triennium=trienio_ref_pdf, system=pdf_cota_sel)
+                            if df_iter is not None and not df_iter.empty:
+                                if 'Curso_Limpo' not in df_iter.columns and 'Curso' in df_iter.columns:
+                                    df_iter['Curso_Limpo'] = df_iter['Curso']
+                                for col_c in ['Curso_Limpo', 'Campus', 'Turno', 'Chamada']:
+                                    if col_c in df_iter.columns:
+                                        df_iter[col_c] = df_iter[col_c].astype(str).str.strip()
+                                df_iter['Combo_Nome'] = df_iter['Curso_Limpo'] + " (" + df_iter['Campus'] + " - " + df_iter['Turno'] + ")"
+                                # Deduplicação
+                                df_iter['Chamada_Num'] = df_iter['Chamada'].str.extract(r'(\d+)').fillna(0).astype(int)
+                                if sem_iter == 1:
+                                    df_dedup = df_iter.sort_values(['Combo_Nome', 'Min'], ascending=[True, True]).drop_duplicates('Combo_Nome', keep='first')
+                                else:
+                                    df_dedup = df_iter.sort_values(['Combo_Nome', 'Chamada_Num'], ascending=[True, True]).drop_duplicates('Combo_Nome', keep='first')
+                                # Calcula probabilidade
+                                df_dedup = df_dedup.copy()
+                                df_dedup['Chance'] = df_dedup['Min'].apply(
+                                    lambda x: calculate_approval_probability(arg_final_pred_ml, x, rmse=ARG_FINAL_MAE) * 100
+                                )
+                                # Seleciona os 3 cursos com menor distância (em módulo) para o arg previsto
+                                df_dedup['Dist'] = abs(df_dedup['Min'] - arg_final_pred_ml)
+                                top3 = df_dedup.sort_values('Dist').head(3)
+                                for _, row_c in top3.iterrows():
+                                    courses_data[sem_key].append({
+                                        'curso': row_c['Combo_Nome'],
+                                        'chance': f"{row_c['Chance']:.1f}%"
+                                    })
+
+                        # Gera o PDF de cursos
+                        cursos_template = DOMAINS_CONFIG["default"].get("pdf_cursos")
+                        cursos_pdf_bytes = pdf_gen.generate_courses_pdf(courses_data, template_override=cursos_template)
+                        if cursos_pdf_bytes:
+                            cursos_filename = f"cursos_{safe_name}.pdf" if safe_name else "cursos_pas.pdf"
+                            st.download_button(
+                                label="📥 Baixar PDF de Cursos",
+                                data=cursos_pdf_bytes,
+                                file_name=cursos_filename,
+                                mime="application/pdf",
+                                key="btn_download_cursos_pdf"
+                            )
+                    except Exception as e_cursos:
+                        st.warning(f"Não foi possível gerar PDF de cursos: {e_cursos}")
+
             except Exception as e:
                 st.error(f"Erro ao gerar PDF: {e}")
 
