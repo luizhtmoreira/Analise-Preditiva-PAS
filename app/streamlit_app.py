@@ -2640,9 +2640,14 @@ elif page == "preditor":
             df_global = df_global.dropna(subset=['Nome'])
             alunos_globais = sorted(df_global['Nome'].astype(str).unique().tolist())
             
-            nome_aluno_global = st.selectbox("Buscar Aluno por Nome (Global)", ["Selecione..."] + alunos_globais)
+            nome_aluno_global = st.selectbox(
+                "Buscar Aluno por Nome (Global)",
+                options=alunos_globais,
+                index=None,
+                placeholder="Digite o nome ou selecione na lista..."
+            )
             
-            if nome_aluno_global != "Selecione...":
+            if nome_aluno_global is not None:
                 aluno_selecionado_df = df_global[df_global['Nome'] == nome_aluno_global]
                 if not aluno_selecionado_df.empty:
                     aluno_selecionado = aluno_selecionado_df.iloc[0]
@@ -2729,9 +2734,14 @@ elif page == "preditor":
         # 3. Filtro Aluno
         if 'Nome' in df_escola.columns:
             alunos = sorted(df_escola['Nome'].dropna().astype(str).unique().tolist())
-            nome_aluno = c_aluno.selectbox("Aluno", ["Selecione..."] + list(alunos))
+            nome_aluno = c_aluno.selectbox(
+                "Aluno",
+                options=list(alunos),
+                index=None,
+                placeholder="Digite o nome ou selecione..."
+            )
             
-            if nome_aluno != "Selecione...":
+            if nome_aluno is not None:
                 aluno_selecionado = df_escola[df_escola['Nome'] == nome_aluno].iloc[0]
                 st.success(f"Dados de **{nome_aluno}** carregados!")
                 
@@ -3060,11 +3070,13 @@ elif page == "preditor":
             # Seletor de Curso
             curso_combo_sel = st.selectbox(
                 "Selecione um curso de interesse:", 
-                ["Selecione..."] + opcoes_lista,
-                format_func=lambda x: x if x == "Selecione..." else f"{x} [Corte ({ultimas_chamadas[x]['chamada']}): {ultimas_chamadas[x]['nota']:.3f}]"
+                options=opcoes_lista,
+                index=None,
+                placeholder="Digite o curso ou selecione...",
+                format_func=lambda x: f"{x} [Corte ({ultimas_chamadas[x]['chamada']}): {ultimas_chamadas[x]['nota']:.3f}]"
             )
             
-            if curso_combo_sel != "Selecione...":
+            if curso_combo_sel is not None:
                 # Extrai os dados do curso selecionado via Combo_Nome
                 row_sel = df_cota_raw[df_cota_raw['Combo_Nome'] == curso_combo_sel].iloc[0]
                 curso_selecionado = row_sel['Curso_Limpo']
