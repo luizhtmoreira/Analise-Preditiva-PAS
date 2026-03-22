@@ -6,6 +6,7 @@ from typing import Dict, List, Union
 import pandas as pd
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
@@ -217,6 +218,81 @@ class PDFGenerator:
         packet.seek(0)
 
         # Merge overlay onto template (same proven logic)
+        new_pdf = PdfReader(packet)
+        existing_pdf = PdfReader(str(template_path))
+        output = PdfWriter()
+
+        page = existing_pdf.pages[0]
+        if len(new_pdf.pages) > 0:
+            page.merge_page(new_pdf.pages[0])
+
+        output.add_page(page)
+
+        output_stream = io.BytesIO()
+        output.write(output_stream)
+        output_stream.seek(0)
+        return output_stream.getvalue()
+
+    def generate_comparison_pdf(
+        self,
+        data: Dict[str, Union[str, float]],
+        template_override: str = None
+    ) -> bytes:
+        """
+        Generates a comparison PDF overlaying predicted vs real scores.
+        
+        Args:
+            data: Dictionary containing:
+                  eb_pas1, eb_pas2, eb_pas3_pred, arg_final_pred, eb_pas3_real, arg_final_real
+            template_override: Optional path to template.
+            
+        Returns:
+            bytes: The content of the final PDF.
+        """
+        if template_override:
+            base_dir = Path(__file__).resolve().parent.parent
+            template_path = (base_dir / template_override).resolve()
+        else:
+            template_path = self.template_dir / "MODELO PAS-UNB (COMPARAÇÃO) IMPRESSO.pdf"
+
+        if not template_path.exists():
+            raise FileNotFoundError(f"Template de comparação não encontrado em: {template_path}")
+
+        packet = io.BytesIO()
+        c = canvas.Canvas(packet, pagesize=landscape(A4))
+
+        # Apply offset for IMPRESSO templates
+        if "IMPRESSO" in str(template_path).upper():
+            c.translate(0, 8.8)
+
+        # Draw content
+        c.setFillColor(HexColor("#FFFFFF"))
+        c.setFont(self.font_bold, 17)
+
+        # Coordinates
+        # EB PAS 1: (37.5, 95)
+        # EB PAS 2: (97.5 ,95)
+        # PROJETADO
+        # EB PAS 3: (202.5, 152.5)
+        # ARG. FINAL: (260, 152.5)
+        # REAL
+        # EB PAS 3: (202.5, 44)
+        # ARG. FINAL: (260, 44)
+        
+        # Movidos mais 3 para esquerda (acumulado: 11 esquerda, 7 baixo das originais)
+        
+        c.drawString(27.5 * mm, 89 * mm, str(data.get('eb_pas1', '')))
+        c.drawString(86.5 * mm, 89 * mm, str(data.get('eb_pas2', '')))
+        
+        c.drawString(193.5 * mm, 147.5 * mm, str(data.get('eb_pas3_pred', '')))
+        c.drawString(251 * mm, 147.5 * mm, str(data.get('arg_final_pred', '')))
+        
+        c.drawString(193.5 * mm, 37 * mm, str(data.get('eb_pas3_real', '')))
+        c.drawString(251 * mm, 37 * mm, str(data.get('arg_final_real', '')))
+
+        c.save()
+        packet.seek(0)
+
         new_pdf = PdfReader(packet)
         existing_pdf = PdfReader(str(template_path))
         output = PdfWriter()
