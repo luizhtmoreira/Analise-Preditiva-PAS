@@ -126,7 +126,7 @@ DOMAINS_CONFIG = {
         "logo": "assets/templates/logo_vetorpas.png",
         "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO GENERICO.pdf",
         "pdf_cursos": "assets/templates/MODELO PAS-UNB (CURSOS) IMPRESSO.pdf",
-        "pdf_comparacao": "assets/templates/MODELO PAS-UNB (COMPARAÇÃO) IMPRESSO.pdf"
+        "pdf_comparacao": "assets/templates/modelo_comparacao_impresso.pdf"
     }
 }
 
