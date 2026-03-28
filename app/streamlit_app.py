@@ -125,7 +125,8 @@ DOMAINS_CONFIG = {
     "default": {
         "logo": "assets/templates/logo_vetorpas.png",
         "pdf": "assets/templates/MODELO PAS-UNB (ALUNOS) IMPRESSO GENERICO.pdf",
-        "pdf_cursos": "assets/templates/MODELO PAS-UNB (CURSOS) IMPRESSO.pdf"
+        "pdf_cursos": "assets/templates/MODELO PAS-UNB (CURSOS) IMPRESSO.pdf",
+        "pdf_comparacao": "assets/templates/MODELO PAS-UNB (COMPARAÇÃO) IMPRESSO.pdf"
     }
 }
 
@@ -325,6 +326,34 @@ def load_cohort_data():
         return df
     except Exception as e:
         st.error(f"Erro ao carregar dados de coorte: {e}")
+        return pd.DataFrame()
+
+
+@st.cache_data
+def load_global_students_data():
+    """Carrega dados globais de alunos para a pesquisa exclusiva do tenant default."""
+    try:
+        data_dir = Path(__file__).parent.parent / "data"
+        csv_path = data_dir / "banco_alunos_pas_final.csv"
+        
+        if not csv_path.exists():
+            return pd.DataFrame()
+            
+        cols_to_load = [
+            'Nome', 'Inscricao', 'P1_PAS1', 'P2_PAS1', 'Red_PAS1', 
+            'P1_PAS2', 'P2_PAS2', 'Red_PAS2', 'P1_PAS3', 'P2_PAS3', 'Red_PAS3', 
+            'Arg_Final', 'Ano_Trienio', 'Trienio', 'Cota', 'Sistema_Nome', 'Sistema'
+        ]
+        
+        df = pd.read_csv(csv_path, usecols=lambda c: c in cols_to_load)
+        
+        # O banco de dados histórico às vezes traz lixo numérico no começo do nome (e.g. "330 Emanuelle").
+        if 'Nome' in df.columns:
+            df['Nome'] = df['Nome'].astype(str).str.replace(r'^\d+\s*', '', regex=True)
+            
+        return df
+    except Exception as e:
+        st.error(f"Erro ao carregar banco global: {e}")
         return pd.DataFrame()
 
 
@@ -1218,14 +1247,14 @@ MODEL_NAMES = {
 
 TRIENNIUM_STATS = {
     "2024-2026": {
-        "PAS1": HistoricalStats(mean_p1=2.2175, std_p1=2.4766, mean_p2=23.8314, std_p2=12.3387, mean_red=6.0345, std_red=2.4790), # PAS 1 já ocorreu (placeholder 23-25 por enquanto)
-        "PAS2": HistoricalStats(mean_p1=3.1496, std_p1=3.2475, mean_p2=25.3101, std_p2=14.2913, mean_red=6.1569, std_red=2.4728), # PAS 2 já ocorreu (placeholder 23-25 por enquanto)
+        "PAS1": HistoricalStats(mean_p1=2.9552, std_p1=2.4909, mean_p2=25.4272, std_p2=11.3914, mean_red=6.9051, std_red=1.8409),
+        "PAS2": HistoricalStats(mean_p1=3.1320, std_p1=3.0884, mean_p2=28.0855, std_p2=14.6654, mean_red=6.5109, std_red=1.9882),
         "PAS3": None, # FUTURO - Será definido dinamicamente (Trend ou Imitar 23-25)
     },
     "2023-2025": {
-        "PAS1": HistoricalStats(mean_p1=2.2175, std_p1=2.4766, mean_p2=23.8314, std_p2=12.3387, mean_red=6.0345, std_red=2.4790),
-        "PAS2": HistoricalStats(mean_p1=3.1496, std_p1=3.2475, mean_p2=25.3101, std_p2=14.2913, mean_red=6.1569, std_red=2.4728),
-        "PAS3": HistoricalStats(mean_p1=3.8200, std_p1=2.1000, mean_p2=33.7400, std_p2=14.5000, mean_red=7.6500, std_red=1.8500), # Histórico Real Consolidados
+        "PAS1": HistoricalStats(mean_p1=2.2175, std_p1=2.4766, mean_p2=25.3330, std_p2=14.6860, mean_red=6.0345, std_red=2.4790),
+        "PAS2": HistoricalStats(mean_p1=3.1496, std_p1=3.2475, mean_p2=29.2750, std_p2=14.2913, mean_red=6.8770, std_red=2.0050),
+        "PAS3": HistoricalStats(mean_p1=3.8200, std_p1=2.1000, mean_p2=30.6750, std_p2=13.7520, mean_red=7.6500, std_red=1.8500), # Histórico Real Consolidados
     },
     "2022-2024": {
         "PAS1": HistoricalStats(mean_p1=3.6037, std_p1=3.0053, mean_p2=20.7094, std_p2=13.5819, mean_red=5.8878, std_red=2.7796),
@@ -1239,7 +1268,7 @@ TRIENNIUM_STATS = {
     },
     "2020-2022": {
         "PAS1": HistoricalStats(mean_p1=2.3277, std_p1=2.4701, mean_p2=24.7838, std_p2=13.3673, mean_red=5.7425, std_red=2.6371),
-        "PAS2": HistoricalStats(mean_p1=3.3276, std_p1=2.1757, mean_p2=25.3493, std_p2=11.9121, mean_red=7.1249, std_red=1.8389),
+        "PAS2": HistoricalStats(mean_p1=3.3276, std_p1=2.1757, mean_p2=25.3493, std_p2=11.9121, mean_red=7.090, std_red=1.8389),
         "PAS3": HistoricalStats(mean_p1=3.3614, std_p1=1.8490, mean_p2=26.3846, std_p2=13.1469, mean_red=7.4822, std_red=1.7520),
     }
 }
@@ -1532,8 +1561,9 @@ def buscar_alunos_nuvem_global():
             'trienio': 'Ano_Trienio',
             'p1_pas1': 'P1_PAS1', 'p2_pas1': 'P2_PAS1', 'red_pas1': 'Red_PAS1',
             'p1_pas2': 'P1_PAS2', 'p2_pas2': 'P2_PAS2', 'red_pas2': 'Red_PAS2',
-            # 'p1_pas3': 'P1_PAS3', 'p2_pas3': 'P2_PAS3', 'red_pas3': 'Red_PAS3', # Se existir
-            'eb_pas1': 'EB_PAS1', 'eb_pas2': 'EB_PAS2', 'eb_pas3': 'EB_PAS3'
+            'p1_pas3': 'P1_PAS3', 'p2_pas3': 'P2_PAS3', 'red_pas3': 'Red_PAS3', 
+            'eb_pas1': 'EB_PAS1', 'eb_pas2': 'EB_PAS2', 'eb_pas3': 'EB_PAS3',
+            'arg_final': 'Arg_Final'
         }
         # Renomeia os que existem
         df_cloud = df_cloud.rename(columns=rename_map)
@@ -2583,22 +2613,102 @@ elif page == "preditor":
     tem_base = 'df_global_escola' in st.session_state and st.session_state['df_global_escola'] is not None
     
     # Seletor de Modo
+    opcoes_modo = ["🔍 Buscar na Base da Escola", "✍️ Entrada Manual"]
+    if domain_key == 'default':
+        opcoes_modo.insert(0, "🔍 Pesquisa Global (Banco)")
+
     modo_selecao = st.radio(
         "Modo de Entrada:",
-        ["🔍 Buscar na Base da Escola", "✍️ Entrada Manual"],
-        index=0 if tem_base else 1,
+        opcoes_modo,
+        index=0 if tem_base or domain_key == 'default' else len(opcoes_modo) - 1,
         horizontal=True,
-        disabled=not tem_base,
-        help="Use 'Buscar' para carregar dados automaticamente da planilha da escola. Use 'Manual' para simular livremente."
+        disabled=not tem_base and domain_key != 'default',
+        help="Use 'Pesquisa Global' ou 'Buscar' para carregar dados automaticamente. Use 'Manual' para simular livremente."
     )
     
-    if not tem_base:
+    if not tem_base and domain_key != 'default':
         st.warning("⚠️ Nenhuma base escolar carregada. Vá para a aba **Análise Temporal** e faça upload da planilha para habilitar a busca.")
 
     # --- LÓGICA DE BUSCA (DRILL-DOWN) ---
     aluno_selecionado = None
     
-    if modo_selecao == "🔍 Buscar na Base da Escola" and tem_base:
+    if modo_selecao == "🔍 Pesquisa Global (Banco)":
+        df_global = load_global_students_data()
+        if df_global.empty:
+            st.error("Banco global não encontrado ou vazio.")
+        else:
+            df_global = df_global.dropna(subset=['Nome'])
+            alunos_globais = sorted(df_global['Nome'].astype(str).unique().tolist())
+            
+            nome_aluno_global = st.selectbox(
+                "Buscar Aluno por Nome (Global)",
+                options=alunos_globais,
+                index=None,
+                placeholder="Digite o nome ou selecione na lista..."
+            )
+            
+            if nome_aluno_global is not None:
+                aluno_selecionado_df = df_global[df_global['Nome'] == nome_aluno_global]
+                if not aluno_selecionado_df.empty:
+                    aluno_selecionado = aluno_selecionado_df.iloc[0]
+                    st.success(f"Dados de **{nome_aluno_global}** carregados do banco global!")
+                    
+                    # --- AUTO-PREENCHIMENTO (SYNC STATE) ---
+                    def safe_get(row, col):
+                        val = row.get(col, 0.0)
+                        return float(val) if pd.notnull(val) else 0.0
+
+                    st.session_state['input_p1_pas1'] = safe_get(aluno_selecionado, 'P1_PAS1')
+                    st.session_state['input_p2_pas1'] = safe_get(aluno_selecionado, 'P2_PAS1')
+                    st.session_state['input_red_pas1'] = safe_get(aluno_selecionado, 'Red_PAS1')
+                    
+                    st.session_state['input_p1_pas2'] = safe_get(aluno_selecionado, 'P1_PAS2')
+                    st.session_state['input_p2_pas2'] = safe_get(aluno_selecionado, 'P2_PAS2')
+                    st.session_state['input_red_pas2'] = safe_get(aluno_selecionado, 'Red_PAS2')
+                    
+                    if 'P1_PAS3' in df_global.columns and pd.notnull(aluno_selecionado.get('P1_PAS3')):
+                        st.session_state['input_p1_pas3'] = safe_get(aluno_selecionado, 'P1_PAS3')
+                    if 'P2_PAS3' in df_global.columns and pd.notnull(aluno_selecionado.get('P2_PAS3')):
+                        st.session_state['input_p2_pas3'] = safe_get(aluno_selecionado, 'P2_PAS3')
+                    if 'Red_PAS3' in df_global.columns and pd.notnull(aluno_selecionado.get('Red_PAS3')):
+                        st.session_state['input_red_pas3'] = safe_get(aluno_selecionado, 'Red_PAS3')
+
+                    # Metadados Opcionais (Cota, Curso)
+                    col_cota = None
+                    for c in ['Sistema_Nome', 'Cota', 'Sistema', 'Sistema_Concorrencia']:
+                        if c in df_global.columns:
+                            col_cota = c
+                            break
+                    
+                    if col_cota and pd.notnull(aluno_selecionado.get(col_cota)):
+                        cota_aluno = str(aluno_selecionado[col_cota]).strip()
+                        match_cota = find_best_match(cota_aluno, lista_cotas)
+                        if match_cota in lista_cotas:
+                            st.session_state['input_cota'] = match_cota
+                        else:
+                             found = False
+                             for opt in lista_cotas:
+                                 if cota_aluno.lower() in opt.lower() or opt.lower() in cota_aluno.lower():
+                                     st.session_state['input_cota'] = opt
+                                     found = True
+                                     break
+
+                    # Auto-fill Triênio
+                    col_trienio = None
+                    for c in ['Ano_Trienio', 'Trienio', 'Ciclo']:
+                        if c in df_global.columns:
+                            col_trienio = c
+                            break
+                    
+                    if col_trienio and pd.notnull(aluno_selecionado.get(col_trienio)):
+                        trienio_aluno = str(aluno_selecionado[col_trienio]).strip()
+                        st.session_state['input_trienio'] = trienio_aluno
+                    
+                    # Nome do Aluno (Novo Sync)
+                    if 'Nome' in df_global.columns:
+                         st.session_state['input_nome_aluno'] = str(aluno_selecionado['Nome'])
+
+    elif modo_selecao == "🔍 Buscar na Base da Escola" and tem_base:
         df_escola = st.session_state['df_global_escola']
         
         c_unidade, c_turma, c_aluno = st.columns([1, 1, 2])
@@ -2624,9 +2734,14 @@ elif page == "preditor":
         # 3. Filtro Aluno
         if 'Nome' in df_escola.columns:
             alunos = sorted(df_escola['Nome'].dropna().astype(str).unique().tolist())
-            nome_aluno = c_aluno.selectbox("Aluno", ["Selecione..."] + list(alunos))
+            nome_aluno = c_aluno.selectbox(
+                "Aluno",
+                options=list(alunos),
+                index=None,
+                placeholder="Digite o nome ou selecione..."
+            )
             
-            if nome_aluno != "Selecione...":
+            if nome_aluno is not None:
                 aluno_selecionado = df_escola[df_escola['Nome'] == nome_aluno].iloc[0]
                 st.success(f"Dados de **{nome_aluno}** carregados!")
                 
@@ -2955,11 +3070,13 @@ elif page == "preditor":
             # Seletor de Curso
             curso_combo_sel = st.selectbox(
                 "Selecione um curso de interesse:", 
-                ["Selecione..."] + opcoes_lista,
-                format_func=lambda x: x if x == "Selecione..." else f"{x} [Corte ({ultimas_chamadas[x]['chamada']}): {ultimas_chamadas[x]['nota']:.3f}]"
+                options=opcoes_lista,
+                index=None,
+                placeholder="Digite o curso ou selecione...",
+                format_func=lambda x: f"{x} [Corte ({ultimas_chamadas[x]['chamada']}): {ultimas_chamadas[x]['nota']:.3f}]"
             )
             
-            if curso_combo_sel != "Selecione...":
+            if curso_combo_sel is not None:
                 # Extrai os dados do curso selecionado via Combo_Nome
                 row_sel = df_cota_raw[df_cota_raw['Combo_Nome'] == curso_combo_sel].iloc[0]
                 curso_selecionado = row_sel['Curso_Limpo']
@@ -4250,15 +4367,15 @@ elif page == "pdf":
                     aluno = st.text_input("Nome do Aluno", key="pdf_student_name")
                     
                     st.markdown("#### :material/edit_note: Notas PAS 1")
-                    p1_pas1 = st.number_input("PAS 1 - P1 (Língua)", 0.0, 20.0, step=0.001, format="%.3f", key="pdf_p1_pas1")
-                    p2_pas1 = st.number_input("PAS 1 - P2 (Gerais)", 0.0, 100.0, step=0.001, format="%.3f", key="pdf_p2_pas1")
+                    p1_pas1 = st.number_input("PAS 1 - P1 (Língua)", -20.0, 20.0, step=0.001, format="%.3f", key="pdf_p1_pas1")
+                    p2_pas1 = st.number_input("PAS 1 - P2 (Gerais)", -100.0, 100.0, step=0.001, format="%.3f", key="pdf_p2_pas1")
                     red_pas1 = st.number_input("PAS 1 - Redação", 0.0, 10.0, step=0.001, format="%.3f", key="pdf_red_pas1")
                     
                 with col2:
                     st.empty() # Spacer
                     st.markdown("#### :material/edit_note: Notas PAS 2")
-                    p1_pas2 = st.number_input("PAS 2 - P1 (Língua)", 0.0, 20.0, step=0.001, format="%.3f", key="pdf_p1_pas2")
-                    p2_pas2 = st.number_input("PAS 2 - P2 (Gerais)", 0.0, 100.0, step=0.001, format="%.3f", key="pdf_p2_pas2")
+                    p1_pas2 = st.number_input("PAS 2 - P1 (Língua)", -20.0, 20.0, step=0.001, format="%.3f", key="pdf_p1_pas2")
+                    p2_pas2 = st.number_input("PAS 2 - P2 (Gerais)", -100.0, 100.0, step=0.001, format="%.3f", key="pdf_p2_pas2")
                     red_pas2 = st.number_input("PAS 2 - Redação", 0.0, 10.0, step=0.001, format="%.3f", key="pdf_red_pas2")
                     
                 st.info(f"Nota de Corte Selecionada: **{nota_corte_val:.3f}** (Calculada automaticamente)")
@@ -4435,6 +4552,112 @@ elif page == "pdf":
                             )
                     except Exception as e_cursos:
                         st.warning(f"Não foi possível gerar PDF de cursos: {e_cursos}")
+
+                # --- GERAÇÃO DO PDF DE COMPARAÇÃO (Apenas Default) ---
+                if domain_key_pdf == "default":
+                    try:
+                        # 1. Obter EB_PAS3_PRED (Usar Ensemble se disponível, ou fallback aproximado)
+                        eb_pas3_pred = ""
+                        if MODELS and META_MODEL:
+                            preds = {}
+                            if 'lgbm' in MODELS: preds['lgbm'] = float(MODELS['lgbm'].predict(features_manual)[0])
+                            if 'rf' in MODELS: preds['rf'] = float(MODELS['rf'].predict(features_manual)[0])
+                            
+                            features_scaled = SCALER.transform(features_manual) if SCALER else features_manual
+                            if 'linear' in MODELS: preds['linear'] = float(MODELS['linear'].predict(features_scaled)[0])
+                            if 'mlp' in MODELS: preds['mlp'] = float(MODELS['mlp'].predict(features_scaled)[0])
+                            
+                            meta_features = np.array([[
+                                eb_p1, red_pas1, eb_p2, red_pas2,
+                                c_eb, c_red,
+                                abs(c_eb)/(abs(eb_p1)+0.01), abs(c_red)/(abs(red_pas1)+0.01),
+                                (eb_p1+eb_p2)/2, 1 if c_eb > 0 else (-1 if c_eb < 0 else 0)
+                            ]])
+                            
+                            if META_SCALER:
+                                meta_features_scaled = META_SCALER.transform(meta_features)
+                                best_model_label = META_MODEL.predict(meta_features_scaled)[0]
+                                best_model_name = LABEL_TO_MODEL.get(best_model_label, 'lgbm')
+                                eb_pas3_pred = f"{preds.get(best_model_name, preds.get('lgbm', 0.0)):.3f}"
+                            else:
+                                eb_pas3_pred = f"{preds.get('rf', 0.0):.3f}" # Fallback
+                        else:
+                            # Estimativa grosseira do target_calculator se os modelos não estiverem carregados
+                            eb_pas3_pred = f"{result.p1_estimado + result.p2_necessario:.3f}"
+
+                        # 2. Obter Arg_Final PRED
+                        arg_final_pred = f"{arg_final_pred_ml:.3f}" if 'arg_final_pred_ml' in locals() and arg_final_pred_ml else ""
+
+                        # 3. Buscar valores reais no banco (Prioriza o CSV local em /data se disponível)
+                        eb_pas3_real = "-"
+                        arg_final_real = "-"
+                        
+                        df_busca = st.session_state.get('df_global_escola')
+                        
+                        # Se não há nada no estado ou se queremos forçar o local:
+                        if df_busca is None:
+                            try:
+                                csv_path = Path(__file__).parent.parent / "data" / "banco_alunos_pas_final.csv"
+                                if csv_path.exists():
+                                    df_busca = pd.read_csv(csv_path)
+                                    # Armazena no estado para buscas futuras ser mais rápido
+                                    st.session_state['df_global_escola'] = df_busca
+                            except:
+                                pass
+                                
+                        if df_busca is None:
+                            df_busca = st.session_state.get('df')
+                            
+                        aluno_nome_busca = str(aluno).strip().lower()
+                        
+                        if df_busca is not None and 'Nome' in df_busca.columns and aluno_nome_busca:
+                            # Função auxiliar para normalizar nomes (remove acentos)
+                            def normalize_name(n):
+                                if not n: return ""
+                                return unicodedata.normalize('NFKD', str(n)).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
+
+                            aluno_nome_norm = normalize_name(aluno_nome_busca)
+                            df_busca['nome_norm'] = df_busca['Nome'].apply(normalize_name)
+                            match = df_busca[df_busca['nome_norm'] == aluno_nome_norm]
+                            
+                            if not match.empty:
+                                aluno_dados = match.iloc[0]
+                                if 'EB_PAS3' in aluno_dados.index and not pd.isna(aluno_dados['EB_PAS3']):
+                                    eb_pas3_real = f"{aluno_dados['EB_PAS3']:.3f}"
+                                elif 'P1_PAS3' in aluno_dados.index and 'P2_PAS3' in aluno_dados.index and not pd.isna(aluno_dados['P1_PAS3']) and not pd.isna(aluno_dados['P2_PAS3']):
+                                    eb_pas3_real = f"{aluno_dados['P1_PAS3'] + aluno_dados['P2_PAS3']:.3f}"
+                                    
+                                if 'Arg_Final' in aluno_dados.index and not pd.isna(aluno_dados['Arg_Final']):
+                                    arg_final_real = f"{aluno_dados['Arg_Final']:.3f}"
+                                elif 'ARG_FINAL_REAL' in aluno_dados.index and not pd.isna(aluno_dados['ARG_FINAL_REAL']):
+                                    arg_final_real = f"{aluno_dados['ARG_FINAL_REAL']:.3f}"
+                                    
+                            df_busca.drop(columns=['nome_lower'], inplace=True, errors='ignore')
+
+                        # 4. Gerar e disponibilizar para download
+                        comparacao_data = {
+                            'eb_pas1': f"{p1_pas1 + p2_pas1:.3f}",
+                            'eb_pas2': f"{p1_pas2 + p2_pas2:.3f}",
+                            'eb_pas3_pred': eb_pas3_pred,
+                            'arg_final_pred': arg_final_pred,
+                            'eb_pas3_real': eb_pas3_real,
+                            'arg_final_real': arg_final_real
+                        }
+                        
+                        comparacao_template = DOMAINS_CONFIG["default"].get("pdf_comparacao")
+                        comparacao_pdf_bytes = pdf_gen.generate_comparison_pdf(comparacao_data, template_override=comparacao_template)
+                        
+                        if comparacao_pdf_bytes:
+                            comp_filename = f"comparacao_{safe_name}.pdf" if safe_name else "comparacao_pas.pdf"
+                            st.download_button(
+                                label="📥 Baixar PDF de Comparação (Projetado x Real)",
+                                data=comparacao_pdf_bytes,
+                                file_name=comp_filename,
+                                mime="application/pdf",
+                                key="btn_download_comparacao_pdf"
+                            )
+                    except Exception as e_comp:
+                        st.warning(f"Não foi possível gerar o PDF de comparação: {e_comp}")
 
             except Exception as e:
                 st.error(f"Erro ao gerar PDF: {e}")
