@@ -253,7 +253,7 @@ class PDFGenerator:
             base_dir = Path(__file__).resolve().parent.parent
             template_path = (base_dir / template_override).resolve()
         else:
-            template_path = self.template_dir / "MODELO PAS-UNB (COMPARAÇÃO) IMPRESSO.pdf"
+            template_path = self.template_dir / "modelo_comparacao_impresso.pdf"
 
         if not template_path.exists():
             raise FileNotFoundError(f"Template de comparação não encontrado em: {template_path}")
