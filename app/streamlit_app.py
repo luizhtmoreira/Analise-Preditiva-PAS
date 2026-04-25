@@ -1592,7 +1592,7 @@ else:
 
 @st.cache_data
 def load_cutoff_data_global():
-    # Cache invalidation trigger: Added 3rd call data
+    # Cache invalidation trigger: Added 2023-2025 2nd Semester 1st call data
     if not ARQUIVO_DADOS_GLOBAL.exists():
         return None
     try:
