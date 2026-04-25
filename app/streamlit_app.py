@@ -4422,7 +4422,7 @@ elif page == "pdf":
                 notas_input, nota_corte_val, ciclo_aluno_pdf,
                 TRIENNIUM_STATS, stats_pas3_proj,
                 p1_override=None, red_override=None,
-                base_projecao="Utilizar Projeção Tendência"
+                base_projecao="Replicar Padrão 2023-2025"
             )
             
             # 4. Calcula Z-score e Probabilidade para o PDF usando o Modelo ML (Fonte da Verdade)
@@ -4846,7 +4846,7 @@ elif page == "pdf":
                                 notas_input, nota_corte, ciclo_batch,
                                 TRIENNIUM_STATS, stats_pas3_proj,
                                 p1_override=None, red_override=None,
-                                base_projecao="Utilizar Projeção Tendência"
+                                base_projecao="Replicar Padrão 2023-2025"
                             )
                             
                             # --- Estatísticas de Aprovação Usando Modelo AI ---
