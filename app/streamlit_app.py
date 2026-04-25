@@ -73,7 +73,7 @@ try:
     import importlib
     import pas_intelligence.target_calculator
     importlib.reload(pas_intelligence.target_calculator)
-    from pas_intelligence.target_calculator import TargetCalculator # type: ignore
+    from pas_intelligence.target_calculator import TargetCalculator, get_strategy_prediction # type: ignore
     
     # Import para estatísticas avançadas
     import pas_intelligence.statistics
@@ -3431,12 +3431,13 @@ elif page == "preditor":
                     if stats_p3_usado is None:
                         stats_p3_usado = STATS_PAS3_TREND
                     
-                    # Usa os overrides do slider
-                    result = calc.calculate_required_score(
-                        notas_validas, nota_alvo,
-                        stats_ciclo["PAS1"], stats_ciclo["PAS2"], stats_p3_usado,
-                        p1_override=p1_ov,
-                        red_override=red_ov
+                    # Usa os overrides do slider encapsulados na função padrão
+                    base_proj_val = base_projecao if ciclo_aluno == "2024-2026" else "Utilizar Projeção Tendência"
+                    result = get_strategy_prediction(
+                        notas_validas, nota_alvo, ciclo_aluno,
+                        TRIENNIUM_STATS, STATS_PAS3_TREND,
+                        p1_override=p1_ov, red_override=red_ov,
+                        base_projecao=base_proj_val
                     )
                     
                     # --- CÁLCULO DE PROBABILIDADE HISTÓRICA (REALITY CHECK) ---
@@ -4278,7 +4279,6 @@ elif page == "pdf":
             start_year_pdf, end_year_pdf = map(int, pdf_tri_sel.split('-'))
             trienio_ref_pdf = f"{start_year_pdf - 1}-{end_year_pdf - 1}"
             
-            # 1. Filtra Dados Iniciais
             # 1. Filtra Dados Iniciais (Usando função robusta encapsulada)
             # Reverte para load_course_stats para garantir compatibilidade de strings (1º vs 1°)
             df_cota_pdf = load_course_stats(semester=target_semester, triennium=trienio_ref_pdf, system=pdf_cota_sel)
@@ -4414,12 +4414,14 @@ elif page == "pdf":
                 'P1_PAS2': p1_pas2, 'P2_PAS2': p2_pas2, 'Red_PAS2': red_pas2,
             }
             
-            # Usa projeção de tendência para PAS 3 (ou stats_base["PAS3"] se preferir média histórica)
-            stats_pas3_proj = STATS_PAS3_TREND 
-            
-            result = calc.calculate_required_score(
-                notas_input, nota_corte_val,
-                stats_base["PAS1"], stats_base["PAS2"], stats_pas3_proj
+            # Sincronizado EXACTAMENTE igual à Calculadora de Estratégia
+            ciclo_aluno_pdf = ref_triennium_pdf
+            stats_pas3_proj = STATS_PAS3_TREND # Fonte da verdade global para projeções
+            result = get_strategy_prediction(
+                notas_input, nota_corte_val, ciclo_aluno_pdf,
+                TRIENNIUM_STATS, stats_pas3_proj,
+                p1_override=None, red_override=None,
+                base_projecao="Utilizar Projeção Tendência"
             )
             
             # 4. Calcula Z-score e Probabilidade para o PDF usando o Modelo ML (Fonte da Verdade)
@@ -4836,10 +4838,14 @@ elif page == "pdf":
                                 'P1_PAS2': p1_2, 'P2_PAS2': p2_2, 'Red_PAS2': red_2,
                             }
                             
-                            # Usa projeção de tendência para PAS 3
-                            result = calc.calculate_required_score(
-                                notas_input, nota_corte,
-                                stats_base["PAS1"], stats_base["PAS2"], STATS_PAS3_TREND
+                            # Sincronizado EXACTAMENTE igual à Calculadora de Estratégia
+                            ciclo_batch = batch_ref_triennium
+                            stats_pas3_proj = STATS_PAS3_TREND # Fonte da verdade global para projeções
+                            result = get_strategy_prediction(
+                                notas_input, nota_corte, ciclo_batch,
+                                TRIENNIUM_STATS, stats_pas3_proj,
+                                p1_override=None, red_override=None,
+                                base_projecao="Utilizar Projeção Tendência"
                             )
                             
                             # --- Estatísticas de Aprovação Usando Modelo AI ---
