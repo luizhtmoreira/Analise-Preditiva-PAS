@@ -1592,6 +1592,7 @@ else:
 
 @st.cache_data
 def load_cutoff_data_global():
+    # Cache invalidation trigger: Added 3rd call data
     if not ARQUIVO_DADOS_GLOBAL.exists():
         return None
     try:
