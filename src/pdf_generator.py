@@ -325,7 +325,19 @@ class PDFGenerator:
         # --- HEADER INFO ---
         c.setFont(self.font_bold, 12)
         c.drawString(85, 506, str(data.get('aluno', '')))
-        c.drawString(430, 506, str(data.get('curso', '')))
+        
+        # Helper interno para desenhar e truncar texto
+        def draw_truncated_text(canvas_obj, x, y, text, font_name, font_size, max_width):
+            if canvas_obj.stringWidth(text, font_name, font_size) <= max_width:
+                canvas_obj.drawString(x, y, text)
+            else:
+                while canvas_obj.stringWidth(text + "...", font_name, font_size) > max_width and len(text) > 0:
+                    text = text[:-1]
+                canvas_obj.drawString(x, y, text + "...")
+                
+        curso_str = str(data.get('curso', ''))
+        draw_truncated_text(c, 430, 506, curso_str, self.font_bold, 12, 380)
+        
         c.setFont(self.font_bold, 10)
         
         # --- SCORES & CALCULATIONS ---
