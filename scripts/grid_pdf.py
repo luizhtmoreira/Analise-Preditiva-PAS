@@ -73,7 +73,7 @@ def aplicar_grid_no_pdf(pdf_entrada, pdf_saida, tamanho_quadrado=5):
 # ==========================================
 if __name__ == "__main__":
     # Já deixei o caminho correto que você usou no último teste!
-    arquivo_input = "/Users/luizhenrique/Documents/repos/Analise-Preditiva-PAS/assets/templates/modelo_comparacao_impresso.pdf"
+    arquivo_input = "/Users/luizhenrique/Documents/Vetor PAS/Analise-Preditiva-PAS/assets/templates/modelo_comparacao_impresso.pdf"
     arquivo_output = "template_com_coordenadas.pdf"
     
     aplicar_grid_no_pdf(arquivo_input, arquivo_output, tamanho_quadrado=5)
