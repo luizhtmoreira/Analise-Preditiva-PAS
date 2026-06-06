@@ -1,0 +1,3 @@
+# Monorepo Next.js unificado para landing page e dashboard
+
+Landing page (marketing) e dashboard (app autenticado) vivem no mesmo projeto Next.js, com rotas separadas: `/` para a landing e `/app/*` para o dashboard. A alternativa era dois repositórios independentes. Escolhemos o monorepo porque o time é solo — dois deploys, duas configurações de auth e dois sistemas de design tokens seriam overhead sem benefício. O middleware do Next.js App Router protege todas as rotas `/app/*` de forma centralizada, e os tokens de design da identidade UnB são definidos uma vez e herdados por ambas as camadas.

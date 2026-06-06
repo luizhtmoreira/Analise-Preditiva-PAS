@@ -1,4 +1,7 @@
 streamlit
+fastapi
+uvicorn[standard]
+scipy
 pandas
 numpy
 plotly
