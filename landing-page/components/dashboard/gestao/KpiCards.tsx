@@ -3,26 +3,29 @@ import type { GestaoKpis } from "@/lib/types";
 interface KpiCardProps {
   label: string;
   value: number;
-  bg?: string;
-  color?: string;
+  accent?: string;
+  valueColor?: string;
 }
 
-function KpiCard({ label, value, bg = "#fff", color = "#1D1D1F" }: KpiCardProps) {
+function KpiCard({ label, value, accent = "#00AEEF", valueColor = "#1D1D1F" }: KpiCardProps) {
   return (
-    <div className="rounded-xl p-4 flex flex-col gap-1" style={{ background: bg }}>
-      <p className="text-xs font-medium" style={{ color: bg === "#fff" ? "#6E6E73" : color }}>{label}</p>
-      <p className="text-3xl font-bold" style={{ color }}>{value}</p>
+    <div className="rounded-xl bg-white border border-[#E6E6E8] p-4 flex flex-col gap-1.5 overflow-hidden relative">
+      <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: accent }} />
+      <p className="font-mono text-[0.62rem] tracking-[0.16em] uppercase text-[#6E6E73]">{label}</p>
+      <p className="font-mono text-3xl font-bold leading-none" style={{ color: valueColor }}>
+        {value}
+      </p>
     </div>
   );
 }
 
 export function KpiCards({ kpis }: { kpis: GestaoKpis }) {
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <KpiCard label="Total de Ativos" value={kpis.total} />
-      <KpiCard label="Alto Risco" value={kpis.n_red} bg="#FFCDD2" color="#B71C1C" />
-      <KpiCard label="Oportunidade (2º Sem)" value={kpis.n_yellow} bg="#FFF9C4" color="#F57F17" />
-      <KpiCard label="Baixo Risco" value={kpis.n_green} bg="#C8E6C9" color="#1B5E20" />
+      <KpiCard label="Alto Risco" value={kpis.n_red} accent="#C62828" valueColor="#B71C1C" />
+      <KpiCard label="Oportunidade (2º Sem)" value={kpis.n_yellow} accent="#F57F17" valueColor="#F57F17" />
+      <KpiCard label="Baixo Risco" value={kpis.n_green} accent="#00843D" valueColor="#1B5E20" />
     </div>
   );
 }

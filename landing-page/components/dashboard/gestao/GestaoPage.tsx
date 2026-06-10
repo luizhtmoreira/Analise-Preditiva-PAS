@@ -20,8 +20,7 @@ function Select({ value, onChange, options }: {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="text-sm rounded-lg px-3 py-1.5 border focus:outline-none"
-      style={{ borderColor: "#E6E6E8", background: "#fff", color: "#1D1D1F" }}
+      className="text-sm rounded-lg px-3 py-1.5 border border-[#E6E6E8] bg-white text-[#1D1D1F] focus:outline-none focus:border-[#00AEEF] transition-colors cursor-pointer"
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>
@@ -53,17 +52,17 @@ function ChanceCell({ prob1, prob2, status }: { prob1: number; prob2: number; st
         <span className="text-lg font-bold font-mono leading-none" style={{ color: color1 }}>
           {prob1.toFixed(0)}%
         </span>
-        <span className="text-[10px]" style={{ color: "#6E6E73" }}>1º sem</span>
+        <span className="text-[10px] text-[#6E6E73]">1º sem</span>
       </div>
       {prob2 > 0 && (
         <div className="flex items-center gap-1">
           <span className="text-xs font-mono font-semibold" style={{ color: color2 }}>
             {prob2.toFixed(0)}%
           </span>
-          <span className="text-[10px]" style={{ color: "#6E6E73" }}>2º sem</span>
+          <span className="text-[10px] text-[#6E6E73]">2º sem</span>
         </div>
       )}
-      <div className="w-full h-1 rounded-full mt-0.5 overflow-hidden" style={{ background: "#E6E6E8" }}>
+      <div className="w-full h-1 rounded-full mt-0.5 overflow-hidden bg-[#E6E6E8]">
         <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(best, 100)}%`, background: barColor }} />
       </div>
     </div>
@@ -72,13 +71,13 @@ function ChanceCell({ prob1, prob2, status }: { prob1: number; prob2: number; st
 
 function SugestaoCell({ sugestao }: { sugestao: string }) {
   if (!sugestao || sugestao === "—") {
-    return <span className="text-xs" style={{ color: "#C7C7CC" }}>—</span>;
+    return <span className="text-xs text-[#C7C7CC]">—</span>;
   }
   const [curso, resto] = sugestao.includes(" - ") ? sugestao.split(" - ") : [sugestao, ""];
   return (
     <div className="flex flex-col gap-0.5 max-w-[160px]">
-      <span className="text-xs font-medium leading-tight" style={{ color: "#003366" }}>{curso}</span>
-      {resto && <span className="text-[10px]" style={{ color: "#6E6E73" }}>{resto}</span>}
+      <span className="text-xs font-medium leading-tight text-[#003366]">{curso}</span>
+      {resto && <span className="text-[10px] text-[#6E6E73]">{resto}</span>}
     </div>
   );
 }
@@ -115,15 +114,17 @@ export function GestaoPage({ data }: { data: GestaoResponse }) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "#1D1D1F" }}>Gestão de Ativos</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#6E6E73" }}>
-            Ref.: triênio {trienio_ref}
-            {!modelo_disponivel && (
-              <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={{ background: "#FFF9C4", color: "#F57F17" }}>
-                Modelo não disponível — probabilidades zeradas
-              </span>
-            )}
+          <p className="font-mono text-[0.68rem] tracking-[0.22em] uppercase text-[#00843D] mb-1">
+            Coordenação · triênio {trienio_ref}
           </p>
+          <h1 className="font-heading text-2xl font-bold tracking-[-0.025em] text-[#1D1D1F]">
+            Gestão de Ativos
+          </h1>
+          {!modelo_disponivel && (
+            <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-[#FFF9C4] text-[#F57F17]">
+              Modelo não disponível — probabilidades zeradas
+            </span>
+          )}
         </div>
       </div>
 
@@ -132,57 +133,58 @@ export function GestaoPage({ data }: { data: GestaoResponse }) {
 
       {/* Filtros */}
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-xs font-medium" style={{ color: "#6E6E73" }}>Filtrar:</span>
+        <span className="font-mono text-[0.65rem] tracking-[0.14em] uppercase text-[#6E6E73]">Filtrar</span>
         <Select value={unidade} onChange={setUnidade} options={unidades} />
         <Select value={turma} onChange={setTurma} options={turmas} />
         <Select value={status} onChange={setStatus} options={STATUS_OPTIONS} />
-        <span className="text-xs ml-auto" style={{ color: "#6E6E73" }}>
+        <span className="text-xs ml-auto font-mono text-[#6E6E73]">
           {filtered.length} de {results.length} alunos
         </span>
       </div>
 
       {/* Tabela */}
-      <div className="rounded-xl overflow-hidden border" style={{ borderColor: "#E6E6E8" }}>
+      <div className="rounded-xl overflow-hidden border border-[#E6E6E8] bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ background: "#F5F5F7", borderBottom: "1px solid #E6E6E8" }}>
+              <tr className="bg-[#F5F5F7] border-b border-[#E6E6E8]">
                 {["Status", "Aluno", "Turma", "Sistema", "Curso Alvo", "Arg. Prev.", "Gap", "Chance de Aprovação", "Histórico", "Sugestão de Curso"].map((h) => (
-                  <th key={h} className={`text-left px-4 py-3 text-xs font-semibold whitespace-nowrap ${h === "Chance de Aprovação" ? "text-[#003366]" : ""}`}
-                    style={{ color: h === "Chance de Aprovação" ? "#003366" : "#6E6E73" }}>{h}</th>
+                  <th
+                    key={h}
+                    className="text-left px-4 py-3 font-mono text-[0.62rem] tracking-[0.12em] uppercase font-medium whitespace-nowrap"
+                    style={{ color: h === "Chance de Aprovação" ? "#003366" : "#6E6E73" }}
+                  >
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-12 text-sm" style={{ color: "#6E6E73" }}>
+                  <td colSpan={10} className="text-center py-12 text-sm text-[#6E6E73]">
                     Nenhum aluno encontrado com os filtros selecionados.
                   </td>
                 </tr>
               ) : filtered.map((r, i) => (
-                <tr key={i}
-                  style={{ borderBottom: "1px solid #F5F5F7", background: "white" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F5F7")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "white")}>
+                <tr key={i} className="border-b border-[#F5F5F7] bg-white hover:bg-[#FAFAFC] transition-colors">
                   <td className="px-4 py-2.5">
                     <RiscoBadge status={r.status as RiscoStatus} />
                   </td>
-                  <td className="px-4 py-2.5 font-medium whitespace-nowrap" style={{ color: "#1D1D1F" }}>
+                  <td className="px-4 py-2.5 font-medium whitespace-nowrap text-[#1D1D1F]">
                     {r.nome}
                   </td>
-                  <td className="px-4 py-2.5 text-xs" style={{ color: "#6E6E73" }}>{r.turma || "—"}</td>
-                  <td className="px-4 py-2.5 text-xs" style={{ color: "#6E6E73" }}>
+                  <td className="px-4 py-2.5 text-xs text-[#6E6E73]">{r.turma || "—"}</td>
+                  <td className="px-4 py-2.5 text-xs text-[#6E6E73]">
                     {r.sistema_concorrencia}
                   </td>
-                  <td className="px-4 py-2.5 text-xs max-w-[180px] truncate" style={{ color: "#3A3A3C" }}>
+                  <td className="px-4 py-2.5 text-xs max-w-[180px] truncate text-[#3A3A3C]">
                     {r.curso_alvo}
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs font-semibold" style={{ color: "#003366" }}>
+                  <td className="px-4 py-2.5 font-mono text-xs font-semibold text-[#003366]">
                     {r.arg_previsto}
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs"
-                    style={{ color: r.gap >= 0 ? "#1B5E20" : "#B71C1C" }}>
+                  <td className="px-4 py-2.5 font-mono text-xs" style={{ color: r.gap >= 0 ? "#1B5E20" : "#B71C1C" }}>
                     {r.gap >= 0 ? "+" : ""}{r.gap}
                   </td>
                   <td className="px-4 py-2.5">
@@ -190,13 +192,13 @@ export function GestaoPage({ data }: { data: GestaoResponse }) {
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: "#E6E6E8" }}>
+                      <div className="w-16 h-1.5 rounded-full overflow-hidden bg-[#E6E6E8]">
                         <div className="h-full rounded-full" style={{
                           width: `${Math.min(r.historico_pct, 100)}%`,
                           background: r.historico_pct >= 50 ? "#00843D" : r.historico_pct >= 30 ? "#F57F17" : "#C62828",
                         }} />
                       </div>
-                      <span className="text-xs font-mono" style={{ color: "#6E6E73" }}>
+                      <span className="text-xs font-mono text-[#6E6E73]">
                         {r.historico_pct > 0 ? `${r.historico_pct}%` : "—"}
                       </span>
                     </div>
@@ -213,8 +215,8 @@ export function GestaoPage({ data }: { data: GestaoResponse }) {
 
       {/* Alerta de risco */}
       {kpis.n_red > 0 && (
-        <div className="flex items-start gap-2 rounded-lg p-3 text-sm" style={{ background: "#FFCDD2", color: "#B71C1C" }}>
-          <span>⚠️</span>
+        <div className="flex items-start gap-2.5 rounded-xl p-3.5 text-sm bg-[#FFCDD2] text-[#B71C1C] border border-[#C62828]/20">
+          <span className="w-2 h-2 rounded-full bg-[#C62828] mt-1.5 flex-shrink-0" />
           <span>
             <strong>{kpis.n_red} aluno{kpis.n_red > 1 ? "s" : ""} ({((kpis.n_red / kpis.total) * 100).toFixed(0)}%)</strong> está{kpis.n_red > 1 ? "ão" : ""} na zona vermelha e pode{kpis.n_red > 1 ? "m" : ""} precisar de redirecionamento de curso.
           </span>

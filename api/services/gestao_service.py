@@ -59,21 +59,34 @@ STATS_PAS3_TREND = HistoricalStats(
 # ---------------------------------------------------------------------------
 
 _arg_model = None
+_eb_model = None   # LightGBM → prediz EB PAS 3
+_eb_scaler = None  # StandardScaler para modelos lineares/MLP
 _df_corte: Optional[pd.DataFrame] = None
 _df_cohort: Optional[pd.DataFrame] = None
 
 
 def load_resources() -> None:
-    global _arg_model, _df_corte, _df_cohort
+    global _arg_model, _eb_model, _eb_scaler, _df_corte, _df_cohort
 
     models_dir = _ROOT / "models"
     data_dir = _ROOT / "data"
 
+    import joblib
+
     # Modelo de predição do Argumento Final
     model_path = models_dir / "modelo_arg_final.joblib"
     if model_path.exists():
-        import joblib
         _arg_model = joblib.load(model_path)
+
+    # Modelo de predição do EB PAS 3 (LightGBM)
+    eb_path = models_dir / "modelo_lgbm.joblib"
+    if eb_path.exists():
+        _eb_model = joblib.load(eb_path)
+
+    # Scaler para feature vector normalizado
+    scaler_path = models_dir / "scaler.joblib"
+    if scaler_path.exists():
+        _eb_scaler = joblib.load(scaler_path)
 
     # Banco de notas de corte
     corte_path = data_dir / "notas_corte_pas.csv"

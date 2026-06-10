@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import gestao
+from api.routers import analytics, gestao, predict
 from api.services.gestao_service import load_resources
 
 
@@ -26,6 +26,8 @@ app.add_middleware(
 )
 
 app.include_router(gestao.router, prefix="/api")
+app.include_router(predict.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
 
 
 @app.get("/health")

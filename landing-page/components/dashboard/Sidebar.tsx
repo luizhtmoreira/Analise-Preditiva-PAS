@@ -1,30 +1,107 @@
 "use client";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  LayoutGrid,
+  School,
+  Scale,
+  FileText,
+  Target,
+  TrendingUp,
+  LogOut,
+  Menu,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { BrandMark } from "@/components/brand/BrandMark";
 
-const NAV = [
-  { href: "/gestao",      label: "Gestão de Ativos",    icon: "📊" },
-  { href: "/escola",      label: "Escola vs. População", icon: "🏫" },
-  { href: "/comparacao",  label: "Comparação de Grupos", icon: "⚖️"  },
-  { href: "/relatorios",  label: "Relatórios PDF",       icon: "📄" },
+const NAV: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/gestao",     label: "Gestão de Ativos",     icon: LayoutGrid },
+  { href: "/escola",     label: "Escola vs. População", icon: School },
+  { href: "/comparacao", label: "Comparação de Grupos", icon: Scale },
+  { href: "/relatorios", label: "Relatórios PDF",       icon: FileText },
 ];
 
-const PUBLIC_NAV = [
-  { href: "/predict",  label: "Preditor PAS 3",   icon: "🎯" },
-  { href: "/temporal", label: "Análise Temporal",  icon: "📈" },
+const PUBLIC_NAV: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/predict",  label: "Preditor PAS 3",   icon: Target },
+  { href: "/temporal", label: "Análise Temporal", icon: TrendingUp },
 ];
 
 const TENANT_LABELS: Record<string, string> = {
-  marista:  "Colégio Marista",
-  ideal:    "Colégio Ideal",
-  default:  "Vetor PAS",
+  marista: "Colégio Marista",
+  ideal:   "Colégio Ideal",
+  default: "Vetor PAS",
 };
+
+function NavLink({ href, label, icon: Icon, active }: {
+  href: string; label: string; icon: LucideIcon; active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`relative flex items-center gap-3 px-3 py-2 rounded-lg text-[0.84rem] transition-colors ${
+        active
+          ? "bg-white/12 text-white font-semibold"
+          : "text-white/55 hover:text-white hover:bg-white/8"
+      }`}
+    >
+      {active && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-[#00AEEF]" />
+      )}
+      <Icon size={16} strokeWidth={2} className={active ? "text-[#00AEEF]" : ""} />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function NavSections({ pathname }: { pathname: string }) {
+  return (
+    <>
+      <p className="font-mono text-[0.62rem] tracking-[0.2em] uppercase px-3 mb-1.5 text-white/35">
+        Coordenação
+      </p>
+      {NAV.map((item) => (
+        <NavLink key={item.href} {...item} active={pathname === item.href} />
+      ))}
+
+      <p className="font-mono text-[0.62rem] tracking-[0.2em] uppercase px-3 mt-5 mb-1.5 text-white/35">
+        Público
+      </p>
+      {PUBLIC_NAV.map((item) => (
+        <NavLink key={item.href} {...item} active={pathname === item.href} />
+      ))}
+    </>
+  );
+}
+
+function UserFooter({ userEmail, onLogout }: { userEmail: string; onLogout: () => void }) {
+  return (
+    <div className="mt-auto pt-4 border-t border-white/12">
+      <p className="text-xs px-3 mb-1.5 truncate text-white/40">{userEmail}</p>
+      <button
+        onClick={onLogout}
+        className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg text-xs text-white/40 hover:text-white hover:bg-white/8 transition-colors"
+      >
+        <LogOut size={13} />
+        Sair
+      </button>
+    </div>
+  );
+}
 
 export function DashboardSidebar({ tenant, userEmail }: { tenant: string; userEmail: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  // Fecha o drawer ao navegar e trava o scroll do body enquanto aberto
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -33,71 +110,56 @@ export function DashboardSidebar({ tenant, userEmail }: { tenant: string; userEm
     router.refresh();
   }
 
+  const sublabel = TENANT_LABELS[tenant] ?? tenant;
+
   return (
-    <aside className="w-60 flex-shrink-0 flex flex-col py-6 px-4" style={{ background: "#003366" }}>
-      <div className="flex items-center gap-2.5 px-2 mb-8">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0"
-          style={{ background: "#00AEEF", color: "#fff" }}>VP</div>
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-white leading-tight truncate">Vetor PAS</p>
-          <p className="text-xs truncate" style={{ color: "#00AEEF" }}>
-            {TENANT_LABELS[tenant] ?? tenant}
-          </p>
-        </div>
-      </div>
-
-      <nav className="flex flex-col gap-0.5 flex-1">
-        <p className="text-[10px] font-semibold uppercase px-3 mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>
-          Coordenação
-        </p>
-        {NAV.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <Link key={item.href} href={item.href}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all"
-              style={{
-                background: active ? "rgba(255,255,255,0.12)" : "transparent",
-                color: active ? "#fff" : "rgba(255,255,255,0.55)",
-                fontWeight: active ? 600 : 400,
-              }}>
-              <span className="text-base">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-
-        <p className="text-[10px] font-semibold uppercase px-3 mt-4 mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>
-          Público
-        </p>
-        {PUBLIC_NAV.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <Link key={item.href} href={item.href}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all"
-              style={{
-                background: active ? "rgba(255,255,255,0.12)" : "transparent",
-                color: active ? "#fff" : "rgba(255,255,255,0.45)",
-                fontWeight: active ? 600 : 400,
-              }}>
-              <span className="text-base">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="mt-auto pt-4 border-t" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-        <p className="text-xs px-2 mb-2 truncate" style={{ color: "rgba(255,255,255,0.4)" }}>
-          {userEmail}
-        </p>
-        <button onClick={handleLogout}
-          className="w-full text-left px-3 py-2 rounded-lg text-xs transition-all"
-          style={{ color: "rgba(255,255,255,0.4)" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}>
-          Sair →
+    <>
+      {/* ── Top bar (mobile) ── */}
+      <div
+        className="md:hidden flex-shrink-0 sticky top-0 z-50 flex items-center justify-between px-4 h-14 border-b border-white/10 print:hidden"
+        style={{ background: "#002147" }}
+      >
+        <BrandMark sublabel={sublabel} />
+        <button
+          onClick={() => setOpen(!open)}
+          aria-label={open ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={open}
+          className="p-2 -mr-2 text-white/70 hover:text-white transition-colors"
+        >
+          {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
-    </aside>
+
+      {/* ── Drawer (mobile) ── */}
+      {open && (
+        <div className="md:hidden fixed inset-0 top-14 z-40 print:hidden">
+          <div
+            className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+            onClick={() => setOpen(false)}
+          />
+          <nav
+            className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] flex flex-col gap-0.5 py-5 px-4 overflow-y-auto shadow-2xl"
+            style={{ background: "linear-gradient(180deg, #002147 0%, #003366 100%)" }}
+          >
+            <NavSections pathname={pathname} />
+            <UserFooter userEmail={userEmail} onLogout={handleLogout} />
+          </nav>
+        </div>
+      )}
+
+      {/* ── Sidebar (desktop) ── */}
+      <aside
+        className="hidden md:flex w-60 flex-shrink-0 flex-col py-6 px-4 print:hidden"
+        style={{ background: "linear-gradient(180deg, #002147 0%, #003366 100%)" }}
+      >
+        <div className="px-2 mb-9">
+          <BrandMark sublabel={sublabel} />
+        </div>
+        <nav className="flex flex-col gap-0.5 flex-1">
+          <NavSections pathname={pathname} />
+        </nav>
+        <UserFooter userEmail={userEmail} onLogout={handleLogout} />
+      </aside>
+    </>
   );
 }

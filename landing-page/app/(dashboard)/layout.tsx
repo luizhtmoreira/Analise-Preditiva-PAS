@@ -21,9 +21,9 @@ export default async function DashboardLayout({
   const tenant = profile?.tenant ?? "default";
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#F5F5F7" }}>
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden print:h-auto print:overflow-visible" style={{ background: "#F5F5F7" }}>
       <DashboardSidebar tenant={tenant} userEmail={user.email ?? ""} />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto print:overflow-visible">
         {children}
       </main>
     </div>
