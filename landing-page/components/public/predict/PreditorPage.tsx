@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { fetchPredict, fetchCourses } from "@/lib/api";
 import type { PredictResponse, CourseResult } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
 /* ─── constants ─────────────────────────────────────────────────── */
 
@@ -68,6 +69,11 @@ const GLOBAL_STYLES = `
   .pred-row:hover td { background: rgba(255,255,255,0.04) !important; }
 
   .pred-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 16px; }
+
+  @keyframes gateBackdrop { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes gateSlide { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .gate-backdrop { animation: gateBackdrop 0.2s ease both; }
+  .gate-modal { animation: gateSlide 0.28s cubic-bezier(.16,1,.3,1) both; }
 
   .pred-select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; color: #fff; padding: 10px 14px; font-size: 13px; font-family: var(--font-body), sans-serif; width: 100%; outline: none; transition: border-color .2s; appearance: none; cursor: pointer; }
   .pred-select:focus { border-color: rgba(0,174,239,0.6); }
@@ -140,8 +146,10 @@ function CourseCombobox({ value, onChange, courses }: {
   const ref = useRef<HTMLDivElement>(null);
   const filtered = useMemo(() => {
     if (!value.trim()) return courses.slice(0, 10);
-    const q = value.toLowerCase();
-    return courses.filter((c) => c.toLowerCase().includes(q)).slice(0, 10);
+    const normalize = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const q = normalize(value);
+    return courses.filter((c) => normalize(c).includes(q)).slice(0, 10);
   }, [value, courses]);
 
   useEffect(() => {
@@ -312,6 +320,94 @@ function TopCursosTable({ cursos }: { cursos: CourseResult[] }) {
   );
 }
 
+/* ─── soft gate modal ───────────────────────────────────────────── */
+
+function SoftGateModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="gate-backdrop"
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 100,
+        background: "rgba(0,10,25,0.75)", backdropFilter: "blur(6px)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
+      }}
+    >
+      <div
+        className="gate-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 420,
+          background: "linear-gradient(160deg, #002D5C 0%, #001A38 100%)",
+          border: "1px solid rgba(0,174,239,0.35)",
+          borderRadius: 24, padding: "36px 32px 32px",
+          position: "relative",
+        }}
+      >
+        {/* Linha de destaque no topo */}
+        <div style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: 2, background: "linear-gradient(to right, transparent, #00AEEF, transparent)", borderRadius: 99 }} />
+
+        {/* Fechar */}
+        <button
+          onClick={onClose}
+          style={{ position: "absolute", top: 16, right: 18, background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 22, cursor: "pointer", lineHeight: 1, padding: 4 }}
+          aria-label="Fechar"
+        >×</button>
+
+        <p className="mono" style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 12 }}>
+          Painel Multi-Curso
+        </p>
+
+        <h2 className="heading" style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em", lineHeight: 1.2, color: "#fff", marginBottom: 10 }}>
+          Compare suas chances em <span style={{ color: C.cyan }}>vários cursos</span> de uma vez
+        </h2>
+
+        <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.6)", lineHeight: 1.65, marginBottom: 24 }}>
+          Crie uma conta gratuita para salvar seus dados e ver probabilidade + quanto você precisa tirar no PAS 3 para cada curso que te interessa.
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <button
+            onClick={() => router.push("/auth/cadastro?next=/predict")}
+            className="pred-cta"
+            style={{
+              width: "100%", padding: "14px", borderRadius: 12, border: "none",
+              background: C.cyan, color: "#002147", fontSize: 14, fontWeight: 700,
+              cursor: "pointer", fontFamily: "var(--font-body), sans-serif",
+              boxShadow: "0 8px 28px rgba(0,174,239,0.4)",
+            }}
+          >
+            Criar conta gratuita →
+          </button>
+          <button
+            onClick={() => router.push("/auth/entrar?next=/predict")}
+            style={{
+              width: "100%", padding: "13px", borderRadius: 12,
+              background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
+              color: "rgba(255,255,255,0.75)", fontSize: 14, cursor: "pointer",
+              fontFamily: "var(--font-body), sans-serif",
+            }}
+          >
+            Já tenho conta — entrar
+          </button>
+        </div>
+
+        <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 18 }}>
+          Gratuito para alunos · sem cartão de crédito
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ─── main page ─────────────────────────────────────────────────── */
 
 const emptyScores = () => ({ p1: "0", p2: "0", red: "0" });
@@ -326,6 +422,7 @@ export function PreditorPage() {
   const [result, setResult] = useState<PredictResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showGate, setShowGate] = useState(false);
 
   useEffect(() => {
     fetchCourses(cota, trienio).then(setCourses).catch(() => setCourses([]));
@@ -351,6 +448,7 @@ export function PreditorPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLES }} />
+      {showGate && <SoftGateModal onClose={() => setShowGate(false)} />}
 
       <div
         className="pred-root"
@@ -473,6 +571,35 @@ export function PreditorPage() {
                 <ArgCard result={result} />
                 {result.curso_alvo_result && <CursoAlvoCard c={result.curso_alvo_result} />}
                 <TopCursosTable cursos={result.top_cursos} />
+
+                {/* Soft gate CTA */}
+                <div style={{
+                  marginTop: 8, padding: "20px 24px",
+                  border: "1px dashed rgba(0,174,239,0.3)", borderRadius: 16,
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  gap: 16, flexWrap: "wrap",
+                  background: "rgba(0,174,239,0.04)",
+                }}>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}>
+                      Quer comparar com outros cursos?
+                    </p>
+                    <p style={{ fontSize: 12, color: C.dim }}>
+                      Crie uma conta e veja suas chances em vários cursos de uma vez.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowGate(true)}
+                    className="pred-cta"
+                    style={{
+                      padding: "10px 20px", borderRadius: 10, border: "1px solid rgba(0,174,239,0.5)",
+                      background: "transparent", color: C.cyan, fontSize: 13, fontWeight: 600,
+                      cursor: "pointer", fontFamily: "var(--font-body), sans-serif", whiteSpace: "nowrap",
+                    }}
+                  >
+                    + Adicionar curso
+                  </button>
+                </div>
               </div>
             )}
 

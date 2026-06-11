@@ -56,8 +56,10 @@ function CursoCombobox({ value, onChange, cursos }: {
 
   const filtered = useMemo(() => {
     if (!query.trim()) return cursos.slice(0, 12);
-    const q = query.toLowerCase();
-    return cursos.filter((c) => c.toLowerCase().includes(q)).slice(0, 12);
+    const norm = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const q = norm(query);
+    return cursos.filter((c) => norm(c).includes(q)).slice(0, 12);
   }, [query, cursos]);
 
   useEffect(() => {
@@ -164,72 +166,8 @@ export function TemporalPage({ data }: { data: TemporalResponse }) {
           que isso significa para a sua etapa.
         </p>
 
-        {/* ── 1. Dificuldade das provas ── */}
+        {/* ── 1. Nota de corte por curso ── */}
         <section className="landing-reveal mb-14" style={{ animationDelay: "270ms" }}>
-          <SectionLabel>Escore Bruto médio por etapa</SectionLabel>
-          <p className="text-[0.82rem] text-white/45 mb-6 max-w-lg">
-            A média de P1 + P2 de todos os candidatos, ano a ano. Quedas indicam
-            provas mais difíceis; o PAS 3 costuma puxar a média para cima.
-          </p>
-          <div className="rounded-2xl border border-white/13 bg-white/5 p-5 sm:p-6">
-            <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={porAno} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-                <CartesianGrid stroke={DARK.grid} vertical={false} />
-                <XAxis dataKey="ano" tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<DarkTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 12, color: DARK.dim }} iconType="circle" iconSize={8} />
-                <Line type="monotone" dataKey="e1" name="PAS 1" stroke={DARK.cyan} strokeWidth={2.5} dot={{ r: 3, fill: DARK.cyan }} connectNulls />
-                <Line type="monotone" dataKey="e2" name="PAS 2" stroke={DARK.green} strokeWidth={2.5} dot={{ r: 3, fill: DARK.green }} connectNulls />
-                <Line type="monotone" dataKey="e3" name="PAS 3" stroke={DARK.amber} strokeWidth={2.5} dot={{ r: 3, fill: DARK.amber }} connectNulls />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          {insight && (
-            <p className="mt-4 text-[0.82rem] text-white/55 border-l-2 border-[#00AEEF] pl-3">
-              No PAS 3 de <span className="font-mono text-white">{insight.ano}</span>, o escore bruto médio foi{" "}
-              <span className="font-mono text-white">{insight.valor.toFixed(1)}</span> —{" "}
-              <span className={insight.delta >= 0 ? "text-[#00E08A]" : "text-[#FFC25E]"}>
-                {insight.delta >= 0 ? "+" : ""}{insight.delta.toFixed(1)} pts
-              </span>{" "}
-              em relação à média histórica da etapa.
-            </p>
-          )}
-        </section>
-
-        {/* ── 2. Redação ── */}
-        <section className="landing-reveal mb-14" style={{ animationDelay: "360ms" }}>
-          <SectionLabel>Redação média por ano</SectionLabel>
-          <p className="text-[0.82rem] text-white/45 mb-6 max-w-lg">
-            Média entre as etapas aplicadas em cada ano (escala 0–10).
-          </p>
-          <div className="rounded-2xl border border-white/13 bg-white/5 p-5 sm:p-6">
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart
-                data={porAno.map((r) => {
-                  const reds = [r.r1, r.r2, r.r3].filter((v): v is number => v != null);
-                  return { ano: r.ano, red: reds.length ? +(reds.reduce((s, v) => s + v, 0) / reds.length).toFixed(2) : null };
-                })}
-                margin={{ top: 8, right: 12, bottom: 0, left: -24 }}
-              >
-                <defs>
-                  <linearGradient id="redFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={DARK.cyan} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={DARK.cyan} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke={DARK.grid} vertical={false} />
-                <XAxis dataKey="ano" tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 10]} tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<DarkTooltip />} />
-                <Area type="monotone" dataKey="red" name="Redação média" stroke={DARK.cyan} strokeWidth={2.5} fill="url(#redFill)" connectNulls />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-
-        {/* ── 3. Nota de corte por curso ── */}
-        <section className="landing-reveal" style={{ animationDelay: "450ms" }}>
           <SectionLabel>Evolução da nota de corte</SectionLabel>
           <p className="text-[0.82rem] text-white/45 mb-5 max-w-lg">
             Escolha um curso e veja como o corte (Sistema Universal) variou
@@ -267,6 +205,71 @@ export function TemporalPage({ data }: { data: TemporalResponse }) {
             </Link>
           </p>
         </section>
+
+        {/* ── 2. Dificuldade das provas ── */}
+        <section className="landing-reveal mb-14" style={{ animationDelay: "360ms" }}>
+          <SectionLabel>Escore Bruto médio por etapa</SectionLabel>
+          <p className="text-[0.82rem] text-white/45 mb-6 max-w-lg">
+            A média de P1 + P2 de todos os candidatos, ano a ano. Quedas indicam
+            provas mais difíceis; o PAS 3 costuma puxar a média para cima.
+          </p>
+          <div className="rounded-2xl border border-white/13 bg-white/5 p-5 sm:p-6">
+            <ResponsiveContainer width="100%" height={320}>
+              <LineChart data={porAno} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                <CartesianGrid stroke={DARK.grid} vertical={false} />
+                <XAxis dataKey="ano" tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<DarkTooltip />} />
+                <Legend wrapperStyle={{ fontSize: 12, color: DARK.dim }} iconType="circle" iconSize={8} />
+                <Line type="monotone" dataKey="e1" name="PAS 1" stroke={DARK.cyan} strokeWidth={2.5} dot={{ r: 3, fill: DARK.cyan }} connectNulls />
+                <Line type="monotone" dataKey="e2" name="PAS 2" stroke={DARK.green} strokeWidth={2.5} dot={{ r: 3, fill: DARK.green }} connectNulls />
+                <Line type="monotone" dataKey="e3" name="PAS 3" stroke={DARK.amber} strokeWidth={2.5} dot={{ r: 3, fill: DARK.amber }} connectNulls />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          {insight && (
+            <p className="mt-4 text-[0.82rem] text-white/55 border-l-2 border-[#00AEEF] pl-3">
+              No PAS 3 de <span className="font-mono text-white">{insight.ano}</span>, o escore bruto médio foi{" "}
+              <span className="font-mono text-white">{insight.valor.toFixed(1)}</span> —{" "}
+              <span className={insight.delta >= 0 ? "text-[#00E08A]" : "text-[#FFC25E]"}>
+                {insight.delta >= 0 ? "+" : ""}{insight.delta.toFixed(1)} pts
+              </span>{" "}
+              em relação à média histórica da etapa.
+            </p>
+          )}
+        </section>
+
+        {/* ── 3. Redação ── (desativado; descomente para reativar)
+        <section className="landing-reveal" style={{ animationDelay: "450ms" }}>
+          <SectionLabel>Redação média por ano</SectionLabel>
+          <p className="text-[0.82rem] text-white/45 mb-6 max-w-lg">
+            Média entre as etapas aplicadas em cada ano (escala 0–10).
+          </p>
+          <div className="rounded-2xl border border-white/13 bg-white/5 p-5 sm:p-6">
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart
+                data={porAno.map((r) => {
+                  const reds = [r.r1, r.r2, r.r3].filter((v): v is number => v != null);
+                  return { ano: r.ano, red: reds.length ? +(reds.reduce((s, v) => s + v, 0) / reds.length).toFixed(2) : null };
+                })}
+                margin={{ top: 8, right: 12, bottom: 0, left: -24 }}
+              >
+                <defs>
+                  <linearGradient id="redFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={DARK.cyan} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={DARK.cyan} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={DARK.grid} vertical={false} />
+                <XAxis dataKey="ano" tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 10]} tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<DarkTooltip />} />
+                <Area type="monotone" dataKey="red" name="Redação média" stroke={DARK.cyan} strokeWidth={2.5} fill="url(#redFill)" connectNulls />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+        */}
       </div>
     </div>
   );

@@ -7,8 +7,12 @@ Sistema preditivo para estudantes e escolas parceiras do PAS/UnB. Calcula a prob
 ### Participantes
 
 **Aluno**:
-Estudante do ensino médio inscrito no PAS/UnB. Pode usar as features públicas anonimamente ou criar conta para manter histórico.
+Estudante do ensino médio inscrito no PAS/UnB. Pode usar as features públicas anonimamente ou criar conta (Aluno Cadastrado) para acessar o Painel Multi-Curso.
 _Avoid_: usuário, estudante
+
+**Aluno Cadastrado**:
+Aluno que criou conta no sistema. Obrigatoriamente vinculado a uma escola no cadastro (campo com autocomplete). Tem acesso ao Painel Multi-Curso e ao "Quanto Falta".
+_Avoid_: usuário logado, aluno autenticado
 
 **Coordenador Pedagógico**:
 Profissional de uma escola parceira que acessa as features B2B do sistema para acompanhar a turma.
@@ -62,12 +66,32 @@ _Avoid_: variação, instabilidade, desvio
 ### Produto
 
 **Feature Pública**:
-Funcionalidade acessível a qualquer visitante sem autenticação: Preditor PAS 3 e Análise Temporal. Alunos podem fazer login opcionalmente para salvar histórico.
+Funcionalidade acessível a qualquer visitante sem autenticação: Preditor PAS 3 (primeiro curso) e Análise Temporal.
 _Avoid_: feature gratuita, feature aberta
 
 **Feature B2B**:
 Funcionalidade exclusiva para Coordenadores Pedagógicos autenticados: Gestão de Ativos, Análise da Escola vs. População, Comparação Entre Grupos, Gerador de PDFs.
 _Avoid_: feature premium, feature paga, feature restrita
+
+**Painel Multi-Curso**:
+Feature exclusiva para Alunos Cadastrados. Permite salvar os inputs uma vez e ver probabilidade de aprovação + Quanto Falta para N cursos simultaneamente. Gatilho de login: tentativa de adicionar o segundo curso no Preditor.
+_Avoid_: comparação de cursos, dashboard do aluno
+
+**Quanto Falta**:
+Cálculo reverso por curso: dado os EBs fixos do PAS 1 e PAS 2 do Aluno Cadastrado, qual EB mínimo ele precisa no PAS 3 para atingir a Nota de Corte. Calculado via `target_calculator`. Disponível para todos os cursos no Painel Multi-Curso.
+_Avoid_: meta, objetivo, score necessário
+
+**Soft Gate**:
+Mecanismo de conversão do Preditor: o primeiro curso é calculado livremente; ao tentar adicionar um segundo curso, o sistema solicita login/cadastro. O Aluno já viu o valor antes de ser solicitado a criar conta.
+_Avoid_: paywall, bloqueio, gate
+
+**Dashboard de Prospecção**:
+Área interna em `/admin`, protegida por variável de ambiente, acessível apenas pelo dono do produto. Mostra ranking de escolas por número de Alunos Cadastrados com filtro por período. Serve para identificar Escolas Prospecto.
+_Avoid_: admin, painel interno, analytics
+
+**Escola Prospecto**:
+Escola não-contratante que aparece no ranking da Dashboard de Prospecção com volume relevante de Alunos Cadastrados. Sinal de demanda orgânica para abordagem comercial.
+_Avoid_: lead, escola potencial, prospect
 
 **Whitelabel**:
 Personalização visual do sistema por Tenant: logo, template PDF e cores. Configurado via campo `tenant` no perfil Supabase.
