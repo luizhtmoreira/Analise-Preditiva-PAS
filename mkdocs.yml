@@ -39,8 +39,17 @@ nav:
   - Home: index.md
   - Arquitetura Geral: architecture.md
   - Requisitos do Sistema: requirements.md
+  - Identidade Visual: identidade-visual.md
   - Módulos do Sistema:
     - Dashboard (Streamlit): modules/app.md
     - Motor de Inteligência: modules/pas_intelligence.md
     - Extratores de Dados: modules/parsers.md
     - Gerador de PDF: modules/pdf_generator.md
+  - Decisões de Arquitetura (ADR):
+    - Monorepo Next.js Unificado: adr/0001-monorepo-nextjs-unificado.md
+    - FastAPI como Backend Python: adr/0002-fastapi-backend-python.md
+    - Split Features Público vs. B2B: adr/0003-split-features-publico-b2b.md
+    - Deploy Vercel + Hugging Face Spaces: adr/0004-deploy-vercel-hugging-face-spaces.md
+    - shadcn + Recharts: adr/0005-shadcn-recharts.md
+    - Soft Gate no Segundo Curso: adr/0006-soft-gate-segundo-curso.md
+    - Baseline dos Modelos v1: adr/0007-baseline-modelos-v1.md
