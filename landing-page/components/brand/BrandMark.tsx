@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VetorMark } from "./VetorMark";
 
 export function BrandMark({
   sublabel,
@@ -11,10 +12,9 @@ export function BrandMark({
 }) {
   return (
     <Link href={href} className="flex items-center gap-2.5 group min-w-0">
-      <span
-        className="inline-block w-3 h-3 rounded-[3px] rotate-45 flex-shrink-0 transition-transform group-hover:rotate-[135deg] duration-500"
-        style={{ background: "linear-gradient(135deg, #00AEEF, #00843D)" }}
-      />
+      <span className="flex-shrink-0 inline-flex transition-transform duration-500 ease-out group-hover:translate-x-[2px] group-hover:-translate-y-[2px]">
+        <VetorMark size={26} />
+      </span>
       <span className="min-w-0">
         <span
           className={`block font-heading font-bold tracking-tight text-[1.05rem] leading-tight truncate ${
