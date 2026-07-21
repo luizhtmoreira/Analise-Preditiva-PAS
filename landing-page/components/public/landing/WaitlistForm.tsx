@@ -11,6 +11,21 @@ interface WaitlistFormProps {
   buttonText?: string;
 }
 
+const DOMAIN_TYPOS: Record<string, string> = {
+  "gmai.com": "gmail.com",
+  "gamil.com": "gmail.com",
+  "gmial.com": "gmail.com",
+  "gmaill.com": "gmail.com",
+  "gmal.com": "gmail.com",
+  "hotmial.com": "hotmail.com",
+  "hotmai.com": "hotmail.com",
+  "hotmal.com": "hotmail.com",
+  "outlok.com": "outlook.com",
+  "outloo.com": "outlook.com",
+  "yahor.com": "yahoo.com.br",
+  "yaho.com": "yahoo.com.br",
+};
+
 export function WaitlistForm({
   variantStyle = "card",
   buttonText = "Garantir Meu Acesso Antecipado",
@@ -22,6 +37,20 @@ export function WaitlistForm({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    const parts = val.split("@");
+    if (parts.length === 2) {
+      const domain = parts[1].toLowerCase();
+      if (DOMAIN_TYPOS[domain]) {
+        setSuggestion(`${parts[0]}@${DOMAIN_TYPOS[domain]}`);
+        return;
+      }
+    }
+    setSuggestion(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,10 +122,25 @@ export function WaitlistForm({
           type="email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => handleEmailChange(e.target.value)}
           placeholder="seu.email@exemplo.com"
           className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00AEEF] focus:ring-1 focus:ring-[#00AEEF] transition-all text-sm"
         />
+        {suggestion && (
+          <div className="p-2 rounded-lg bg-[#00AEEF]/20 border border-[#00AEEF]/40 text-xs text-white/90 flex items-center justify-between mt-1">
+            <span>💡 Você quis dizer <strong className="text-[#00AEEF]">{suggestion}</strong>?</span>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail(suggestion);
+                setSuggestion(null);
+              }}
+              className="px-2 py-0.5 rounded bg-[#00AEEF] text-[#002147] font-bold text-[0.7rem] hover:bg-[#33C1F3]"
+            >
+              Usar {suggestion.split("@")[1]}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">

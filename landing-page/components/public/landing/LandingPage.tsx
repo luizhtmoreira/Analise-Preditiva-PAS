@@ -101,7 +101,7 @@ export function LandingPage() {
                 Foi por isso que criei o <strong>Vetor PAS</strong>: para que você não precise estudar no escuro. Usamos algoritmos de machine learning sobre os boletins oficiais do Cebraspe para te mostrar exatamente onde você está e o que precisa fazer na terceira etapa. Assim, você não precisa esperar a nota do PAS 3 sair para saber se tinha chance ou não.
               </p>
             </div>
-            <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
+            <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#001D3A] border border-[#00843D]/40 text-[#00843D] font-bold flex items-center justify-center font-mono text-sm shadow-inner">
                   LM
@@ -111,6 +111,15 @@ export function LandingPage() {
                   <p className="text-xs text-white/60">Criador do Vetor PAS · Engenharia de Software (UnB)</p>
                 </div>
               </div>
+              <a
+                href="https://www.linkedin.com/in/luizhenriquemoreira/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-[#00AEEF] hover:text-[#002147] text-white text-xs font-semibold transition-all border border-white/20 w-fit"
+              >
+                <span>Conectar no LinkedIn</span>
+                <span>↗</span>
+              </a>
             </div>
           </div>
         </div>
@@ -208,12 +217,23 @@ export function LandingPage() {
       <footer className="bg-[#001730] text-white/50 border-t border-white/10 py-8 text-xs">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <p>© {new Date().getFullYear()} Vetor PAS — Projeto independente sem vínculo oficial com a UnB ou o Cebraspe.</p>
-          <button
-            onClick={scrollToForm}
-            className="text-[#00AEEF] hover:underline transition-all"
-          >
-            Ir para o cadastro ↑
-          </button>
+          <div className="flex items-center gap-5">
+            <a
+              href="https://www.linkedin.com/in/luizhenriquemoreira/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#00AEEF] hover:underline transition-all flex items-center gap-1 font-medium"
+            >
+              <span>LinkedIn</span>
+              <span>↗</span>
+            </a>
+            <button
+              onClick={scrollToForm}
+              className="text-white/70 hover:text-white transition-all"
+            >
+              Ir para o cadastro ↑
+            </button>
+          </div>
         </div>
       </footer>
     </div>
