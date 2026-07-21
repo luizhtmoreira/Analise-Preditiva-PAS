@@ -111,3 +111,8 @@ _Avoid_: contato, inscrito
 Seção de conexão institucional no pré-lançamento relatando a experiência pessoal do fundador como ex-estudante do PAS 3 e a motivação para criar a solução.
 _Avoid_: sobre nós, quem somos
 
+**Mobile-First Design**:
+Diretriz de design para a Landing Page Temporária: foco prioritário na experiência em smartphones (layouts empilhados, touch targets otimizados, formulário responsivo rápido), considerando que a maioria dos estudantes do PAS 3 acessará via celular (Instagram/WhatsApp).
+_Avoid_: versão mobile simples, adaptação mobile
+
+
