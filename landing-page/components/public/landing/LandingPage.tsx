@@ -111,15 +111,24 @@ export function LandingPage() {
                   <p className="text-xs text-white/60">Criador do Vetor PAS · Engenharia de Software (UnB)</p>
                 </div>
               </div>
-              <a
-                href="https://www.linkedin.com/in/luizhenriquemoreira/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-[#00AEEF] hover:text-[#002147] text-white text-xs font-semibold transition-all border border-white/20 w-fit"
-              >
-                <span>Conectar no LinkedIn</span>
-                <span>↗</span>
-              </a>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href="https://www.linkedin.com/in/luiz-henrique-tomaz-moreira"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-[#00AEEF] hover:text-[#002147] text-white text-xs font-semibold transition-all border border-white/20"
+                >
+                  <span>LinkedIn</span>
+                  <span>↗</span>
+                </a>
+                <a
+                  href="mailto:lhtmoreira@gmail.com"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-[#00843D] text-white text-xs font-semibold transition-all border border-white/20"
+                >
+                  <span>E-mail</span>
+                  <span>✉</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -219,13 +228,19 @@ export function LandingPage() {
           <p>© {new Date().getFullYear()} Vetor PAS — Projeto independente sem vínculo oficial com a UnB ou o Cebraspe.</p>
           <div className="flex items-center gap-5">
             <a
-              href="https://www.linkedin.com/in/luizhenriquemoreira/"
+              href="https://www.linkedin.com/in/luiz-henrique-tomaz-moreira"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[#00AEEF] hover:underline transition-all flex items-center gap-1 font-medium"
             >
               <span>LinkedIn</span>
               <span>↗</span>
+            </a>
+            <a
+              href="mailto:lhtmoreira@gmail.com"
+              className="text-[#7FD8F7] hover:underline transition-all flex items-center gap-1 font-medium"
+            >
+              <span>lhtmoreira@gmail.com</span>
             </a>
             <button
               onClick={scrollToForm}
