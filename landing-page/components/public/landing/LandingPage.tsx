@@ -1,64 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { WaitlistForm } from "./WaitlistForm";
-import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight, Shield, Sliders, CheckCircle } from "@phosphor-icons/react";
-
-// Lista de cursos populares e suas notas de corte estimadas no Argumento Final (escala Cebraspe de -3.0 a +5.0)
-const POPULAR_COURSES = [
-  { name: "MEDICINA (BACHARELADO)", cutoff: 4.150 },
-  { name: "DIREITO (BACHARELADO)", cutoff: 1.820 },
-  { name: "CIÊNCIA DA COMPUTAÇÃO (BACHARELADO)", cutoff: 1.950 },
-  { name: "PSICOLOGIA (BACHARELADO/LICENCIATURA/PSICÓLOGO)", cutoff: 1.150 },
-  { name: "RELAÇÕES INTERNACIONAIS (BACHARELADO)", cutoff: 1.620 },
-  { name: "ARQUITETURA E URBANISMO (BACHARELADO)", cutoff: 0.980 },
-  { name: "ENGENHARIAS - AEROESPACIAL / AUTOMOTIVA / ELETRÔNICA / SOFTWARE", cutoff: 0.820 },
-  { name: "ADMINISTRAÇÃO (BACHARELADO)", cutoff: -0.150 },
-  { name: "AGRONOMIA (BACHARELADO)", cutoff: -0.750 },
-  { name: "CIÊNCIAS BIOLÓGICAS (BACHARELADO)", cutoff: 0.350 },
-  { name: "ODONTOLOGIA (BACHARELADO)", cutoff: 1.450 },
-  { name: "FARMÁCIA (BACHARELADO)", cutoff: -0.050 },
-  { name: "NUTRIÇÃO (BACHARELADO)", cutoff: 0.220 },
-  { name: "DESIGN (BACHARELADO)", cutoff: 0.550 },
-  { name: "JORNALISMO (BACHARELADO)", cutoff: 0.420 },
-];
+import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight } from "@phosphor-icons/react";
 
 export function LandingPage() {
-  // --- Estados do Cursor Glow ---
-  const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (window.innerWidth > 768) {
-        setMousePos({ x: e.clientX, y: e.clientY });
-      }
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
-
-  // --- Estados do Simulador ---
-  const [selectedCourse, setSelectedCourse] = useState(POPULAR_COURSES[6]); // Engenharia de Software como padrão
-  const [pas1, setPas1] = useState(45);
-  const [pas2, setPas2] = useState(50);
-  const [pas3, setPas3] = useState(55);
-
-  // Fórmula aproximada Cebraspe (Escore Padronizado com desvio padrão fixado em 15 e média 35)
-  const ep1 = (pas1 - 35) / 15;
-  const ep2 = (pas2 - 35) / 15;
-  const ep3 = (pas3 - 35) / 15;
-  const argumentoCalculado = (ep1 * 1 + ep2 * 2 + ep3 * 3) / 6;
-
-  const cutoff = selectedCourse.cutoff;
-  const diff = argumentoCalculado - cutoff;
-
-  // Determinar status de aprovação
-  let status: "approved" | "warning" | "danger" = "danger";
-  if (diff >= 0) status = "approved";
-  else if (diff >= -0.8) status = "warning";
-
-  // Função para rolar até o cadastro
   const scrollToForm = (e: React.MouseEvent) => {
     e.preventDefault();
     const formElement = document.getElementById("lista-espera");
@@ -68,31 +14,13 @@ export function LandingPage() {
   };
 
   return (
-    <div className="landing-root bg-[#F8F9FA] text-[#1D1D1F] min-h-screen selection:bg-[#00843D] selection:text-white font-sans antialiased relative">
+    <div className="landing-root bg-[#F8F9FA] text-[#1D1D1F] min-h-screen selection:bg-[#00843D] selection:text-white font-sans antialiased">
       
-      {/* Efeito Glow Seguindo o Cursor */}
-      <div
-        className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300 opacity-20 hidden md:block"
-        style={{
-          background: `radial-gradient(500px at ${mousePos.x}px ${mousePos.y}px, rgba(0, 174, 239, 0.12) 0%, rgba(0, 132, 61, 0.04) 50%, transparent 80%)`,
-        }}
-      />
-
       {/* ============ STICKY NAVBAR ============ */}
       <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/95 border-b border-[#E2E8F0] transition-all duration-300">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
           <BrandMark />
-          <div className="flex items-center gap-4 sm:gap-8 text-xs sm:text-sm font-semibold text-[#002147]">
-            <a
-              href="#simulador"
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById("simulador")?.scrollIntoView({ behavior: "smooth" });
-              }}
-              className="hover:text-[#00843D] transition-colors cursor-pointer"
-            >
-              Simulador
-            </a>
+          <div className="flex items-center gap-5 sm:gap-8 text-xs sm:text-sm font-semibold text-[#002147]">
             <a
               href="#historia"
               onClick={(e) => {
@@ -129,12 +57,12 @@ export function LandingPage() {
 
       {/* ============ HERO & HEADER (FUNDO LIMPO BRANCO / HIGH CONTRAST) ============ */}
       <header className="relative z-20 bg-white text-[#002147] pt-16 pb-24 border-b border-[#E2E8F0] overflow-hidden">
-        {/* Elemento decorativo sutil de fundo */}
+        {/* Elementos decorativos animados de fundo */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-10"
+          className="absolute inset-0 pointer-events-none opacity-10 animate-pulse duration-[8000ms]"
           style={{
             backgroundImage:
-              "radial-gradient(ellipse at 80% 20%, #00843D 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, #00AEEF 0%, transparent 60%)",
+              "radial-gradient(ellipse at 80% 20%, #00843D 0%, transparent 65%), radial-gradient(ellipse at 20% 80%, #00AEEF 0%, transparent 65%)",
           }}
         />
 
@@ -160,7 +88,7 @@ export function LandingPage() {
 
             {/* Card do Formulário da Lista de Espera */}
             <div id="lista-espera" className="lg:col-span-5 scroll-mt-24">
-              <div className="bg-[#002147] border border-black/10 p-1.5 rounded-3xl shadow-[0_20px_50px_rgba(0,33,71,0.15)] text-white">
+              <div className="bg-[#002147] border border-black/10 p-1.5 rounded-3xl shadow-[0_20px_50px_rgba(0,33,71,0.15)] text-white hover:scale-[1.01] transition-transform duration-300">
                 <WaitlistForm variantStyle="card" buttonText="Garantir Meu Acesso Antecipado" />
               </div>
             </div>
@@ -168,239 +96,10 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* ============ SIMULADOR INTERATIVO (NOVA SEÇÃO DE INTERAÇÃO) ============ */}
-      <section id="simulador" className="py-24 bg-white border-b border-[#E2E8F0] scroll-mt-20 relative overflow-hidden">
-        <div className="max-w-6xl mx-auto px-6 relative z-10">
-          
-          <div className="max-w-3xl mb-16 space-y-4">
-            <span className="inline-flex items-center gap-1.5 font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00AEEF] bg-[#00AEEF]/10 border border-[#00AEEF]/20 px-3 py-1 rounded-md font-bold">
-              <Sliders size={14} />
-              Simulador Interativo (Beta Teaser)
-            </span>
-            <h2 className="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-[#002147]">
-              Descubra quanto falta na prática.
-            </h2>
-            <p className="text-base sm:text-lg text-[#4A5568] leading-relaxed">
-              Arraste as barras com suas notas reais (ou planejadas) e selecione o curso para simular a chance de aprovação na UnB usando pesos oficiais do Cebraspe.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-12 gap-8 items-stretch">
-            
-            {/* Coluna da Esquerda: Controles de Input */}
-            <div className="lg:col-span-6 bg-[#F8F9FA] border border-black/5 p-6 sm:p-8 rounded-3xl space-y-8 flex flex-col justify-between">
-              
-              {/* Curso Selecionado */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#002147] font-mono">1. Escolha seu Curso</label>
-                <select
-                  value={selectedCourse.name}
-                  onChange={(e) => {
-                    const c = POPULAR_COURSES.find(x => x.name === e.target.value);
-                    if (c) setSelectedCourse(c);
-                  }}
-                  className="w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-[#002147] font-medium text-sm focus:outline-none focus:border-[#00843D] cursor-pointer"
-                >
-                  {POPULAR_COURSES.map((item) => (
-                    <option key={item.name} value={item.name}>
-                      {item.name} (Corte: {item.cutoff.toFixed(3)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Sliders de Notas */}
-              <div className="space-y-6">
-                
-                {/* Notas do PAS 1 */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-bold text-[#002147] font-mono text-xs uppercase">PAS 1 (Escore Bruto)</span>
-                    <span className="font-mono font-bold text-white bg-[#002147] px-2 py-0.5 rounded text-xs">{pas1} pts</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={pas1}
-                    onChange={(e) => setPas1(Number(e.target.value))}
-                    className="w-full accent-[#00843D] cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                    <span>Mín: 10</span>
-                    <span>Máx: 100</span>
-                  </div>
-                </div>
-
-                {/* Notas do PAS 2 */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-bold text-[#002147] font-mono text-xs uppercase">PAS 2 (Escore Bruto)</span>
-                    <span className="font-mono font-bold text-white bg-[#002147] px-2 py-0.5 rounded text-xs">{pas2} pts</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={pas2}
-                    onChange={(e) => setPas2(Number(e.target.value))}
-                    className="w-full accent-[#00843D] cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                    <span>Mín: 10</span>
-                    <span>Máx: 100</span>
-                  </div>
-                </div>
-
-                {/* Notas Esperadas no PAS 3 */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-bold text-[#002147] font-mono text-xs uppercase">PAS 3 Estimado (Escore Bruto)</span>
-                    <span className="font-mono font-bold text-[#00AEEF] bg-[#00AEEF]/10 border border-[#00AEEF]/20 px-2 py-0.5 rounded text-xs">{pas3} pts</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={pas3}
-                    onChange={(e) => setPas3(Number(e.target.value))}
-                    className="w-full accent-[#00AEEF] cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                    <span>Mín: 10</span>
-                    <span>Máx: 100</span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Nota Informativa */}
-              <div className="pt-4 border-t border-black/5 flex items-start gap-2.5 text-xs text-gray-500">
-                <Shield size={16} className="text-[#00843D] shrink-0 mt-0.5" />
-                <p>
-                  Pesos Cebraspe (PAS 1 = Peso 1, PAS 2 = Peso 2, PAS 3 = Peso 3). O modelo real do Vetor PAS utiliza aprendizado estatístico para padronizar nota com base em desvios reais do ano da sua prova.
-                </p>
-              </div>
-
-            </div>
-
-            {/* Coluna da Direita: Display de Resultado Interativo */}
-            <div className="lg:col-span-6 bg-[#002147] border border-black/10 p-6 sm:p-8 rounded-3xl text-white flex flex-col justify-between shadow-[0_15px_40px_rgba(0,33,71,0.15)] relative overflow-hidden">
-              
-              {/* Efeito Glow Interno */}
-              <div className="absolute -right-20 -top-20 w-[200px] h-[200px] rounded-full bg-[#00AEEF]/15 blur-[60px] pointer-events-none" />
-
-              <div className="space-y-6 relative z-10">
-                <span className="inline-block font-mono text-[0.65rem] tracking-[0.25em] uppercase text-[#7FD8F7] border border-[#7FD8F7]/30 px-2.5 py-1 rounded">
-                  PAINEL DE RESULTADO ESTIMADO
-                </span>
-
-                <div>
-                  <p className="text-xs text-[#7FD8F7] font-mono uppercase tracking-wider">Argumento Final Estimado</p>
-                  <p className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mt-1">
-                    {argumentoCalculado >= 0 ? "+" : ""}
-                    {argumentoCalculado.toFixed(3)}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
-                  <div>
-                    <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Nota de Corte UnB</p>
-                    <p className="text-base font-bold text-white mt-0.5">
-                      {cutoff >= 0 ? "+" : ""}
-                      {cutoff.toFixed(3)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Status do Escore</p>
-                    <p className={`text-base font-bold mt-0.5 ${diff >= 0 ? "text-[#00843D] text-glow" : "text-[#FF6B6B]"}`}>
-                      {diff >= 0 ? `+${diff.toFixed(3)} Acima` : `${diff.toFixed(3)} Abaixo`}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Régua de Nota Gráfica Interativa */}
-                <div className="space-y-2 pt-2">
-                  <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Gráfico Comparativo de Argumento</p>
-                  <div className="h-2.5 bg-white/15 rounded-full w-full relative overflow-hidden">
-                    {/* Linha de Nota de Corte */}
-                    <div 
-                      className="absolute top-0 bottom-0 w-1 bg-white z-20"
-                      style={{ left: `${((cutoff + 3) / 8) * 100}%` }}
-                      title={`Nota de corte: ${cutoff}`}
-                    />
-                    {/* Barra de Argumento do Aluno */}
-                    <div 
-                      className={`absolute top-0 bottom-0 rounded-full transition-all duration-300 ${status === "approved" ? "bg-[#00843D]" : status === "warning" ? "bg-yellow-500" : "bg-[#FF6B6B]"}`}
-                      style={{ width: `${Math.min(Math.max(((argumentoCalculado + 3) / 8) * 100, 0), 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[9px] text-white/40 font-mono">
-                    <span>Escore Mín: -3.00</span>
-                    <span className="text-white font-semibold">| Corte do Vestibular</span>
-                    <span>Máx: +5.00</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Box de Análise Escrito Dinâmico */}
-              <div className="mt-8 pt-6 border-t border-white/10 relative z-10">
-                {status === "approved" && (
-                  <div className="bg-[#00843D]/10 border border-[#00843D]/30 p-4 rounded-2xl flex gap-3 items-start animate-in fade-in zoom-in-95 duration-200">
-                    <CheckCircle size={20} className="text-[#00843D] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-bold text-white">Chances Altas de Aprovação!</p>
-                      <p className="text-xs text-white/70 leading-relaxed mt-1">
-                        Com essa média, você estaria classificado dentro do número de vagas na UnB para o curso de {selectedCourse.name.toLowerCase()}! Continue assim.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {status === "warning" && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-2xl flex gap-3 items-start animate-in fade-in zoom-in-95 duration-200">
-                    <span className="text-yellow-500 text-lg leading-none shrink-0">⚠</span>
-                    <div>
-                      <p className="text-sm font-bold text-white">Muito Perto da Vaga!</p>
-                      <p className="text-xs text-white/70 leading-relaxed mt-1">
-                        Você está a menos de 1 ponto de argumento de alcançar o corte. Aumentar levemente o foco na prova do PAS 3 ou na redação pode te colocar dentro das vagas.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {status === "danger" && (
-                  <div className="bg-[#FF6B6B]/10 border border-[#FF6B6B]/30 p-4 rounded-2xl flex gap-3 items-start animate-in fade-in zoom-in-95 duration-200">
-                    <span className="text-[#FF6B6B] text-lg leading-none shrink-0">✕</span>
-                    <div>
-                      <p className="text-sm font-bold text-white">Aumente sua Estimativa</p>
-                      <p className="text-xs text-white/70 leading-relaxed mt-1">
-                        Para entrar em {selectedCourse.name.toLowerCase()}, você precisará de uma pontuação superior no PAS 3. Tente subir o controle do PAS 3 para ver quanto de escore é necessário.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-4 text-center">
-                  <button
-                    onClick={scrollToForm}
-                    className="inline-flex items-center gap-1 text-xs font-bold uppercase text-[#00AEEF] hover:text-[#33C1F3] transition-colors"
-                  >
-                    <span>Salvar simulação completa</span>
-                    <CaretRight size={12} weight="bold" />
-                  </button>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
       {/* ============ HISTÓRIA DO FUNDADOR (CLEAN WHITE CARD WITH GREEN LEFT BORDER) ============ */}
       <section id="historia" className="py-24 bg-[#F8F9FA] border-b border-[#E2E8F0] scroll-mt-20">
         <div className="max-w-4xl mx-auto px-6">
-          <div className="bg-white border-l-8 border-[#00843D] rounded-r-3xl p-8 sm:p-12 relative shadow-[0_10px_35px_rgba(0,0,0,0.03)] border-y border-r border-black/5">
+          <div className="bg-white border-l-8 border-[#00843D] rounded-r-3xl p-8 sm:p-12 relative shadow-[0_10px_35px_rgba(0,0,0,0.03)] border-y border-r border-black/5 hover:scale-[1.005] hover:shadow-[0_15px_45px_rgba(0,0,0,0.05)] transition-all duration-300">
             <div className="flex items-center gap-2 mb-4">
               <span className="font-mono text-xs text-[#00843D] uppercase tracking-[0.2em] font-bold">
                 De Aluno para Aluno
@@ -439,14 +138,14 @@ export function LandingPage() {
                   href="https://www.linkedin.com/in/luiz-henrique-tomaz-moreira"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#F8F9FA] hover:bg-[#00AEEF] hover:text-[#002147] text-[#4A5568] text-xs font-semibold transition-all border border-black/5 shadow-sm"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#F8F9FA] hover:bg-[#00AEEF] hover:text-[#002147] text-[#4A5568] text-xs font-semibold transition-all border border-black/5 shadow-sm active:scale-95"
                 >
                   <span>LinkedIn</span>
                   <span>↗</span>
                 </a>
                 <a
                   href="mailto:lhtmoreira@gmail.com"
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#F8F9FA] hover:bg-[#00843D] hover:text-white text-[#4A5568] text-xs font-semibold transition-all border border-black/5 shadow-sm"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#F8F9FA] hover:bg-[#00843D] hover:text-white text-[#4A5568] text-xs font-semibold transition-all border border-black/5 shadow-sm active:scale-95"
                 >
                   <span>E-mail</span>
                   <span>✉</span>
@@ -470,31 +169,31 @@ export function LandingPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="group relative bg-[#F8F9FA] border border-black/5 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 border-t-4 border-t-[#00AEEF]">
-              <span className="inline-block font-mono text-xs font-bold text-[#00AEEF] bg-[#00AEEF]/10 px-3 py-1 rounded-md mb-6">
+            <div className="group relative bg-[#F8F9FA] border border-black/5 rounded-2xl p-8 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-[#00AEEF] hover:border-r hover:border-b hover:border-l hover:border-[#00AEEF]/20">
+              <span className="inline-block font-mono text-xs font-bold text-[#00AEEF] bg-[#00AEEF]/10 px-3 py-1 rounded-md mb-6 transition-transform group-hover:scale-110">
                 01
               </span>
-              <h3 className="font-heading text-xl font-bold mb-3 text-[#002147]">Preditor PAS 3</h3>
+              <h3 className="font-heading text-xl font-bold mb-3 text-[#002147] group-hover:text-[#00AEEF] transition-colors">Preditor PAS 3</h3>
               <p className="text-sm text-[#4A5568] leading-relaxed">
                 Insira suas notas do PAS 1 e 2. Nosso modelo prevê seu Argumento Final e sua probabilidade percentual de aprovação no curso que você quer.
               </p>
             </div>
 
-            <div className="group relative bg-[#F8F9FA] border border-black/5 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 border-t-4 border-t-[#00843D]">
-              <span className="inline-block font-mono text-xs font-bold text-[#00843D] bg-[#00843D]/10 px-3 py-1 rounded-md mb-6">
+            <div className="group relative bg-[#F8F9FA] border border-black/5 rounded-2xl p-8 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-[#00843D] hover:border-r hover:border-b hover:border-l hover:border-[#00843D]/20">
+              <span className="inline-block font-mono text-xs font-bold text-[#00843D] bg-[#00843D]/10 px-3 py-1 rounded-md mb-6 transition-transform group-hover:scale-110">
                 02
               </span>
-              <h3 className="font-heading text-xl font-bold mb-3 text-[#002147]">Calculadora "Quanto Falta"</h3>
+              <h3 className="font-heading text-xl font-bold mb-3 text-[#002147] group-hover:text-[#00843D] transition-colors">Calculadora "Quanto Falta"</h3>
               <p className="text-sm text-[#4A5568] leading-relaxed">
                 Cálculo reverso: saiba exatamente qual Escore Bruto você precisa tirar na prova do PAS 3 para alcançar a nota de corte do seu curso.
               </p>
             </div>
 
-            <div className="group relative bg-[#F8F9FA] border border-black/5 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 border-t-4 border-t-[#002147]">
-              <span className="inline-block font-mono text-xs font-bold text-[#002147] bg-[#002147]/5 px-3 py-1 rounded-md mb-6">
+            <div className="group relative bg-[#F8F9FA] border border-black/5 rounded-2xl p-8 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 border-t-4 border-t-[#002147] hover:border-r hover:border-b hover:border-l hover:border-[#002147]/20">
+              <span className="inline-block font-mono text-xs font-bold text-[#002147] bg-[#002147]/5 px-3 py-1 rounded-md mb-6 transition-transform group-hover:scale-110">
                 03
               </span>
-              <h3 className="font-heading text-xl font-bold mb-3 text-[#002147]">Análise Histórica</h3>
+              <h3 className="font-heading text-xl font-bold mb-3 text-[#002147] group-hover:text-white/20 transition-colors">Análise Histórica</h3>
               <p className="text-sm text-[#4A5568] leading-relaxed">
                 Evolução histórica das notas de corte por curso e estatísticas médias das edições anteriores do PAS/UnB.
               </p>
@@ -509,7 +208,7 @@ export function LandingPage() {
           <div className="grid lg:grid-cols-12 gap-12 items-center">
             {/* Texto */}
             <div className="lg:col-span-6 space-y-6">
-              <span className="inline-block font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00AEEF] bg-[#00AEEF]/5 border border-[#00AEEF]/20 px-3.5 py-1.5 rounded-lg font-bold">
+              <span className="inline-block font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00AEEF] bg-[#00AEEF]/5 border border-[#00AEEF]/20 px-3.5 py-1.5 rounded-lg font-bold animate-pulse">
                 Build in Public
               </span>
               <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.1] text-[#002147]">
@@ -527,7 +226,7 @@ export function LandingPage() {
                   href="https://www.youtube.com/@luizhtmoreira"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl font-semibold text-white bg-[#002147] hover:bg-[#FF0000] hover:text-white transition-all shadow-sm text-sm group"
+                  className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl font-semibold text-white bg-[#002147] hover:bg-[#FF0000] hover:text-white transition-all shadow-sm text-sm group active:scale-95"
                 >
                   <YoutubeLogo size={20} weight="fill" className="text-[#FF0000] group-hover:text-white transition-colors" />
                   <span>Acompanhar lives no YouTube</span>
@@ -537,7 +236,7 @@ export function LandingPage() {
 
             {/* Grid de Cards (Brancos, Alta Definição) */}
             <div className="lg:col-span-6 grid sm:grid-cols-2 gap-6">
-              <div className="bg-white border border-black/5 p-6 rounded-2xl space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <div className="bg-white border border-black/5 p-6 rounded-2xl space-y-3 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300">
                 <div className="w-10 h-10 rounded-xl bg-[#00AEEF]/10 text-[#00AEEF] flex items-center justify-center">
                   <Television size={22} weight="duotone" />
                 </div>
@@ -547,7 +246,7 @@ export function LandingPage() {
                 </p>
               </div>
 
-              <div className="bg-white border border-black/5 p-6 rounded-2xl space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <div className="bg-white border border-black/5 p-6 rounded-2xl space-y-3 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300">
                 <div className="w-10 h-10 rounded-xl bg-[#00843D]/10 text-[#00843D] flex items-center justify-center">
                   <Lightbulb size={22} weight="duotone" />
                 </div>
@@ -557,7 +256,7 @@ export function LandingPage() {
                 </p>
               </div>
 
-              <div className="bg-white border border-black/5 p-6 rounded-2xl space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <div className="bg-white border border-black/5 p-6 rounded-2xl space-y-3 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300">
                 <div className="w-10 h-10 rounded-xl bg-[#002147]/5 text-[#002147] flex items-center justify-center">
                   <Wrench size={22} weight="duotone" />
                 </div>
@@ -567,7 +266,7 @@ export function LandingPage() {
                 </p>
               </div>
 
-              <div className="bg-white border border-black/5 p-6 rounded-2xl space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <div className="bg-white border border-black/5 p-6 rounded-2xl space-y-3 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300">
                 <div className="w-10 h-10 rounded-xl bg-[#7FD8F7]/20 text-[#00AEEF] flex items-center justify-center">
                   <Megaphone size={22} weight="duotone" />
                 </div>
@@ -585,7 +284,7 @@ export function LandingPage() {
       <section className="py-20 bg-white text-white border-b border-[#E2E8F0]">
         <div className="max-w-5xl mx-auto px-6">
           <div
-            className="rounded-3xl py-16 px-8 sm:px-16 text-center space-y-6 relative overflow-hidden shadow-[0_20px_40px_rgba(0,33,71,0.12)] border border-black/5"
+            className="rounded-3xl py-16 px-8 sm:px-16 text-center space-y-6 relative overflow-hidden shadow-[0_20px_40px_rgba(0,33,71,0.12)] border border-black/5 hover:scale-[1.005] transition-transform duration-500"
             style={{
               background: "linear-gradient(135deg, #002147 0%, #004723 50%, #001730 100%)",
             }}
@@ -605,7 +304,7 @@ export function LandingPage() {
             <div className="pt-4 relative z-10">
               <button
                 onClick={scrollToForm}
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-[#002147] bg-[#00AEEF] hover:bg-[#33C1F3] transition-all hover:-translate-y-0.5 shadow-[0_8px_30px_rgba(0,174,239,0.3)] text-base sm:text-lg"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-[#002147] bg-[#00AEEF] hover:bg-[#33C1F3] transition-all hover:-translate-y-0.5 shadow-[0_8px_30px_rgba(0,174,239,0.3)] text-base sm:text-lg active:scale-95"
               >
                 <span>Quero Garantir Meu Acesso</span>
                 <CaretRight size={18} weight="bold" />
