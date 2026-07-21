@@ -2,61 +2,9 @@
 
 import { useState } from "react";
 import { submitWaitlist } from "@/lib/waitlist";
+import { CourseSelect } from "@/components/ui/CourseSelect";
 
-const CURSOS_UNB = [
-  "ADMINISTRAÇÃO (BACHARELADO)",
-  "AGRONOMIA (BACHARELADO)",
-  "ARQUITETURA E URBANISMO (BACHARELADO)",
-  "ARTES CÊNICAS (BACHARELADO)",
-  "ARTES CÊNICAS (LICENCIATURA)",
-  "ARTES VISUAIS (BACHARELADO)",
-  "ARTES VISUAIS (LICENCIATURA)",
-  "BIOTECNOLOGIA (BACHARELADO)",
-  "CIÊNCIA DA COMPUTAÇÃO (BACHARELADO)",
-  "CIÊNCIA POLÍTICA (BACHARELADO)",
-  "CIÊNCIAS BIOLÓGICAS (BACHARELADO)",
-  "CIÊNCIAS CONTÁBEIS (BACHARELADO)",
-  "CIÊNCIAS ECONÔMICAS (BACHARELADO)",
-  "CIÊNCIAS SOCIAIS - ANTROPOLOGIA/SOCIOLOGIA (BACHARELADO/LICENCIATURA)",
-  "COMPUTAÇÃO (LICENCIATURA)",
-  "COMUNICAÇÃO ORGANIZACIONAL (BACHARELADO)",
-  "COMUNICAÇÃO SOCIAL - AUDIOVISUAL (BACHARELADO)",
-  "COMUNICAÇÃO SOCIAL - PUBLICIDADE E PROPAGANDA (BACHARELADO)",
-  "DESIGN (BACHARELADO)",
-  "DIREITO (BACHARELADO)",
-  "EDUCAÇÃO FÍSICA CICLO BÁSICO (BACHARELADO/LICENCIATURA)",
-  "ENFERMAGEM (BACHARELADO)",
-  "ENGENHARIA CIVIL (BACHARELADO)",
-  "ENGENHARIA DE COMPUTAÇÃO (BACHARELADO)",
-  "ENGENHARIA DE PRODUÇÃO (BACHARELADO)",
-  "ENGENHARIA DE REDES DE COMUNICAÇÃO (BACHARELADO)",
-  "ENGENHARIA ELÉTRICA (BACHARELADO)",
-  "ENGENHARIA MECATRÔNICA (BACHARELADO)",
-  "ENGENHARIA MECÂNICA (BACHARELADO)",
-  "ENGENHARIA QUÍMICA (BACHARELADO)",
-  "ENGENHARIAS - AEROESPACIAL / AUTOMOTIVA / ELETRÔNICA / ENERGIA / SOFTWARE (BACHARELADOS)**",
-  "ESTATÍSTICA (BACHARELADO)",
-  "FARMÁCIA (BACHARELADO)",
-  "FISIOTERAPIA (BACHARELADO)",
-  "FONOAUDIOLOGIA (BACHARELADO)",
-  "FÍSICA (BACHARELADO)",
-  "GESTÃO DE POLÍTICAS PÚBLICAS (BACHARELADO)",
-  "HISTÓRIA (BACHARELADO/LICENCIATURA)",
-  "JORNALISMO (BACHARELADO)",
-  "LÍNGUA INGLESA (BACHARELADO/LICENCIATURA)",
-  "LÍNGUA PORTUGUESA (BACHARELADO/LICENCIATURA)",
-  "MATEMÁTICA (BACHARELADO/LICENCIATURA)",
-  "MEDICINA (BACHARELADO)",
-  "MEDICINA VETERINÁRIA (BACHARELADO)",
-  "NUTRIÇÃO (BACHARELADO)",
-  "ODONTOLOGIA (BACHARELADO)",
-  "PEDAGOGIA (LICENCIATURA)",
-  "PSICOLOGIA (BACHARELADO/LICENCIATURA/PSICÓLOGO)",
-  "QUÍMICA (BACHARELADO)",
-  "RELAÇÕES INTERNACIONAIS (BACHARELADO)",
-  "TERAPIA OCUPACIONAL (BACHARELADO)",
-  "OUTRO CURSO / A DEFINIR",
-];
+
 
 interface WaitlistFormProps {
   variantStyle?: "card" | "inline" | "minimal";
@@ -170,18 +118,7 @@ export function WaitlistForm({
           <label className="block text-xs font-medium text-white/80 uppercase tracking-wider">
             Curso Pretendido na UnB
           </label>
-          <select
-            value={curso}
-            onChange={(e) => setCurso(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-[#001E3D] border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00AEEF] focus:ring-1 focus:ring-[#00AEEF] transition-all text-sm"
-          >
-            <option value="">Selecione um curso...</option>
-            {CURSOS_UNB.map((c) => (
-              <option key={c} value={c} className="bg-[#002147] text-white">
-                {c}
-              </option>
-            ))}
-          </select>
+          <CourseSelect value={curso} onChange={setCurso} />
         </div>
       </div>
 
