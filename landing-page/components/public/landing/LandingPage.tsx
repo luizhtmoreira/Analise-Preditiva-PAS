@@ -193,7 +193,7 @@ export function LandingPage() {
               <span className="inline-block font-mono text-xs font-bold text-[#002147] bg-[#002147]/5 px-3 py-1 rounded-md mb-6 transition-transform group-hover:scale-110">
                 03
               </span>
-              <h3 className="font-heading text-xl font-bold mb-3 text-[#002147] group-hover:text-white/20 transition-colors">Análise Histórica</h3>
+              <h3 className="font-heading text-xl font-bold mb-3 text-[#002147] group-hover:text-[#002147] transition-colors">Análise Histórica</h3>
               <p className="text-sm text-[#4A5568] leading-relaxed">
                 Evolução histórica das notas de corte por curso e estatísticas médias das edições anteriores do PAS/UnB.
               </p>
