@@ -58,7 +58,7 @@ export function LandingPage() {
                 <span className="text-[#00AEEF]">calculada</span> com precisão.
               </h1>
               <p className="text-lg sm:text-xl text-white/75 leading-relaxed max-w-xl">
-                O Vetor PAS combina estatística avançada e dados oficiais do Cebraspe para prever seu Argumento Final e calcular exatamente o quanto falta para a nota de corte do seu curso no PAS 3.
+                O Vetor PAS combina IA e dados oficiais do Cebraspe para prever seu Argumento Final e calcular a chance real de você passar no seu curso no PAS 3.
               </p>
             </div>
 
