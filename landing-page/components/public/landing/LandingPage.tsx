@@ -1,10 +1,64 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { WaitlistForm } from "./WaitlistForm";
-import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight } from "@phosphor-icons/react";
+import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight, Shield, Sliders, CheckCircle } from "@phosphor-icons/react";
+
+// Lista de cursos populares e suas notas de corte estimadas no Argumento Final (escala Cebraspe de -3.0 a +5.0)
+const POPULAR_COURSES = [
+  { name: "MEDICINA (BACHARELADO)", cutoff: 4.150 },
+  { name: "DIREITO (BACHARELADO)", cutoff: 1.820 },
+  { name: "CIÊNCIA DA COMPUTAÇÃO (BACHARELADO)", cutoff: 1.950 },
+  { name: "PSICOLOGIA (BACHARELADO/LICENCIATURA/PSICÓLOGO)", cutoff: 1.150 },
+  { name: "RELAÇÕES INTERNACIONAIS (BACHARELADO)", cutoff: 1.620 },
+  { name: "ARQUITETURA E URBANISMO (BACHARELADO)", cutoff: 0.980 },
+  { name: "ENGENHARIAS - AEROESPACIAL / AUTOMOTIVA / ELETRÔNICA / SOFTWARE", cutoff: 0.820 },
+  { name: "ADMINISTRAÇÃO (BACHARELADO)", cutoff: -0.150 },
+  { name: "AGRONOMIA (BACHARELADO)", cutoff: -0.750 },
+  { name: "CIÊNCIAS BIOLÓGICAS (BACHARELADO)", cutoff: 0.350 },
+  { name: "ODONTOLOGIA (BACHARELADO)", cutoff: 1.450 },
+  { name: "FARMÁCIA (BACHARELADO)", cutoff: -0.050 },
+  { name: "NUTRIÇÃO (BACHARELADO)", cutoff: 0.220 },
+  { name: "DESIGN (BACHARELADO)", cutoff: 0.550 },
+  { name: "JORNALISMO (BACHARELADO)", cutoff: 0.420 },
+];
 
 export function LandingPage() {
+  // --- Estados do Cursor Glow ---
+  const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (window.innerWidth > 768) {
+        setMousePos({ x: e.clientX, y: e.clientY });
+      }
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  // --- Estados do Simulador ---
+  const [selectedCourse, setSelectedCourse] = useState(POPULAR_COURSES[6]); // Engenharia de Software como padrão
+  const [pas1, setPas1] = useState(45);
+  const [pas2, setPas2] = useState(50);
+  const [pas3, setPas3] = useState(55);
+
+  // Fórmula aproximada Cebraspe (Escore Padronizado com desvio padrão fixado em 15 e média 35)
+  const ep1 = (pas1 - 35) / 15;
+  const ep2 = (pas2 - 35) / 15;
+  const ep3 = (pas3 - 35) / 15;
+  const argumentoCalculado = (ep1 * 1 + ep2 * 2 + ep3 * 3) / 6;
+
+  const cutoff = selectedCourse.cutoff;
+  const diff = argumentoCalculado - cutoff;
+
+  // Determinar status de aprovação
+  let status: "approved" | "warning" | "danger" = "danger";
+  if (diff >= 0) status = "approved";
+  else if (diff >= -0.8) status = "warning";
+
+  // Função para rolar até o cadastro
   const scrollToForm = (e: React.MouseEvent) => {
     e.preventDefault();
     const formElement = document.getElementById("lista-espera");
@@ -14,13 +68,31 @@ export function LandingPage() {
   };
 
   return (
-    <div className="landing-root bg-[#F8F9FA] text-[#1D1D1F] min-h-screen selection:bg-[#00843D] selection:text-white font-sans antialiased">
+    <div className="landing-root bg-[#F8F9FA] text-[#1D1D1F] min-h-screen selection:bg-[#00843D] selection:text-white font-sans antialiased relative">
       
+      {/* Efeito Glow Seguindo o Cursor */}
+      <div
+        className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300 opacity-20 hidden md:block"
+        style={{
+          background: `radial-gradient(500px at ${mousePos.x}px ${mousePos.y}px, rgba(0, 174, 239, 0.12) 0%, rgba(0, 132, 61, 0.04) 50%, transparent 80%)`,
+        }}
+      />
+
       {/* ============ STICKY NAVBAR ============ */}
       <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/95 border-b border-[#E2E8F0] transition-all duration-300">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
           <BrandMark />
-          <div className="flex items-center gap-5 sm:gap-8 text-xs sm:text-sm font-semibold text-[#002147]">
+          <div className="flex items-center gap-4 sm:gap-8 text-xs sm:text-sm font-semibold text-[#002147]">
+            <a
+              href="#simulador"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("simulador")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="hover:text-[#00843D] transition-colors cursor-pointer"
+            >
+              Simulador
+            </a>
             <a
               href="#historia"
               onClick={(e) => {
@@ -95,6 +167,235 @@ export function LandingPage() {
           </div>
         </div>
       </header>
+
+      {/* ============ SIMULADOR INTERATIVO (NOVA SEÇÃO DE INTERAÇÃO) ============ */}
+      <section id="simulador" className="py-24 bg-white border-b border-[#E2E8F0] scroll-mt-20 relative overflow-hidden">
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
+          
+          <div className="max-w-3xl mb-16 space-y-4">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00AEEF] bg-[#00AEEF]/10 border border-[#00AEEF]/20 px-3 py-1 rounded-md font-bold">
+              <Sliders size={14} />
+              Simulador Interativo (Beta Teaser)
+            </span>
+            <h2 className="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-[#002147]">
+              Descubra quanto falta na prática.
+            </h2>
+            <p className="text-base sm:text-lg text-[#4A5568] leading-relaxed">
+              Arraste as barras com suas notas reais (ou planejadas) e selecione o curso para simular a chance de aprovação na UnB usando pesos oficiais do Cebraspe.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-12 gap-8 items-stretch">
+            
+            {/* Coluna da Esquerda: Controles de Input */}
+            <div className="lg:col-span-6 bg-[#F8F9FA] border border-black/5 p-6 sm:p-8 rounded-3xl space-y-8 flex flex-col justify-between">
+              
+              {/* Curso Selecionado */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#002147] font-mono">1. Escolha seu Curso</label>
+                <select
+                  value={selectedCourse.name}
+                  onChange={(e) => {
+                    const c = POPULAR_COURSES.find(x => x.name === e.target.value);
+                    if (c) setSelectedCourse(c);
+                  }}
+                  className="w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-[#002147] font-medium text-sm focus:outline-none focus:border-[#00843D] cursor-pointer"
+                >
+                  {POPULAR_COURSES.map((item) => (
+                    <option key={item.name} value={item.name}>
+                      {item.name} (Corte: {item.cutoff.toFixed(3)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sliders de Notas */}
+              <div className="space-y-6">
+                
+                {/* Notas do PAS 1 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-bold text-[#002147] font-mono text-xs uppercase">PAS 1 (Escore Bruto)</span>
+                    <span className="font-mono font-bold text-white bg-[#002147] px-2 py-0.5 rounded text-xs">{pas1} pts</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={pas1}
+                    onChange={(e) => setPas1(Number(e.target.value))}
+                    className="w-full accent-[#00843D] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-gray-400 font-mono">
+                    <span>Mín: 10</span>
+                    <span>Máx: 100</span>
+                  </div>
+                </div>
+
+                {/* Notas do PAS 2 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-bold text-[#002147] font-mono text-xs uppercase">PAS 2 (Escore Bruto)</span>
+                    <span className="font-mono font-bold text-white bg-[#002147] px-2 py-0.5 rounded text-xs">{pas2} pts</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={pas2}
+                    onChange={(e) => setPas2(Number(e.target.value))}
+                    className="w-full accent-[#00843D] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-gray-400 font-mono">
+                    <span>Mín: 10</span>
+                    <span>Máx: 100</span>
+                  </div>
+                </div>
+
+                {/* Notas Esperadas no PAS 3 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-bold text-[#002147] font-mono text-xs uppercase">PAS 3 Estimado (Escore Bruto)</span>
+                    <span className="font-mono font-bold text-[#00AEEF] bg-[#00AEEF]/10 border border-[#00AEEF]/20 px-2 py-0.5 rounded text-xs">{pas3} pts</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={pas3}
+                    onChange={(e) => setPas3(Number(e.target.value))}
+                    className="w-full accent-[#00AEEF] cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-gray-400 font-mono">
+                    <span>Mín: 10</span>
+                    <span>Máx: 100</span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Nota Informativa */}
+              <div className="pt-4 border-t border-black/5 flex items-start gap-2.5 text-xs text-gray-500">
+                <Shield size={16} className="text-[#00843D] shrink-0 mt-0.5" />
+                <p>
+                  Pesos Cebraspe (PAS 1 = Peso 1, PAS 2 = Peso 2, PAS 3 = Peso 3). O modelo real do Vetor PAS utiliza aprendizado estatístico para padronizar nota com base em desvios reais do ano da sua prova.
+                </p>
+              </div>
+
+            </div>
+
+            {/* Coluna da Direita: Display de Resultado Interativo */}
+            <div className="lg:col-span-6 bg-[#002147] border border-black/10 p-6 sm:p-8 rounded-3xl text-white flex flex-col justify-between shadow-[0_15px_40px_rgba(0,33,71,0.15)] relative overflow-hidden">
+              
+              {/* Efeito Glow Interno */}
+              <div className="absolute -right-20 -top-20 w-[200px] h-[200px] rounded-full bg-[#00AEEF]/15 blur-[60px] pointer-events-none" />
+
+              <div className="space-y-6 relative z-10">
+                <span className="inline-block font-mono text-[0.65rem] tracking-[0.25em] uppercase text-[#7FD8F7] border border-[#7FD8F7]/30 px-2.5 py-1 rounded">
+                  PAINEL DE RESULTADO ESTIMADO
+                </span>
+
+                <div>
+                  <p className="text-xs text-[#7FD8F7] font-mono uppercase tracking-wider">Argumento Final Estimado</p>
+                  <p className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mt-1">
+                    {argumentoCalculado >= 0 ? "+" : ""}
+                    {argumentoCalculado.toFixed(3)}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                  <div>
+                    <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Nota de Corte UnB</p>
+                    <p className="text-base font-bold text-white mt-0.5">
+                      {cutoff >= 0 ? "+" : ""}
+                      {cutoff.toFixed(3)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Status do Escore</p>
+                    <p className={`text-base font-bold mt-0.5 ${diff >= 0 ? "text-[#00843D] text-glow" : "text-[#FF6B6B]"}`}>
+                      {diff >= 0 ? `+${diff.toFixed(3)} Acima` : `${diff.toFixed(3)} Abaixo`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Régua de Nota Gráfica Interativa */}
+                <div className="space-y-2 pt-2">
+                  <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Gráfico Comparativo de Argumento</p>
+                  <div className="h-2.5 bg-white/15 rounded-full w-full relative overflow-hidden">
+                    {/* Linha de Nota de Corte */}
+                    <div 
+                      className="absolute top-0 bottom-0 w-1 bg-white z-20"
+                      style={{ left: `${((cutoff + 3) / 8) * 100}%` }}
+                      title={`Nota de corte: ${cutoff}`}
+                    />
+                    {/* Barra de Argumento do Aluno */}
+                    <div 
+                      className={`absolute top-0 bottom-0 rounded-full transition-all duration-300 ${status === "approved" ? "bg-[#00843D]" : status === "warning" ? "bg-yellow-500" : "bg-[#FF6B6B]"}`}
+                      style={{ width: `${Math.min(Math.max(((argumentoCalculado + 3) / 8) * 100, 0), 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] text-white/40 font-mono">
+                    <span>Escore Mín: -3.00</span>
+                    <span className="text-white font-semibold">| Corte do Vestibular</span>
+                    <span>Máx: +5.00</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Box de Análise Escrito Dinâmico */}
+              <div className="mt-8 pt-6 border-t border-white/10 relative z-10">
+                {status === "approved" && (
+                  <div className="bg-[#00843D]/10 border border-[#00843D]/30 p-4 rounded-2xl flex gap-3 items-start animate-in fade-in zoom-in-95 duration-200">
+                    <CheckCircle size={20} className="text-[#00843D] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-white">Chances Altas de Aprovação!</p>
+                      <p className="text-xs text-white/70 leading-relaxed mt-1">
+                        Com essa média, você estaria classificado dentro do número de vagas na UnB para o curso de {selectedCourse.name.toLowerCase()}! Continue assim.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {status === "warning" && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-2xl flex gap-3 items-start animate-in fade-in zoom-in-95 duration-200">
+                    <span className="text-yellow-500 text-lg leading-none shrink-0">⚠</span>
+                    <div>
+                      <p className="text-sm font-bold text-white">Muito Perto da Vaga!</p>
+                      <p className="text-xs text-white/70 leading-relaxed mt-1">
+                        Você está a menos de 1 ponto de argumento de alcançar o corte. Aumentar levemente o foco na prova do PAS 3 ou na redação pode te colocar dentro das vagas.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {status === "danger" && (
+                  <div className="bg-[#FF6B6B]/10 border border-[#FF6B6B]/30 p-4 rounded-2xl flex gap-3 items-start animate-in fade-in zoom-in-95 duration-200">
+                    <span className="text-[#FF6B6B] text-lg leading-none shrink-0">✕</span>
+                    <div>
+                      <p className="text-sm font-bold text-white">Aumente sua Estimativa</p>
+                      <p className="text-xs text-white/70 leading-relaxed mt-1">
+                        Para entrar em {selectedCourse.name.toLowerCase()}, você precisará de uma pontuação superior no PAS 3. Tente subir o controle do PAS 3 para ver quanto de escore é necessário.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={scrollToForm}
+                    className="inline-flex items-center gap-1 text-xs font-bold uppercase text-[#00AEEF] hover:text-[#33C1F3] transition-colors"
+                  >
+                    <span>Salvar simulação completa</span>
+                    <CaretRight size={12} weight="bold" />
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </section>
 
       {/* ============ HISTÓRIA DO FUNDADOR (CLEAN WHITE CARD WITH GREEN LEFT BORDER) ============ */}
       <section id="historia" className="py-24 bg-[#F8F9FA] border-b border-[#E2E8F0] scroll-mt-20">
