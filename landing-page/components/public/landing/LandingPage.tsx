@@ -14,6 +14,44 @@ export function LandingPage() {
 
   return (
     <div className="landing-root bg-white text-[#1D1D1F] min-h-screen selection:bg-[#00AEEF] selection:text-white">
+      {/* ============ STICKY NAVBAR ============ */}
+      <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-[#002147]/80 border-b border-white/10 transition-all duration-300">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+          <BrandMark />
+          <div className="flex items-center gap-5 sm:gap-8 text-xs sm:text-sm font-semibold text-white/90">
+            <a
+              href="#historia"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("historia")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="hover:text-[#00AEEF] transition-colors cursor-pointer"
+            >
+              Minha História
+            </a>
+            <a
+              href="#ferramentas"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("ferramentas")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="hover:text-[#00AEEF] transition-colors cursor-pointer"
+            >
+              Ferramentas
+            </a>
+            <a
+              href="https://www.linkedin.com/in/luiz-henrique-tomaz-moreira"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#00AEEF] transition-colors cursor-pointer flex items-center gap-0.5 text-white/60"
+            >
+              <span>LinkedIn</span>
+              <span>↗</span>
+            </a>
+          </div>
+        </div>
+      </nav>
+
       {/* ============ HEADER & HERO (AZUL UNB DEEP GRADIENT) ============ */}
       <header
         className="relative z-20 text-white"
@@ -32,17 +70,6 @@ export function LandingPage() {
             maskImage: "radial-gradient(ellipse 90% 70% at 50% 30%, black, transparent)",
           }}
         />
-
-        {/* Navbar */}
-        <nav className="relative z-10 max-w-6xl mx-auto flex items-center justify-between px-6 pt-6 pb-4">
-          <BrandMark />
-          <button
-            onClick={scrollToForm}
-            className="px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-[#00AEEF] text-[#002147] hover:bg-[#33C1F3] transition-all shadow-[0_4px_15px_rgba(0,174,239,0.35)] active:scale-95"
-          >
-            Garantir Vaga
-          </button>
-        </nav>
 
         {/* Hero Body */}
         <div className="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-20 sm:pt-16 sm:pb-24">
@@ -72,7 +99,8 @@ export function LandingPage() {
 
       {/* ============ HISTÓRIA DO FUNDADOR (TRANSIÇÃO SUAVE DE AZUL) ============ */}
       <section
-        className="relative z-10 text-white py-20 sm:py-24"
+        id="historia"
+        className="relative z-10 text-white py-20 sm:py-24 scroll-mt-20"
         style={{
           background:
             "linear-gradient(180deg, #002B54 0%, #002347 40%, #001A38 100%)",
@@ -135,7 +163,7 @@ export function LandingPage() {
       </section>
 
       {/* ============ O QUE VAI ACESSAR (CINZA CLARO #F5F5F7 + CARDS BRANCOS) ============ */}
-      <section className="bg-[#F5F5F7] py-20 sm:py-28 border-y border-[#E6E6E8]">
+      <section id="ferramentas" className="bg-[#F5F5F7] py-20 sm:py-28 border-y border-[#E6E6E8] scroll-mt-20">
         <div className="max-w-6xl mx-auto px-6">
           <div className="max-w-2xl mb-14">
             <p className="font-mono text-[0.78rem] tracking-[0.22em] uppercase text-[#00843D] font-semibold mb-3">
@@ -200,11 +228,11 @@ export function LandingPage() {
             "linear-gradient(180deg, #002B54 0%, #002147 60%, #001A38 100%)",
         }}
       >
-        <div className="max-w-4xl mx-auto px-6 text-center space-y-6 relative z-10">
-          <span className="font-mono text-xs text-[#7FD8F7] uppercase tracking-[0.2em] bg-white/10 border border-white/15 px-3.5 py-1.5 rounded-full">
+        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
+          <span className="inline-block font-mono text-xs text-[#7FD8F7] uppercase tracking-[0.2em] bg-white/10 border border-white/15 px-3.5 py-1.5 rounded-full mb-6">
             Acesso Antecipado Gratuito
           </span>
-          <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-tight">
+          <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-tight mb-4">
             Não faça a 3ª etapa no escuro.
           </h2>
           <p className="text-base sm:text-lg text-white/75 max-w-xl mx-auto leading-relaxed">
