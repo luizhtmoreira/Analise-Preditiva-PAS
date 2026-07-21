@@ -2,7 +2,7 @@
 
 import { BrandMark } from "@/components/brand/BrandMark";
 import { WaitlistForm } from "./WaitlistForm";
-import { Television, Lightbulb, Wrench, Megaphone } from "@phosphor-icons/react";
+import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo } from "@phosphor-icons/react";
 
 export function LandingPage() {
   const scrollToForm = (e: React.MouseEvent) => {
@@ -39,6 +39,16 @@ export function LandingPage() {
               className="hover:text-[#00AEEF] transition-colors cursor-pointer"
             >
               Ferramentas
+            </a>
+            <a
+              href="#build-in-public"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("build-in-public")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="hover:text-[#00AEEF] transition-colors cursor-pointer"
+            >
+              Build in Public
             </a>
           </div>
         </div>
@@ -228,7 +238,7 @@ export function LandingPage() {
       </section>
 
       {/* ============ SEÇÃO BUILD IN PUBLIC (AZUL ESCURO UNB) ============ */}
-      <section className="bg-[#001D3D] text-white py-20 sm:py-24 relative overflow-hidden border-b border-white/5">
+      <section id="build-in-public" className="bg-[#001D3D] text-white py-20 sm:py-24 relative overflow-hidden border-b border-white/5 scroll-mt-20">
         <div
           className="absolute inset-0 pointer-events-none opacity-20"
           style={{
@@ -252,6 +262,17 @@ export function LandingPage() {
               <p className="text-sm sm:text-base text-white/70">
                 Estou desenvolvendo o produto em <strong>lives abertas de código</strong>, onde você pode acompanhar cada linha de programação, sugerir ideias de design, propor novas simulações de nota ou criticar o que não ficou legal.
               </p>
+              <div className="pt-2">
+                <a
+                  href="https://www.youtube.com/@luizhtmoreira"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl font-semibold text-white bg-white/10 hover:bg-[#FF0000] hover:text-white border border-white/15 transition-all shadow-[0_4px_15px_rgba(0,0,0,0.15)] active:scale-[0.98] text-sm group"
+                >
+                  <YoutubeLogo size={20} weight="fill" className="text-[#FF0000] group-hover:text-white transition-colors" />
+                  <span>Acompanhar lives no YouTube</span>
+                </a>
+              </div>
             </div>
 
             <div className="lg:col-span-6 grid sm:grid-cols-2 gap-6">
