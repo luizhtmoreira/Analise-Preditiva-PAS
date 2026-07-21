@@ -99,7 +99,7 @@ export function WaitlistForm({
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
         <div className="space-y-1">
           <label className="block text-xs font-medium text-white/80 uppercase tracking-wider">
             Sua Escola *
@@ -116,7 +116,7 @@ export function WaitlistForm({
 
         <div className="space-y-1">
           <label className="block text-xs font-medium text-white/80 uppercase tracking-wider">
-            Curso Pretendido na UnB
+            Curso Pretendido
           </label>
           <CourseSelect value={curso} onChange={setCurso} />
         </div>
