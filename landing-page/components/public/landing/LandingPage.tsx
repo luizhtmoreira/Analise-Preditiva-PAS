@@ -70,24 +70,24 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* ============ HISTÓRIA DO FUNDADOR (VERDE UNB #00843D) ============ */}
-      <section className="relative overflow-hidden bg-[#00843D] py-20 sm:py-24 text-white">
-        <div
-          className="absolute inset-0 pointer-events-none opacity-20"
-          style={{
-            background:
-              "radial-gradient(ellipse 60% 80% at 85% 20%, rgba(0,33,71,0.5), transparent)",
-          }}
-        />
-        <div className="relative max-w-4xl mx-auto px-6">
-          <div className="bg-[#002147]/40 border border-white/25 rounded-3xl p-8 sm:p-12 backdrop-blur-md shadow-2xl">
-            <span className="font-mono text-xs text-[#7FD8F7] uppercase tracking-[0.2em] block mb-3 font-semibold">
-              De Aluno para Aluno
-            </span>
+      {/* ============ HISTÓRIA DO FUNDADOR (AZUL ESCURO DISCRETO COM DETALHE EM VERDE) ============ */}
+      <section className="bg-[#001730] py-20 border-y border-white/10 text-white">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="bg-[#002147] border border-white/15 rounded-3xl p-8 sm:p-12 relative overflow-hidden shadow-2xl">
+            {/* Linha discreta de sotaque em Verde UnB no topo do card */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-[#00843D]" />
+
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-2 h-2 rounded-full bg-[#00843D]" />
+              <span className="font-mono text-xs text-[#00843D] uppercase tracking-[0.2em] font-bold">
+                De Aluno para Aluno
+              </span>
+            </div>
+
             <h2 className="font-heading text-2xl sm:text-4xl font-bold mb-6 text-white leading-snug">
               "Eu já estive no seu lugar no PAS 3 — e sei a angústia que é não saber onde você está."
             </h2>
-            <div className="space-y-4 text-white/90 leading-relaxed text-sm sm:text-base">
+            <div className="space-y-4 text-white/80 leading-relaxed text-sm sm:text-base">
               <p>
                 Quando eu estava prestando o PAS 3, passei meses tentando adivinhar se as minhas notas do PAS 1 e 2 seriam suficientes. Procurava planilhas e cálculos antigos na internet, mas nenhum me dava uma resposta real sobre a probabilidade de entrar no meu curso na UnB.
               </p>
@@ -95,14 +95,14 @@ export function LandingPage() {
                 Foi por isso que criei o <strong>Vetor PAS</strong>: para que você não precise estudar no escuro. Usamos algoritmos de machine learning sobre os boletins oficiais do Cebraspe para te mostrar exatamente onde você está e o que precisa fazer na terceira etapa.
               </p>
             </div>
-            <div className="mt-8 pt-6 border-t border-white/20 flex items-center justify-between">
+            <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white text-[#00843D] font-bold flex items-center justify-center font-mono text-sm shadow-md">
+                <div className="w-10 h-10 rounded-full bg-[#001730] border border-[#00843D]/40 text-[#00843D] font-bold flex items-center justify-center font-mono text-sm shadow-inner">
                   VP
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">Criador do Vetor PAS</p>
-                  <p className="text-xs text-white/70">Ex-estudante do PAS/UnB</p>
+                  <p className="text-xs text-white/50">Ex-estudante do PAS/UnB</p>
                 </div>
               </div>
             </div>
@@ -111,7 +111,7 @@ export function LandingPage() {
       </section>
 
       {/* ============ O QUE VAI ACESSAR (CINZA CLARO #F5F5F7 + CARDS BRANCOS) ============ */}
-      <section className="bg-[#F5F5F7] py-20 sm:py-28 border-y border-[#E6E6E8]">
+      <section className="bg-[#F5F5F7] py-20 sm:py-28 border-b border-[#E6E6E8]">
         <div className="max-w-6xl mx-auto px-6">
           <div className="max-w-2xl mb-14">
             <p className="font-mono text-[0.78rem] tracking-[0.22em] uppercase text-[#00843D] font-semibold mb-3">
@@ -168,7 +168,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ============ CTA FINAL (AZUL UNB FECHANDO O RITMO DE CORES) ============ */}
+      {/* ============ CTA FINAL ============ */}
       <section className="bg-[#002147] text-white py-20 sm:py-24 relative overflow-hidden">
         <div className="max-w-4xl mx-auto px-6 text-center space-y-6 relative z-10">
           <span className="font-mono text-xs text-[#7FD8F7] uppercase tracking-[0.2em] bg-white/10 border border-white/15 px-3.5 py-1.5 rounded-full">
