@@ -122,8 +122,23 @@ export function LandingPage() {
             </div>
             <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#001D3A] border border-[#00843D]/40 text-[#00843D] font-bold flex items-center justify-center font-mono text-sm shadow-inner">
-                  LM
+                <div className="w-10 h-10 rounded-full border border-[#00843D]/40 shadow-inner overflow-hidden relative bg-[#001D3A]">
+                  <img
+                    src="/luiz.jpeg"
+                    alt="Luiz Moreira"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback case
+                      e.currentTarget.style.display = 'none';
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        const fallbackText = document.createElement('div');
+                        fallbackText.className = 'w-full h-full flex items-center justify-center font-mono text-[#00843D] text-sm font-bold';
+                        fallbackText.innerText = 'LM';
+                        parent.appendChild(fallbackText);
+                      }
+                    }}
+                  />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">Luiz Moreira</p>
