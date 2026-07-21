@@ -10,7 +10,7 @@ export interface WaitlistInput {
 export async function submitWaitlist(input: WaitlistInput) {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("waitlist")
     .insert([
       {
@@ -19,8 +19,7 @@ export async function submitWaitlist(input: WaitlistInput) {
         escola: input.escola.trim(),
         curso_pretendido: input.curso_pretendido?.trim() || null,
       },
-    ])
-    .select();
+    ]);
 
   if (error) {
     if (error.code === "23505") {
@@ -29,5 +28,5 @@ export async function submitWaitlist(input: WaitlistInput) {
     throw new Error(error.message || "Erro ao se cadastrar na lista de espera.");
   }
 
-  return data;
+  return true;
 }
