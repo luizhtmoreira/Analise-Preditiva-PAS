@@ -1,37 +1,32 @@
-"use client";
-
 import { BrandMark } from "@/components/brand/BrandMark";
-import { WaitlistForm } from "./WaitlistForm";
+import { WaitlistForm } from "../WaitlistForm";
 
-export function LandingPage() {
-  const scrollToForm = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const formElement = document.getElementById("lista-espera");
-    if (formElement) {
-      formElement.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
+export function VariantA() {
   return (
     <div className="landing-root bg-[#002147] text-white min-h-screen selection:bg-[#00AEEF] selection:text-[#002147]">
       {/* ============ HEADER ============ */}
-      <header className="relative z-20 border-b border-white/10 bg-[#001D3D]/60 backdrop-blur-md sticky top-0">
-        <nav className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+      <header className="relative z-20 border-b border-white/10">
+        <nav className="max-w-6xl mx-auto flex items-center justify-between px-6 py-5">
           <BrandMark />
-          <button
-            onClick={scrollToForm}
-            className="px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-[#00AEEF] text-[#002147] hover:bg-[#33C1F3] transition-all shadow-[0_4px_15px_rgba(0,174,239,0.3)] active:scale-95"
-          >
-            Garantir Vaga
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline-block font-mono text-xs bg-[#00AEEF]/15 border border-[#00AEEF]/40 text-[#7FD8F7] px-3 py-1 rounded-full uppercase tracking-wider">
+              🚀 Pré-Lançamento PAS 3
+            </span>
+            <a
+              href="#lista-espera"
+              className="px-4 py-2 rounded-lg font-medium text-xs sm:text-sm bg-white/10 hover:bg-white/20 border border-white/20 transition-all"
+            >
+              Garantir vaga
+            </a>
+          </div>
         </nav>
       </header>
 
       {/* ============ HERO (SPLIT FORM) ============ */}
       <section className="relative overflow-hidden pt-12 pb-20 sm:pt-20 sm:pb-28">
-        {/* Grade de Fundo Sutil */}
+        {/* Background Grid */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-30"
+          className="absolute inset-0 pointer-events-none opacity-40"
           style={{
             backgroundImage:
               "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
@@ -41,23 +36,39 @@ export function LandingPage() {
 
         <div className="relative z-10 max-w-6xl mx-auto px-6">
           <div className="grid lg:grid-cols-12 gap-12 items-center">
-            {/* Esquerda: Texto de Impacto */}
+            {/* Esquerda: Texto */}
             <div className="lg:col-span-7 space-y-6">
-              <span className="inline-block font-mono text-xs text-[#7FD8F7] tracking-[0.2em] uppercase bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-md">
-                Análise Preditiva · PAS/UnB
+              <span className="inline-block font-mono text-xs text-[#7FD8F7] tracking-[0.2em] uppercase bg-white/5 border border-white/10 px-3 py-1 rounded-md">
+                Inteligência Preditiva para o PAS 3
               </span>
               <h1 className="font-heading text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.08]">
                 Sua aprovação na UnB,{" "}
                 <span className="text-[#00AEEF]">calculada com precisão.</span>
               </h1>
               <p className="text-lg sm:text-xl text-white/75 leading-relaxed max-w-2xl">
-                O Vetor PAS combina estatística avançada e o histórico oficial do Cebraspe para prever seu Argumento Final e calcular exatamente o quanto falta para a nota de corte do seu curso no PAS 3.
+                O Vetor PAS combina machine learning e histórico oficial do Cebraspe para prever seu Argumento Final e o quanto falta para a nota de corte do seu curso.
               </p>
+
+              {/* Destaques rápidos */}
+              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/10">
+                <div>
+                  <p className="font-mono text-xl sm:text-2xl font-bold text-[#00AEEF]">4 Modelos</p>
+                  <p className="text-xs text-white/60">Ensemble preditivo</p>
+                </div>
+                <div>
+                  <p className="font-mono text-xl sm:text-2xl font-bold text-[#00843D]">100% Cebraspe</p>
+                  <p className="text-xs text-white/60">Pesos oficiais</p>
+                </div>
+                <div>
+                  <p className="font-mono text-xl sm:text-2xl font-bold text-white">Quanto Falta</p>
+                  <p className="text-xs text-white/60">Calculadora reversa</p>
+                </div>
+              </div>
             </div>
 
-            {/* Direita: Formulário da Lista de Espera */}
-            <div id="lista-espera" className="lg:col-span-5 scroll-mt-24">
-              <WaitlistForm variantStyle="card" buttonText="Garantir Meu Acesso Antecipado" />
+            {/* Direita: Formulário */}
+            <div id="lista-espera" className="lg:col-span-5 scroll-mt-10">
+              <WaitlistForm variantStyle="card" buttonText="Quero Acesso Antecipado" />
             </div>
           </div>
         </div>
@@ -70,7 +81,7 @@ export function LandingPage() {
             <span className="font-mono text-xs text-[#00AEEF] uppercase tracking-[0.2em] block mb-3">
               De Aluno para Aluno
             </span>
-            <h2 className="font-heading text-2xl sm:text-4xl font-bold mb-6 text-white leading-snug">
+            <h2 className="font-heading text-2xl sm:text-4xl font-bold mb-6 text-white">
               "Eu já estive no seu lugar no PAS 3 — e sei a angústia que é não saber onde você está."
             </h2>
             <div className="space-y-4 text-white/80 leading-relaxed text-sm sm:text-base">
@@ -83,7 +94,7 @@ export function LandingPage() {
             </div>
             <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#00AEEF] text-[#002147] font-bold flex items-center justify-center font-mono text-sm">
+                <div className="w-10 h-10 rounded-full bg-[#00AEEF] text-[#002147] font-bold flex items-center justify-center font-mono">
                   VP
                 </div>
                 <div>
@@ -115,7 +126,7 @@ export function LandingPage() {
               </div>
               <h3 className="font-heading text-xl font-bold mb-3 text-white">Preditor PAS 3</h3>
               <p className="text-sm text-white/70 leading-relaxed">
-                Insira suas notas do PAS 1 e 2. Nosso modelo prevê seu Argumento Final e sua probabilidade percentual de aprovação no curso que você quer.
+                Insira suas notas do PAS 1 e 2. Nosso modelo prevê seu Argumento Final e sua probabilidade percentual de aprovação.
               </p>
             </div>
 
@@ -125,7 +136,7 @@ export function LandingPage() {
               </div>
               <h3 className="font-heading text-xl font-bold mb-3 text-white">Calculadora "Quanto Falta"</h3>
               <p className="text-sm text-white/70 leading-relaxed">
-                Cálculo reverso: saiba exatamente qual Escore Bruto você precisa tirar na prova do PAS 3 para alcançar a nota de corte do seu curso.
+                Cálculo reverso: saiba exatamente qual Escore Bruto você precisa tirar na prova do PAS 3 para alcançar o curso dos seus sonhos.
               </p>
             </div>
 
@@ -142,40 +153,11 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ============ CTA FINAL (NOVA SEÇÃO) ============ */}
-      <section className="bg-[#001730] py-20 border-t border-white/10 relative overflow-hidden">
-        <div className="max-w-4xl mx-auto px-6 text-center space-y-6 relative z-10">
-          <span className="font-mono text-xs text-[#00AEEF] uppercase tracking-[0.2em] bg-[#00AEEF]/10 border border-[#00AEEF]/30 px-3.5 py-1.5 rounded-full">
-            Vagas Limitadas para Acesso Antecipado
-          </span>
-          <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-tight">
-            Não faça a 3ª etapa no escuro.
-          </h2>
-          <p className="text-base sm:text-lg text-white/75 max-w-xl mx-auto leading-relaxed">
-            Faça seu cadastro agora na lista VIP para receber o link de acesso em primeira mão assim que abrirmos a plataforma.
-          </p>
-          <div className="pt-4">
-            <button
-              onClick={scrollToForm}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-[#002147] bg-[#00AEEF] hover:bg-[#33C1F3] transition-all hover:-translate-y-0.5 shadow-[0_8px_30px_rgba(0,174,239,0.35)] text-base sm:text-lg"
-            >
-              <span>Quero Garantir Meu Acesso</span>
-              <span>↑</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
       {/* ============ FOOTER ============ */}
-      <footer className="border-t border-white/10 py-8 text-xs text-white/50 bg-[#001024]">
+      <footer className="border-t border-white/10 py-10 text-xs text-white/50 bg-[#001730]">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <p>© {new Date().getFullYear()} Vetor PAS — Projeto independente sem vínculo oficial com a UnB ou o Cebraspe.</p>
-          <button
-            onClick={scrollToForm}
-            className="text-[#00AEEF] hover:underline transition-all"
-          >
-            Ir para o cadastro ↑
-          </button>
+          <p className="font-mono text-[#7FD8F7]">Variante A — Hero Split Form</p>
         </div>
       </footer>
     </div>
