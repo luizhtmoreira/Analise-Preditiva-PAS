@@ -104,11 +104,11 @@ export function LandingPage() {
             <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#001D3A] border border-[#00843D]/40 text-[#00843D] font-bold flex items-center justify-center font-mono text-sm shadow-inner">
-                  VP
+                  LM
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">Criador do Vetor PAS</p>
-                  <p className="text-xs text-white/50">Ex-estudante do PAS/UnB</p>
+                  <p className="text-sm font-semibold text-white">Luiz Moreira</p>
+                  <p className="text-xs text-white/60">Criador do Vetor PAS · Engenharia de Software (UnB)</p>
                 </div>
               </div>
             </div>
