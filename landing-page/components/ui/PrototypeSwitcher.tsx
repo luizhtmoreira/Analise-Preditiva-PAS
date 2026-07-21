@@ -43,7 +43,7 @@ export function PrototypeSwitcher({ variants, current }: PrototypeSwitcherProps)
         activeElement?.tagName === "INPUT" ||
         activeElement?.tagName === "TEXTAREA" ||
         activeElement?.tagName === "SELECT" ||
-        activeElement?.isContentEditable;
+        (activeElement as HTMLElement)?.isContentEditable;
 
       if (isInput) return;
 
