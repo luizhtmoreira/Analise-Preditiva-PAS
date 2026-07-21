@@ -14,10 +14,10 @@ export function LandingPage() {
   };
 
   return (
-    <div className="landing-root bg-[#F8F9FA] text-[#1D1D1F] min-h-screen selection:bg-[#00843D] selection:text-white font-sans antialiased overflow-x-hidden">
+    <div className="landing-root bg-[#F8F9FA] text-[#1D1D1F] min-h-screen selection:bg-[#00843D] selection:text-white font-sans antialiased">
       
       {/* ============ STICKY NAVBAR ============ */}
-      <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/95 border-b border-black/5 transition-all duration-300">
+      <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/95 border-b border-[#E2E8F0] transition-all duration-300">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
           <BrandMark />
           <div className="flex items-center gap-5 sm:gap-8 text-xs sm:text-sm font-semibold text-[#002147]">
@@ -56,7 +56,7 @@ export function LandingPage() {
       </nav>
 
       {/* ============ HERO & HEADER (FUNDO LIMPO BRANCO / HIGH CONTRAST) ============ */}
-      <header className="relative z-20 bg-white text-[#002147] pt-16 pb-24 border-b border-black/5">
+      <header className="relative z-20 bg-white text-[#002147] pt-16 pb-24 border-b border-[#E2E8F0] overflow-hidden">
         {/* Elemento decorativo sutil de fundo */}
         <div
           className="absolute inset-0 pointer-events-none opacity-10"
@@ -97,7 +97,7 @@ export function LandingPage() {
       </header>
 
       {/* ============ HISTÓRIA DO FUNDADOR (CLEAN WHITE CARD WITH GREEN LEFT BORDER) ============ */}
-      <section id="historia" className="py-24 bg-[#F8F9FA] border-b border-black/5 scroll-mt-20">
+      <section id="historia" className="py-24 bg-[#F8F9FA] border-b border-[#E2E8F0] scroll-mt-20">
         <div className="max-w-4xl mx-auto px-6">
           <div className="bg-white border-l-8 border-[#00843D] rounded-r-3xl p-8 sm:p-12 relative shadow-[0_10px_35px_rgba(0,0,0,0.03)] border-y border-r border-black/5">
             <div className="flex items-center gap-2 mb-4">
@@ -157,7 +157,7 @@ export function LandingPage() {
       </section>
 
       {/* ============ FERRAMENTAS (FUNDO LIMPO BRANCO / CARDS COM BORDAS COLORIDAS) ============ */}
-      <section id="ferramentas" className="bg-white py-20 sm:py-28 border-b border-black/5 scroll-mt-20">
+      <section id="ferramentas" className="bg-white py-20 sm:py-28 border-b border-[#E2E8F0] scroll-mt-20">
         <div className="max-w-6xl mx-auto px-6">
           <div className="max-w-2xl mb-14">
             <p className="font-mono text-[0.78rem] tracking-[0.22em] uppercase text-[#00843D] font-bold mb-3">
@@ -203,7 +203,7 @@ export function LandingPage() {
       </section>
 
       {/* ============ BUILD IN PUBLIC (LIGHT BG / WHITE CARDS) ============ */}
-      <section id="build-in-public" className="bg-[#F8F9FA] py-20 sm:py-24 border-b border-black/5 scroll-mt-20">
+      <section id="build-in-public" className="bg-[#F8F9FA] py-20 sm:py-24 border-b border-[#E2E8F0] scroll-mt-20">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid lg:grid-cols-12 gap-12 items-center">
             {/* Texto */}
@@ -281,7 +281,7 @@ export function LandingPage() {
       </section>
 
       {/* ============ CTA FINAL (VIBRANT DARK BLUE-GREEN GRADIENT BANNER BOX) ============ */}
-      <section className="py-20 bg-white text-white">
+      <section className="py-20 bg-white text-white border-b border-[#E2E8F0]">
         <div className="max-w-5xl mx-auto px-6">
           <div
             className="rounded-3xl py-16 px-8 sm:px-16 text-center space-y-6 relative overflow-hidden shadow-[0_20px_40px_rgba(0,33,71,0.12)] border border-black/5"
@@ -315,7 +315,7 @@ export function LandingPage() {
       </section>
 
       {/* ============ FOOTER (NAVY BLUE DARK) ============ */}
-      <footer className="bg-[#001730] text-white/50 border-t border-white/10 py-12 text-xs">
+      <footer className="bg-[#001730] text-white/50 py-12 text-xs">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
           <p>© {new Date().getFullYear()} Vetor PAS — Projeto independente sem vínculo oficial com a UnB ou o Cebraspe.</p>
           <div className="flex items-center gap-5">
