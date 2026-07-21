@@ -2,57 +2,60 @@
 
 import { useState, useRef, useEffect } from "react";
 
-export const CURSOS_UNB_CLEAN = [
-  "Administração",
-  "Agronomia",
-  "Arquitetura e Urbanismo",
-  "Artes Cênicas",
-  "Artes Visuais",
-  "Biotecnologia",
-  "Ciência da Computação",
-  "Ciência Política",
-  "Ciências Biológicas",
-  "Ciências Contábeis",
-  "Ciências Econômicas",
-  "Ciências Sociais (Antropologia / Sociologia)",
-  "Computação (Licenciatura)",
-  "Comunicação - Audiovisual",
-  "Comunicação - Publicidade e Propaganda",
-  "Comunicação Organizacional",
-  "Design",
-  "Direito",
-  "Educação Física",
-  "Enfermagem",
-  "Engenharia Civil",
-  "Engenharia de Computação",
-  "Engenharia de Produção",
-  "Engenharia de Redes de Comunicação",
-  "Engenharia de Software / FGA (Gama)",
-  "Engenharia Elétrica",
-  "Engenharia Mecânica",
-  "Engenharia Mecatrônica",
-  "Engenharia Química",
-  "Estatística",
-  "Farmácia",
-  "Fisioterapia",
-  "Fonoaudiologia",
-  "Física",
-  "Gestão de Políticas Públicas",
-  "História",
-  "Jornalismo",
-  "Letras - Língua Inglesa",
-  "Letras - Língua Portuguesa",
-  "Matemática",
-  "Medicina",
-  "Medicina Veterinária",
-  "Nutrição",
-  "Odontologia",
-  "Pedagogia",
-  "Psicologia",
-  "Química",
-  "Relações Internacionais",
-  "Terapia Ocupacional",
-  "Outro curso / A definir",
+export const CURSOS_UNB_EXACT = [
+  "ADMINISTRAÇÃO (BACHARELADO)",
+  "AGRONOMIA (BACHARELADO)",
+  "ARQUITETURA E URBANISMO (BACHARELADO)",
+  "ARTES CÊNICAS (BACHARELADO)",
+  "ARTES CÊNICAS (LICENCIATURA)",
+  "ARTES VISUAIS (BACHARELADO)",
+  "ARTES VISUAIS (LICENCIATURA)",
+  "BIOTECNOLOGIA (BACHARELADO)",
+  "CIÊNCIA DA COMPUTAÇÃO (BACHARELADO)",
+  "CIÊNCIA POLÍTICA (BACHARELADO)",
+  "CIÊNCIA POLÍTICA (BACHARELADO) JUDICE",
+  "CIÊNCIAS BIOLÓGICAS (BACHARELADO)",
+  "CIÊNCIAS CONTÁBEIS (BACHARELADO)",
+  "CIÊNCIAS ECONÔMICAS (BACHARELADO)",
+  "CIÊNCIAS SOCIAIS - ANTROPOLOGIA/SOCIOLOGIA (BACHARELADO/LICENCIATURA)",
+  "COMPUTAÇÃO (LICENCIATURA)",
+  "COMUNICAÇÃO ORGANIZACIONAL (BACHARELADO)",
+  "COMUNICAÇÃO SOCIAL - AUDIOVISUAL (BACHARELADO)",
+  "COMUNICAÇÃO SOCIAL - PUBLICIDADE E PROPAGANDA (BACHARELADO)",
+  "DESIGN (BACHARELADO)",
+  "DIREITO (BACHARELADO)",
+  "EDUCAÇÃO FÍSICA CICLO BÁSICO (BACHARELADO/LICENCIATURA)",
+  "ENFERMAGEM (BACHARELADO)",
+  "ENGENHARIA CIVIL (BACHARELADO)",
+  "ENGENHARIA DE COMPUTAÇÃO (BACHARELADO)",
+  "ENGENHARIA DE PRODUÇÃO (BACHARELADO)",
+  "ENGENHARIA DE REDES DE COMUNICAÇÃO (BACHARELADO)",
+  "ENGENHARIA ELÉTRICA (BACHARELADO)",
+  "ENGENHARIA MECATRÔNICA (BACHARELADO)",
+  "ENGENHARIA MECÂNICA (BACHARELADO)",
+  "ENGENHARIA QUÍMICA (BACHARELADO)",
+  "ENGENHARIAS - AEROESPACIAL / AUTOMOTIVA / ELETRÔNICA / ENERGIA / SOFTWARE (BACHARELADOS)**",
+  "ESTATÍSTICA (BACHARELADO)",
+  "FARMÁCIA (BACHARELADO)",
+  "FISIOTERAPIA (BACHARELADO)",
+  "FONOAUDIOLOGIA (BACHARELADO)",
+  "FÍSICA (BACHARELADO)",
+  "GESTÃO DE POLÍTICAS PÚBLICAS (BACHARELADO)",
+  "HISTÓRIA (BACHARELADO/LICENCIATURA)",
+  "JORNALISMO (BACHARELADO)",
+  "LÍNGUA INGLESA (BACHARELADO/LICENCIATURA)",
+  "LÍNGUA PORTUGUESA (BACHARELADO/LICENCIATURA)",
+  "MATEMÁTICA (BACHARELADO/LICENCIATURA)",
+  "MEDICINA (BACHARELADO)",
+  "MEDICINA VETERINÁRIA (BACHARELADO)",
+  "NUTRIÇÃO (BACHARELADO)",
+  "ODONTOLOGIA (BACHARELADO)",
+  "PEDAGOGIA (LICENCIATURA)",
+  "PSICOLOGIA (BACHARELADO/LICENCIATURA/PSICÓLOGO)",
+  "QUÍMICA (BACHARELADO)",
+  "RELAÇÕES INTERNACIONAIS (BACHARELADO)",
+  "TERAPIA OCUPACIONAL (BACHARELADO)",
+  "OUTRO CURSO / A DEFINIR",
 ];
 
 interface CourseSelectProps {
@@ -65,7 +68,7 @@ export function CourseSelect({ value, onChange }: CourseSelectProps) {
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const filteredCourses = CURSOS_UNB_CLEAN.filter((c) =>
+  const filteredCourses = CURSOS_UNB_EXACT.filter((c) =>
     c.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -91,10 +94,10 @@ export function CourseSelect({ value, onChange }: CourseSelectProps) {
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white cursor-pointer flex items-center justify-between hover:border-[#00AEEF] transition-all text-sm select-none"
       >
-        <span className={value ? "text-white font-medium" : "text-white/40"}>
+        <span className={`truncate ${value ? "text-white font-medium" : "text-white/40"}`}>
           {value || "Selecione ou busque seu curso..."}
         </span>
-        <span className="text-white/50 text-xs transition-transform duration-200" style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+        <span className="text-white/50 text-xs transition-transform duration-200 shrink-0 ml-2" style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
           ▼
         </span>
       </div>
