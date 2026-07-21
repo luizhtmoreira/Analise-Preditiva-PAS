@@ -226,6 +226,78 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ============ SEÇÃO BUILD IN PUBLIC (AZUL ESCURO UNB) ============ */}
+      <section className="bg-[#001D3D] text-white py-20 sm:py-24 relative overflow-hidden border-b border-white/5">
+        <div
+          className="absolute inset-0 pointer-events-none opacity-20"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 80% 20%, #00843D 0%, transparent 50%), radial-gradient(circle at 20% 80%, #00AEEF 0%, transparent 50%)",
+          }}
+        />
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-6 space-y-6">
+              <span className="inline-block font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00AEEF] bg-[#00AEEF]/10 border border-[#00AEEF]/20 px-3.5 py-1.5 rounded-lg">
+                Build in Public
+              </span>
+              <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.1]">
+                Criado em público. <br />
+                Desenhado por <span className="text-[#00AEEF]">você</span>.
+              </h2>
+              <p className="text-base sm:text-lg text-white/80 leading-relaxed">
+                O Vetor PAS não está sendo criado a portas fechadas. Acreditamos que a melhor ferramenta para o PAS 3 é aquela construída em parceria com quem realmente vai usá-la no dia da prova.
+              </p>
+              <p className="text-sm sm:text-base text-white/70">
+                Estou desenvolvendo o produto em <strong>lives abertas de código</strong>, onde você pode acompanhar cada linha de programação, sugerir ideias de design, propor novas simulações de nota ou criticar o que não ficou legal.
+              </p>
+            </div>
+
+            <div className="lg:col-span-6 grid sm:grid-cols-2 gap-6">
+              <div className="bg-[#002850]/60 border border-white/10 p-6 rounded-2xl space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-[#00AEEF]/15 text-[#00AEEF] flex items-center justify-center font-bold text-lg">
+                  📺
+                </div>
+                <h3 className="font-heading font-bold text-lg text-white">Lives de Código</h3>
+                <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
+                  Acompanhe o desenvolvimento do algoritmo de machine learning e da interface ao vivo.
+                </p>
+              </div>
+
+              <div className="bg-[#002850]/60 border border-white/10 p-6 rounded-2xl space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-[#00843D]/15 text-[#00843D] flex items-center justify-center font-bold text-lg">
+                  💡
+                </div>
+                <h3 className="font-heading font-bold text-lg text-white">Opine & Sugira</h3>
+                <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
+                  Features, designs, cores e regras de negócio: você decide o rumo das próximas telas.
+                </p>
+              </div>
+
+              <div className="bg-[#002850]/60 border border-white/10 p-6 rounded-2xl space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center font-bold text-lg">
+                  🛠️
+                </div>
+                <h3 className="font-heading font-bold text-lg text-white">Co-Criação</h3>
+                <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
+                  Ideal para quem quer aprender arquitetura web e ver decisões de engenharia na prática.
+                </p>
+              </div>
+
+              <div className="bg-[#002850]/60 border border-white/10 p-6 rounded-2xl space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-[#7FD8F7]/15 text-[#7FD8F7] flex items-center justify-center font-bold text-lg">
+                  📣
+                </div>
+                <h3 className="font-heading font-bold text-lg text-white">Feito para Você</h3>
+                <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
+                  Ao participar das sugestões, você garante que a ferramenta resolverá suas reais dúvidas do PAS 3.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ============ CTA FINAL (TRANSIÇÃO GRADUAL DE AZUL PARA O FOOTER) ============ */}
       <section
         className="text-white py-20 sm:py-24 relative overflow-hidden"
