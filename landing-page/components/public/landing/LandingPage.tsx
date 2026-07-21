@@ -2,6 +2,7 @@
 
 import { BrandMark } from "@/components/brand/BrandMark";
 import { WaitlistForm } from "./WaitlistForm";
+import { Television, Lightbulb, Wrench, Megaphone } from "@phosphor-icons/react";
 
 export function LandingPage() {
   const scrollToForm = (e: React.MouseEvent) => {
@@ -246,7 +247,7 @@ export function LandingPage() {
                 Desenhado por <span className="text-[#00AEEF]">você</span>.
               </h2>
               <p className="text-base sm:text-lg text-white/80 leading-relaxed">
-                O Vetor PAS não está sendo criado a portas fechadas. Acreditamos que a melhor ferramenta para o PAS 3 é aquela construída em parceria com quem realmente vai usá-la no dia da prova.
+                O Vetor PAS não está sendo criado a portas fechadas. Acreditamos que a melhor ferramenta para o PAS 3 é aquela construída em parceria com quem realmente vai usá-la em sua preparação.
               </p>
               <p className="text-sm sm:text-base text-white/70">
                 Estou desenvolvendo o produto em <strong>lives abertas de código</strong>, onde você pode acompanhar cada linha de programação, sugerir ideias de design, propor novas simulações de nota ou criticar o que não ficou legal.
@@ -255,28 +256,28 @@ export function LandingPage() {
 
             <div className="lg:col-span-6 grid sm:grid-cols-2 gap-6">
               <div className="bg-[#002850]/60 border border-white/10 p-6 rounded-2xl space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-[#00AEEF]/15 text-[#00AEEF] flex items-center justify-center font-bold text-lg">
-                  📺
+                <div className="w-10 h-10 rounded-xl bg-[#00AEEF]/15 text-[#00AEEF] flex items-center justify-center">
+                  <Television size={22} weight="duotone" />
                 </div>
                 <h3 className="font-heading font-bold text-lg text-white">Lives de Código</h3>
                 <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
-                  Acompanhe o desenvolvimento do algoritmo de machine learning e da interface ao vivo.
+                  Acompanhe o desenvolvimento da interface ao vivo.
                 </p>
               </div>
 
               <div className="bg-[#002850]/60 border border-white/10 p-6 rounded-2xl space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-[#00843D]/15 text-[#00843D] flex items-center justify-center font-bold text-lg">
-                  💡
+                <div className="w-10 h-10 rounded-xl bg-[#00843D]/15 text-[#00843D] flex items-center justify-center">
+                  <Lightbulb size={22} weight="duotone" />
                 </div>
                 <h3 className="font-heading font-bold text-lg text-white">Opine & Sugira</h3>
                 <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
-                  Features, designs, cores e regras de negócio: você decide o rumo das próximas telas.
+                  Features, designs, cores: você ajuda decidir o rumo das próximas telas.
                 </p>
               </div>
 
               <div className="bg-[#002850]/60 border border-white/10 p-6 rounded-2xl space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center font-bold text-lg">
-                  🛠️
+                <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center">
+                  <Wrench size={22} weight="duotone" />
                 </div>
                 <h3 className="font-heading font-bold text-lg text-white">Co-Criação</h3>
                 <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
@@ -285,8 +286,8 @@ export function LandingPage() {
               </div>
 
               <div className="bg-[#002850]/60 border border-white/10 p-6 rounded-2xl space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-[#7FD8F7]/15 text-[#7FD8F7] flex items-center justify-center font-bold text-lg">
-                  📣
+                <div className="w-10 h-10 rounded-xl bg-[#7FD8F7]/15 text-[#7FD8F7] flex items-center justify-center">
+                  <Megaphone size={22} weight="duotone" />
                 </div>
                 <h3 className="font-heading font-bold text-lg text-white">Feito para Você</h3>
                 <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
