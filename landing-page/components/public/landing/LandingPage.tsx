@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { WaitlistForm } from "./WaitlistForm";
 import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight, ChartBar, Info } from "@phosphor-icons/react";
@@ -44,7 +44,7 @@ const NOTAS_CORTE_REAIS: CorteData[] = [
     negros: { min: 22.140, max: 22.140, media: 22.140 },
   },
   {
-    curso: "ENGENHARIAS - CAMPUS GAMA (SOFTWARE / AEROESPACIAL / ETC)",
+    curso: "ENGENHARIAS - GAMA (SOFTWARE / AEROESPACIAL / ETC)",
     universal: { min: -4.762, max: 49.044, media: 31.936 },
     negros: { min: -6.557, max: 15.117, media: 6.566 },
   },
@@ -70,6 +70,35 @@ export function LandingPage() {
   const [selectedCourse, setSelectedCourse] = useState<CorteData>(NOTAS_CORTE_REAIS[0]);
   const [systemType, setSystemType] = useState<"universal" | "negros">("universal");
 
+  // Dropdown customizado para Escolha o Curso
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownSearch, setDropdownSearch] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredCourses = NOTAS_CORTE_REAIS.filter(c =>
+    c.curso.toLowerCase().includes(dropdownSearch.toLowerCase())
+  );
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleCourseSelect = (course: CorteData) => {
+    setSelectedCourse(course);
+    setIsDropdownOpen(false);
+    setDropdownSearch("");
+    if (!course.negros && systemType === "negros") {
+      setSystemType("universal");
+    }
+  };
+
   // Acessar dados da opção atual
   const activeMetrics = systemType === "universal" ? selectedCourse.universal : selectedCourse.negros;
 
@@ -82,7 +111,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className="landing-root bg-[#F8F9FA] text-[#1D1D1F] min-h-screen selection:bg-[#00843D] selection:text-white font-sans antialiased">
+    <div className="landing-root bg-[#F8F9FA] text-[#1D1D1F] min-h-screen selection:bg-[#00843D] selection:text-white font-sans antialiased overflow-x-clip">
       
       {/* ============ STICKY NAVBAR ============ */}
       <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/95 border-b border-[#E2E8F0] transition-all duration-300">
@@ -134,7 +163,7 @@ export function LandingPage() {
       </nav>
 
       {/* ============ HERO & HEADER (FUNDO LIMPO BRANCO / HIGH CONTRAST) ============ */}
-      <header className="relative z-20 bg-white text-[#002147] pt-16 pb-24 border-b border-[#E2E8F0] overflow-hidden">
+      <header className="relative z-20 bg-white text-[#002147] pt-16 pb-24 border-b border-[#E2E8F0]">
         {/* Elementos decorativos animados de fundo */}
         <div
           className="absolute inset-0 pointer-events-none opacity-10 animate-pulse duration-[8000ms]"
@@ -175,7 +204,7 @@ export function LandingPage() {
       </header>
 
       {/* ============ NOTAS DE CORTE PREVIEW (NOVA SEÇÃO INTERATIVA COM DADOS REAIS) ============ */}
-      <section id="corte-preview" className="py-20 sm:py-24 bg-white border-b border-[#E2E8F0] scroll-mt-20 relative overflow-hidden">
+      <section id="corte-preview" className="py-20 sm:py-24 bg-white border-b border-[#E2E8F0] scroll-mt-20 relative">
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           
           <div className="max-w-3xl mb-14 space-y-4">
@@ -191,66 +220,92 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-12 gap-8 items-stretch">
+          <div className="grid lg:grid-cols-12 gap-8 items-start">
             
-            {/* Coluna Esquerda: Filtros */}
-            <div className="lg:col-span-5 bg-[#F8F9FA] border border-black/5 p-6 sm:p-8 rounded-3xl flex flex-col justify-between space-y-6">
+            {/* Coluna Esquerda: Filtros (Compacta) */}
+            <div className="lg:col-span-5 bg-[#F8F9FA] border border-black/5 p-5 sm:p-6 rounded-3xl flex flex-col space-y-5">
               
-              <div className="space-y-4">
-                {/* Seletor de Curso */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[#002147] font-mono">1. Escolha o Curso</label>
-                  <select
-                    value={selectedCourse.curso}
-                    onChange={(e) => {
-                      const found = NOTAS_CORTE_REAIS.find(x => x.curso === e.target.value);
-                      if (found) {
-                        setSelectedCourse(found);
-                        // Se trocar para um curso que não tem cota para negros cadastrada, volta para universal
-                        if (!found.negros && systemType === "negros") {
-                          setSystemType("universal");
-                        }
-                      }
-                    }}
-                    className="w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-[#002147] font-medium text-sm focus:outline-none focus:border-[#00843D] cursor-pointer"
-                  >
-                    {NOTAS_CORTE_REAIS.map((item) => (
-                      <option key={item.curso} value={item.curso}>
-                        {item.curso.replace(" (BACHARELADO)", "").replace(" (BACHARELADO/LICENCIATURA/PSICÓLOGO)", "")}
-                      </option>
-                    ))}
-                  </select>
+              {/* Curso Selecionado (Dropdown Customizado Searchable) */}
+              <div className="space-y-1.5 relative" ref={dropdownRef}>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#002147] font-mono">1. Escolha o Curso</label>
+                
+                <div
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full px-4 py-3 rounded-xl border border-black/15 bg-white text-[#002147] cursor-pointer flex items-center justify-between hover:border-[#00843D] transition-all text-sm select-none font-medium"
+                >
+                  <span className="truncate">
+                    {selectedCourse.curso.replace(" (BACHARELADO)", "").replace(" (BACHARELADO/LICENCIATURA/PSICÓLOGO)", "")}
+                  </span>
+                  <span className="text-[#002147]/50 text-xs transition-transform duration-200" style={{ transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                    ▼
+                  </span>
                 </div>
 
-                {/* Seletor de Cota */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[#002147] font-mono">2. Escolha o Sistema</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setSystemType("universal")}
-                      className={`px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all ${systemType === "universal" ? "bg-[#002147] border-[#002147] text-white" : "bg-white border-black/10 text-[#4A5568] hover:bg-gray-50"}`}
-                    >
-                      Universal
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (selectedCourse.negros) {
-                          setSystemType("negros");
-                        }
-                      }}
-                      disabled={!selectedCourse.negros}
-                      className={`px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all ${!selectedCourse.negros ? "opacity-40 cursor-not-allowed border-dashed" : ""} ${systemType === "negros" ? "bg-[#002147] border-[#002147] text-white" : "bg-white border-black/10 text-[#4A5568] hover:bg-gray-50"}`}
-                      title={!selectedCourse.negros ? "Sem cota declarada para negros no último vestibular para este curso" : ""}
-                    >
-                      Cota Negros
-                    </button>
+                {isDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-[#001730] border border-[#00AEEF]/55 rounded-xl shadow-[0_15px_30px_rgba(0,0,0,0.35)] z-50 overflow-hidden">
+                    <div className="p-2 border-b border-white/10 bg-[#001024]">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={dropdownSearch}
+                        onChange={(e) => setDropdownSearch(e.target.value)}
+                        placeholder="Buscar curso (ex: Medicina, Direito)..."
+                        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/15 text-white placeholder-white/40 text-xs focus:outline-none focus:border-[#00AEEF]"
+                      />
+                    </div>
+                    <div className="max-h-56 overflow-y-auto divide-y divide-white/5 text-sm overscroll-contain">
+                      {filteredCourses.length > 0 ? (
+                        filteredCourses.map((c) => (
+                          <div
+                            key={c.curso}
+                            onClick={() => handleCourseSelect(c)}
+                            className={`px-4 py-2.5 cursor-pointer transition-colors text-xs sm:text-sm leading-snug ${
+                              selectedCourse.curso === c.curso
+                                ? "bg-[#00843D] text-white font-bold"
+                                : "text-white/85 hover:bg-white/10 hover:text-white"
+                            }`}
+                          >
+                            {c.curso.replace(" (BACHARELADO)", "").replace(" (BACHARELADO/LICENCIATURA/PSICÓLOGO)", "")}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-xs text-white/45 text-center">
+                          Nenhum curso encontrado.
+                        </div>
+                      )}
+                    </div>
                   </div>
+                )}
+              </div>
+
+              {/* Seletor de Cota */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#002147] font-mono">2. Escolha o Sistema</label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={() => setSystemType("universal")}
+                    className={`px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all active:scale-95 ${systemType === "universal" ? "bg-[#002147] border-[#002147] text-white" : "bg-white border-black/10 text-[#4A5568] hover:bg-gray-50"}`}
+                  >
+                    Universal
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (selectedCourse.negros) {
+                        setSystemType("negros");
+                      }
+                    }}
+                    disabled={!selectedCourse.negros}
+                    className={`px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all active:scale-95 ${!selectedCourse.negros ? "opacity-30 cursor-not-allowed border-dashed" : ""} ${systemType === "negros" ? "bg-[#002147] border-[#002147] text-white" : "bg-white border-black/10 text-[#4A5568] hover:bg-gray-50"}`}
+                    title={!selectedCourse.negros ? "Sem cota declarada para negros no último vestibular" : ""}
+                  >
+                    Cota Racial
+                  </button>
                 </div>
               </div>
 
               {/* Informação Adicional */}
-              <div className="pt-6 border-t border-black/5 flex items-start gap-2.5 text-xs text-gray-500">
-                <Info size={16} className="text-[#00843D] shrink-0 mt-0.5" />
+              <div className="pt-4 border-t border-black/5 flex items-start gap-2 text-[10px] text-gray-500 leading-relaxed">
+                <Info size={14} className="text-[#00843D] shrink-0 mt-0.5" />
                 <p>
                   Estes dados representam a 1ª chamada oficial do triênio 2023-2025. O banco de dados completo do Vetor PAS cobre todos os 52 cursos, chamadas subsequentes e todas as cotas públicas (L1 a L10) desde 2018.
                 </p>
@@ -258,52 +313,49 @@ export function LandingPage() {
 
             </div>
 
-            {/* Coluna Direita: Dashboard de Métricas */}
-            <div className="lg:col-span-7 bg-[#002147] border border-black/10 p-6 sm:p-8 rounded-3xl text-white flex flex-col justify-between shadow-[0_15px_40px_rgba(0,33,71,0.12)] relative overflow-hidden">
-              {/* Efeito Glow Interno */}
-              <div className="absolute -right-20 -top-20 w-[200px] h-[200px] rounded-full bg-[#00AEEF]/10 blur-[60px] pointer-events-none" />
-
+            {/* Coluna Direita: Dashboard de Métricas (Padronizado e Integrado Estilo História) */}
+            <div className="lg:col-span-7 bg-[#002147]/5 border-l-8 border-l-[#00AEEF] rounded-r-3xl border-y border-r border-[#002147]/10 p-6 sm:p-8 flex flex-col justify-between shadow-[0_10px_35px_rgba(0,33,71,0.03)] transition-all">
+              
               {activeMetrics ? (
-                <div className="space-y-6 relative z-10 w-full">
+                <div className="space-y-6 w-full">
                   <div className="flex items-center justify-between">
-                    <span className="inline-block font-mono text-[0.65rem] tracking-[0.25em] uppercase text-[#7FD8F7] border border-[#7FD8F7]/30 px-2.5 py-1 rounded">
+                    <span className="inline-block font-mono text-[0.65rem] tracking-[0.25em] uppercase text-[#002147]/70 font-extrabold bg-[#002147]/5 px-2.5 py-1 rounded">
                       MÉTRICAS OFICIAIS CEBRASPE
                     </span>
-                    <span className="text-[11px] text-[#00AEEF] font-mono">Homologado</span>
                   </div>
 
                   {/* Nome do curso no painel */}
                   <div>
-                    <h4 className="text-[#7FD8F7] text-xs font-mono uppercase tracking-wider">Curso Selecionado</h4>
-                    <p className="text-lg sm:text-xl font-bold tracking-tight text-white mt-0.5 truncate">
+                    <h4 className="text-[#002147]/60 text-xs font-mono uppercase tracking-wider font-bold">Curso Selecionado</h4>
+                    <p className="text-lg sm:text-xl font-extrabold tracking-tight text-[#002147] mt-0.5 truncate">
                       {selectedCourse.curso}
                     </p>
                   </div>
 
                   {/* Grande Exibição da Nota de Corte */}
                   <div className="pt-2">
-                    <p className="text-xs text-[#00AEEF] font-mono uppercase tracking-wider">Nota de Corte (Minimo)</p>
-                    <p className="text-5xl sm:text-6xl font-black tracking-tight text-white mt-1">
+                    <p className="text-xs text-[#00843D] font-mono uppercase tracking-wider font-bold">Nota de Corte (Mínimo)</p>
+                    <p className="text-5xl sm:text-6xl font-black tracking-tight text-[#002147] mt-1">
                       {activeMetrics.min >= 0 ? "+" : ""}
                       {activeMetrics.min.toFixed(3)}
                     </p>
-                    <p className="text-xs text-white/50 mt-1.5">
+                    <p className="text-xs text-[#4A5568] mt-1.5 font-medium">
                       Nota do último classificado convocado para matrícula.
                     </p>
                   </div>
 
                   {/* Grid de Máxima e Média */}
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-black/10">
                     <div>
-                      <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Nota Média</p>
-                      <p className="text-lg font-bold text-white mt-0.5">
+                      <p className="text-[10px] text-[#4A5568] uppercase font-mono tracking-wider font-bold">Nota Média</p>
+                      <p className="text-lg font-extrabold text-[#002147] mt-0.5">
                         {activeMetrics.media >= 0 ? "+" : ""}
                         {activeMetrics.media.toFixed(3)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Nota Máxima (1º Lugar)</p>
-                      <p className="text-lg font-bold text-[#00843D] mt-0.5">
+                      <p className="text-[10px] text-[#4A5568] uppercase font-mono tracking-wider font-bold">Nota Máxima (1º Lugar)</p>
+                      <p className="text-lg font-extrabold text-[#00843D] mt-0.5">
                         {activeMetrics.max >= 0 ? "+" : ""}
                         {activeMetrics.max.toFixed(3)}
                       </p>
@@ -312,9 +364,9 @@ export function LandingPage() {
 
                   {/* Distribuição Gráfica */}
                   <div className="space-y-3 pt-4">
-                    <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Intervalo de Notas dos Aprovados</p>
+                    <p className="text-[10px] text-[#4A5568] uppercase font-mono tracking-wider font-bold">Intervalo de Notas dos Aprovados</p>
                     
-                    <div className="h-4 bg-white/10 rounded-full w-full relative">
+                    <div className="h-4 bg-black/10 rounded-full w-full relative">
                       {/* Indicador de Nota de Corte (Min) */}
                       <div 
                         className="absolute w-3.5 h-3.5 rounded-full bg-[#FF6B6B] border-2 border-white -top-[3px] -translate-x-1/2 z-20 cursor-help"
@@ -337,7 +389,7 @@ export function LandingPage() {
                       <div className="absolute top-0 bottom-0 left-[10%] right-[10%] bg-gradient-to-r from-[#FF6B6B] via-[#00AEEF] to-[#00843D] opacity-60 rounded-full" />
                     </div>
 
-                    <div className="flex items-center justify-between text-[9px] text-white/40 font-mono">
+                    <div className="flex items-center justify-between text-[9px] text-[#4A5568]/70 font-mono font-bold">
                       <span>Corte: {activeMetrics.min.toFixed(3)}</span>
                       <span>Média: {activeMetrics.media.toFixed(3)}</span>
                       <span>Máx: {activeMetrics.max.toFixed(3)}</span>
@@ -346,17 +398,17 @@ export function LandingPage() {
 
                 </div>
               ) : (
-                <div className="text-center py-20 text-white/50 text-sm">
+                <div className="text-center py-20 text-gray-500 text-sm">
                   Dados indisponíveis para a categoria selecionada.
                 </div>
               )}
 
               {/* Botão de Chamada para a Lista de Espera */}
-              <div className="mt-8 pt-6 border-t border-white/10 text-center relative z-10">
+              <div className="mt-8 pt-6 border-t border-black/10 text-center">
                 <a
                   href="#lista-espera"
                   onClick={scrollToForm}
-                  className="inline-flex items-center gap-1 text-xs font-bold uppercase text-[#00AEEF] hover:text-[#33C1F3] transition-colors"
+                  className="inline-flex items-center gap-1 text-xs font-bold uppercase text-[#00AEEF] hover:text-[#33C1F3] transition-colors active:scale-95"
                 >
                   <span>Simular minha nota contra estas médias</span>
                   <CaretRight size={12} weight="bold" />
