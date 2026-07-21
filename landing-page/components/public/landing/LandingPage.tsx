@@ -16,7 +16,7 @@ export function LandingPage() {
     <div className="landing-root bg-white text-[#1D1D1F] min-h-screen selection:bg-[#00AEEF] selection:text-white">
       {/* ============ HEADER & HERO (AZUL UNB DEEP GRADIENT) ============ */}
       <header
-        className="relative overflow-hidden text-white"
+        className="relative z-20 text-white"
         style={{
           background:
             "linear-gradient(168deg, #002147 0%, #002D58 45%, #003666 80%, #002B54 100%)",
@@ -24,7 +24,7 @@ export function LandingPage() {
       >
         {/* Grade de fundo sutil */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-25"
+          className="absolute inset-0 pointer-events-none opacity-25 overflow-hidden"
           style={{
             backgroundImage:
               "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
@@ -72,7 +72,7 @@ export function LandingPage() {
 
       {/* ============ HISTÓRIA DO FUNDADOR (TRANSIÇÃO SUAVE DE AZUL) ============ */}
       <section
-        className="relative text-white py-20 sm:py-24"
+        className="relative z-10 text-white py-20 sm:py-24"
         style={{
           background:
             "linear-gradient(180deg, #002B54 0%, #002347 40%, #001A38 100%)",
