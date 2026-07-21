@@ -126,7 +126,7 @@ export function LandingPage() {
                   <img
                     src="/luiz.jpeg"
                     alt="Luiz Moreira"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover object-top"
                     onError={(e) => {
                       // Fallback case
                       e.currentTarget.style.display = 'none';
