@@ -92,7 +92,7 @@ export function CourseSelect({ value, onChange }: CourseSelectProps) {
     <div className="relative" ref={containerRef}>
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white cursor-pointer flex items-center justify-between hover:border-[#00AEEF] transition-all text-sm select-none"
+        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white cursor-pointer flex items-center justify-between hover:border-[#00843D] transition-all text-sm select-none"
       >
         <span className={`truncate ${value ? "text-white font-medium" : "text-white/40"}`}>
           {value || "Selecione ou busque seu curso..."}
@@ -103,7 +103,7 @@ export function CourseSelect({ value, onChange }: CourseSelectProps) {
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 sm:-left-12 sm:-right-12 top-full mt-2 bg-[#001D3D] border border-[#00AEEF]/60 rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.8)] z-[100] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+        <div className="absolute left-0 right-0 sm:-left-12 sm:-right-12 top-full mt-2 bg-[#001D3D] border border-[#00843D]/60 rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.8)] z-[100] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
           <div className="p-2.5 border-b border-white/10 bg-[#001730]">
             <input
               type="text"
@@ -111,7 +111,7 @@ export function CourseSelect({ value, onChange }: CourseSelectProps) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Digite o nome do curso (ex: Engenharia)..."
-              className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-xs focus:outline-none focus:border-[#00AEEF]"
+              className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-xs focus:outline-none focus:border-[#00843D]"
             />
           </div>
 
@@ -124,7 +124,7 @@ export function CourseSelect({ value, onChange }: CourseSelectProps) {
                     onClick={() => handleSelect(c)}
                     className={`px-4 py-3 cursor-pointer transition-colors flex items-center justify-between text-xs sm:text-sm leading-snug ${
                       value === c
-                        ? "bg-[#00AEEF] text-[#002147] font-semibold"
+                        ? "bg-[#00843D] text-white font-semibold"
                         : "text-white/85 hover:bg-white/10 hover:text-white"
                     }`}
                   >

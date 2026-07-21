@@ -110,7 +110,7 @@ export function WaitlistForm({
           value={nome}
           onChange={(e) => setNome(e.target.value)}
           placeholder="Ex: Ana Silva"
-          className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00AEEF] focus:ring-1 focus:ring-[#00AEEF] transition-all text-sm"
+          className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00843D] focus:ring-1 focus:ring-[#00843D] transition-all text-sm"
         />
       </div>
 
@@ -124,7 +124,7 @@ export function WaitlistForm({
           value={email}
           onChange={(e) => handleEmailChange(e.target.value)}
           placeholder="seu.email@exemplo.com"
-          className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00AEEF] focus:ring-1 focus:ring-[#00AEEF] transition-all text-sm"
+          className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00843D] focus:ring-1 focus:ring-[#00843D] transition-all text-sm"
         />
         {suggestion && (
           <div className="p-2 rounded-lg bg-[#00AEEF]/20 border border-[#00AEEF]/40 text-xs text-white/90 flex items-center justify-between mt-1">
@@ -154,7 +154,7 @@ export function WaitlistForm({
             value={escola}
             onChange={(e) => setEscola(e.target.value)}
             placeholder="Ex: Marista, Sigma..."
-            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00AEEF] focus:ring-1 focus:ring-[#00AEEF] transition-all text-sm"
+            className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00843D] focus:ring-1 focus:ring-[#00843D] transition-all text-sm"
           />
         </div>
 

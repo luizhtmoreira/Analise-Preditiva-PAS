@@ -6,6 +6,7 @@ import { WaitlistForm } from "./WaitlistForm";
 import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight, ChartBar, Info } from "@phosphor-icons/react";
 
 // Dados reais do último vestibular UnB (Triênio 2023-2025) extraídos do CSV oficial
+// Os 10 cursos com maior nota de corte (na ampla) na 1ª chamada, 2º semestre (único do triênio no arquivo)
 interface CorteData {
   curso: string;
   universal: { min: number; max: number; media: number };
@@ -29,39 +30,39 @@ const NOTAS_CORTE_REAIS: CorteData[] = [
     negros: { min: 98.223, max: 98.223, media: 98.223 },
   },
   {
+    curso: "ENGENHARIA DE COMPUTAÇÃO (BACHARELADO)",
+    universal: { min: 94.432, max: 107.201, media: 100.656 },
+    negros: { min: 26.875, max: 26.875, media: 26.875 },
+  },
+  {
+    curso: "DIREITO (BACHARELADO) (NOTURNO)",
+    universal: { min: 88.544, max: 100.803, media: 93.77 },
+    negros: { min: 59.461, max: 62.301, media: 60.881 },
+  },
+  {
     curso: "PSICOLOGIA (BACHARELADO/LICENCIATURA/PSICÓLOGO)",
     universal: { min: 74.392, max: 86.809, media: 80.491 },
     negros: { min: 62.655, max: 62.655, media: 62.655 },
   },
   {
-    curso: "RELAÇÕES INTERNACIONAIS (BACHARELADO)",
-    universal: { min: 63.729, max: 81.165, media: 74.524 },
-    negros: { min: 33.835, max: 33.835, media: 33.835 },
+    curso: "CIÊNCIAS ECONÔMICAS (BACHARELADO)",
+    universal: { min: 69.907, max: 85.06, media: 77.25 },
+    negros: { min: 56.92, max: 56.92, media: 56.92 },
+  },
+  {
+    curso: "ODONTOLOGIA (BACHARELADO)",
+    universal: { min: 69.79, max: 77.937, media: 73.918 },
+    negros: { min: 22.06, max: 22.06, media: 22.06 },
   },
   {
     curso: "ARQUITETURA E URBANISMO (BACHARELADO)",
     universal: { min: 63.904, max: 79.454, media: 68.239 },
-    negros: { min: 22.140, max: 22.140, media: 22.140 },
+    negros: { min: 22.14, max: 22.14, media: 22.14 },
   },
   {
-    curso: "ENGENHARIAS - GAMA (SOFTWARE / AEROESPACIAL / ETC)",
-    universal: { min: -4.762, max: 49.044, media: 31.936 },
-    negros: { min: -6.557, max: 15.117, media: 6.566 },
-  },
-  {
-    curso: "ODONTOLOGIA (BACHARELADO)",
-    universal: { min: 69.790, max: 77.937, media: 73.918 },
-    negros: { min: 22.060, max: 22.060, media: 22.060 },
-  },
-  {
-    curso: "ADMINISTRAÇÃO (BACHARELADO)",
-    universal: { min: 3.982, max: 15.839, media: 9.439 },
-    negros: { min: -45.598, max: -23.699, media: -34.648 },
-  },
-  {
-    curso: "BIOTECNOLOGIA (BACHARELADO)",
-    universal: { min: 8.602, max: 41.359, media: 27.022 },
-    negros: { min: 9.966, max: 31.671, media: 20.818 },
+    curso: "RELAÇÕES INTERNACIONAIS (BACHARELADO)",
+    universal: { min: 63.729, max: 81.165, media: 74.524 },
+    negros: { min: 33.835, max: 33.835, media: 33.835 },
   },
 ];
 
@@ -181,10 +182,10 @@ export function LandingPage() {
                 Análise Preditiva · PAS/UnB
               </span>
               <h1 className="font-heading text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.08] text-[#002147]">
-                Sua aprovação na UnB,{" "}
+                Sua aprovação na UnB, calculada{" "}
                 <br />
                 <span className="text-[#00843D] relative inline-block">
-                  calculada com precisão.
+                  com precisão.
                   <span className="absolute bottom-1 left-0 w-full h-[4px] bg-[#00AEEF]/40 rounded-full" />
                 </span>
               </h1>
@@ -216,7 +217,7 @@ export function LandingPage() {
               Veja a nota real de cada curso.
             </h2>
             <p className="text-base sm:text-lg text-[#4A5568] leading-relaxed">
-              Explore abaixo as notas máximas, médias e os cortes reais homologados no último vestibular. Selecione o curso e o sistema de cotas para ver a distribuição gráfica.
+              Explore abaixo as notas máximas, médias e os cortes reais no último vestibular. Selecione o curso e o sistema de cotas para ver a distribuição gráfica.
             </p>
           </div>
 
@@ -242,7 +243,7 @@ export function LandingPage() {
                 </div>
 
                 {isDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-[#001730] border border-[#00AEEF]/55 rounded-xl shadow-[0_15px_30px_rgba(0,0,0,0.35)] z-50 overflow-hidden">
+                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-[#001730] border border-[#00843D]/55 rounded-xl shadow-[0_15px_30px_rgba(0,0,0,0.35)] z-50 overflow-hidden">
                     <div className="p-2 border-b border-white/10 bg-[#001024]">
                       <input
                         type="text"
@@ -250,7 +251,7 @@ export function LandingPage() {
                         value={dropdownSearch}
                         onChange={(e) => setDropdownSearch(e.target.value)}
                         placeholder="Buscar curso (ex: Medicina, Direito)..."
-                        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/15 text-white placeholder-white/40 text-xs focus:outline-none focus:border-[#00AEEF]"
+                        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/15 text-white placeholder-white/40 text-xs focus:outline-none focus:border-[#00843D]"
                       />
                     </div>
                     <div className="max-h-56 overflow-y-auto divide-y divide-white/5 text-sm overscroll-contain">
@@ -307,7 +308,7 @@ export function LandingPage() {
               <div className="pt-4 border-t border-black/5 flex items-start gap-2 text-[10px] text-gray-500 leading-relaxed">
                 <Info size={14} className="text-[#00843D] shrink-0 mt-0.5" />
                 <p>
-                  Estes dados representam a 1ª chamada oficial do triênio 2023-2025. O banco de dados completo do Vetor PAS cobre todos os 52 cursos, chamadas subsequentes e todas as cotas públicas (L1 a L10) desde 2018.
+                  Estes dados representam a 1ª chamada oficial do triênio 2023-2025. O banco de dados completo do Vetor PAS cobre todos os 52 cursos e chamadas subsequentes desde 2018.
                 </p>
               </div>
 
@@ -367,9 +368,9 @@ export function LandingPage() {
                     <p className="text-[10px] text-[#4A5568] uppercase font-mono tracking-wider font-bold">Intervalo de Notas dos Aprovados</p>
                     
                     <div className="h-4 bg-black/10 rounded-full w-full relative">
-                      {/* Indicador de Nota de Corte (Min) */}
+                      {/* Indicador de Nota de Corte (Min) - Usando Azul UnB da Paleta */}
                       <div 
-                        className="absolute w-3.5 h-3.5 rounded-full bg-[#FF6B6B] border-2 border-white -top-[3px] -translate-x-1/2 z-20 cursor-help"
+                        className="absolute w-3.5 h-3.5 rounded-full bg-[#002147] border-2 border-white -top-[3px] -translate-x-1/2 z-20 cursor-help"
                         style={{ left: "10%" }}
                         title={`Nota de Corte: ${activeMetrics.min.toFixed(3)}`}
                       />
@@ -386,7 +387,7 @@ export function LandingPage() {
                         title={`Nota Máxima: ${activeMetrics.max.toFixed(3)}`}
                       />
                       {/* Track de preenchimento */}
-                      <div className="absolute top-0 bottom-0 left-[10%] right-[10%] bg-gradient-to-r from-[#FF6B6B] via-[#00AEEF] to-[#00843D] opacity-60 rounded-full" />
+                      <div className="absolute top-0 bottom-0 left-[10%] right-[10%] bg-gradient-to-r from-[#002147] via-[#00AEEF] to-[#00843D] opacity-60 rounded-full" />
                     </div>
 
                     <div className="flex items-center justify-between text-[9px] text-[#4A5568]/70 font-mono font-bold">
