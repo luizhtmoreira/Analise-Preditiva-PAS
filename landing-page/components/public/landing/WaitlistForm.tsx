@@ -120,7 +120,7 @@ export function WaitlistForm({
             required
             value={escola}
             onChange={(e) => setEscola(e.target.value)}
-            placeholder="Ex: Marista, Sigmaprev..."
+            placeholder="Ex: Marista, Sigma..."
             className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00AEEF] focus:ring-1 focus:ring-[#00AEEF] transition-all text-sm"
           />
         </div>
@@ -166,7 +166,7 @@ export function WaitlistForm({
       </button>
 
       <p className="text-[0.75rem] text-center text-white/50 pt-1">
-        🔒 Sem spam. Usaremos seus dados exclusivamente para notificar seu acesso ao Vetor PAS.
+        Sem spam. Usaremos seus dados exclusivamente para notificar seu acesso ao Vetor PAS.
       </p>
     </form>
   );
