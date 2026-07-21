@@ -111,7 +111,7 @@ export function CourseSelect({ value, onChange }: CourseSelectProps) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Digite o nome do curso (ex: Engenharia)..."
-              className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-xs focus:outline-none focus:border-[#00843D]"
+              className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-base focus:outline-none focus:border-[#00843D]"
             />
           </div>
 

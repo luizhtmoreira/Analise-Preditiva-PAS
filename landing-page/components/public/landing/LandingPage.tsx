@@ -315,7 +315,7 @@ export function LandingPage() {
                         value={dropdownSearch}
                         onChange={(e) => setDropdownSearch(e.target.value)}
                         placeholder="Buscar curso (ex: Medicina, Direito)..."
-                        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/15 text-white placeholder-white/40 text-xs focus:outline-none focus:border-[#00843D]"
+                        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/15 text-white placeholder-white/40 text-base focus:outline-none focus:border-[#00843D]"
                       />
                     </div>
                     <div className="max-h-56 overflow-y-auto divide-y divide-white/5 text-sm overscroll-contain">
