@@ -15,7 +15,7 @@ export function LandingPage() {
   return (
     <div className="landing-root bg-white text-[#1D1D1F] min-h-screen selection:bg-[#00AEEF] selection:text-white">
       {/* ============ STICKY NAVBAR ============ */}
-      <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-[#002147]/80 border-b border-white/10 transition-all duration-300">
+      <nav className="sticky top-0 z-50 w-full bg-[#002147] border-b border-white/10 transition-all duration-300">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
           <BrandMark />
           <div className="flex items-center gap-5 sm:gap-8 text-xs sm:text-sm font-semibold text-white/90">
@@ -38,15 +38,6 @@ export function LandingPage() {
               className="hover:text-[#00AEEF] transition-colors cursor-pointer"
             >
               Ferramentas
-            </a>
-            <a
-              href="https://www.linkedin.com/in/luiz-henrique-tomaz-moreira"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-[#00AEEF] transition-colors cursor-pointer flex items-center gap-0.5 text-white/60"
-            >
-              <span>LinkedIn</span>
-              <span>↗</span>
             </a>
           </div>
         </div>
