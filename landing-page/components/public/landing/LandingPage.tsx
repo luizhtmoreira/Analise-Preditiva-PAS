@@ -1,10 +1,78 @@
 "use client";
 
+import { useState } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { WaitlistForm } from "./WaitlistForm";
-import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight } from "@phosphor-icons/react";
+import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight, ChartBar, Info } from "@phosphor-icons/react";
+
+// Dados reais do último vestibular UnB (Triênio 2023-2025) extraídos do CSV oficial
+interface CorteData {
+  curso: string;
+  universal: { min: number; max: number; media: number };
+  negros: { min: number; max: number; media: number } | null;
+}
+
+const NOTAS_CORTE_REAIS: CorteData[] = [
+  {
+    curso: "MEDICINA (BACHARELADO)",
+    universal: { min: 144.827, max: 160.522, media: 146.192 },
+    negros: { min: 119.781, max: 119.781, media: 119.781 },
+  },
+  {
+    curso: "DIREITO (BACHARELADO)",
+    universal: { min: 118.498, max: 128.709, media: 123.441 },
+    negros: { min: 79.032, max: 80.426, media: 79.729 },
+  },
+  {
+    curso: "CIÊNCIA DA COMPUTAÇÃO (BACHARELADO)",
+    universal: { min: 106.717, max: 119.192, media: 112.014 },
+    negros: { min: 98.223, max: 98.223, media: 98.223 },
+  },
+  {
+    curso: "PSICOLOGIA (BACHARELADO/LICENCIATURA/PSICÓLOGO)",
+    universal: { min: 74.392, max: 86.809, media: 80.491 },
+    negros: { min: 62.655, max: 62.655, media: 62.655 },
+  },
+  {
+    curso: "RELAÇÕES INTERNACIONAIS (BACHARELADO)",
+    universal: { min: 63.729, max: 81.165, media: 74.524 },
+    negros: { min: 33.835, max: 33.835, media: 33.835 },
+  },
+  {
+    curso: "ARQUITETURA E URBANISMO (BACHARELADO)",
+    universal: { min: 63.904, max: 79.454, media: 68.239 },
+    negros: { min: 22.140, max: 22.140, media: 22.140 },
+  },
+  {
+    curso: "ENGENHARIAS - CAMPUS GAMA (SOFTWARE / AEROESPACIAL / ETC)",
+    universal: { min: -4.762, max: 49.044, media: 31.936 },
+    negros: { min: -6.557, max: 15.117, media: 6.566 },
+  },
+  {
+    curso: "ODONTOLOGIA (BACHARELADO)",
+    universal: { min: 69.790, max: 77.937, media: 73.918 },
+    negros: { min: 22.060, max: 22.060, media: 22.060 },
+  },
+  {
+    curso: "ADMINISTRAÇÃO (BACHARELADO)",
+    universal: { min: 3.982, max: 15.839, media: 9.439 },
+    negros: { min: -45.598, max: -23.699, media: -34.648 },
+  },
+  {
+    curso: "BIOTECNOLOGIA (BACHARELADO)",
+    universal: { min: 8.602, max: 41.359, media: 27.022 },
+    negros: { min: 9.966, max: 31.671, media: 20.818 },
+  },
+];
 
 export function LandingPage() {
+  // --- Estados do Preview de Notas de Corte ---
+  const [selectedCourse, setSelectedCourse] = useState<CorteData>(NOTAS_CORTE_REAIS[0]);
+  const [systemType, setSystemType] = useState<"universal" | "negros">("universal");
+
+  // Acessar dados da opção atual
+  const activeMetrics = systemType === "universal" ? selectedCourse.universal : selectedCourse.negros;
+
   const scrollToForm = (e: React.MouseEvent) => {
     e.preventDefault();
     const formElement = document.getElementById("lista-espera");
@@ -21,6 +89,16 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
           <BrandMark />
           <div className="flex items-center gap-5 sm:gap-8 text-xs sm:text-sm font-semibold text-[#002147]">
+            <a
+              href="#corte-preview"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("corte-preview")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="hover:text-[#00843D] transition-colors cursor-pointer"
+            >
+              Notas de Corte
+            </a>
             <a
               href="#historia"
               onClick={(e) => {
@@ -95,6 +173,201 @@ export function LandingPage() {
           </div>
         </div>
       </header>
+
+      {/* ============ NOTAS DE CORTE PREVIEW (NOVA SEÇÃO INTERATIVA COM DADOS REAIS) ============ */}
+      <section id="corte-preview" className="py-20 sm:py-24 bg-white border-b border-[#E2E8F0] scroll-mt-20 relative overflow-hidden">
+        <div className="max-w-6xl mx-auto px-6 relative z-10">
+          
+          <div className="max-w-3xl mb-14 space-y-4">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00AEEF] bg-[#00AEEF]/10 border border-[#00AEEF]/20 px-3 py-1.5 rounded-lg font-bold">
+              <ChartBar size={14} />
+              Notas de Corte PAS/UnB (Triênio 2023-2025)
+            </span>
+            <h2 className="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-[#002147]">
+              Veja a nota real de cada curso.
+            </h2>
+            <p className="text-base sm:text-lg text-[#4A5568] leading-relaxed">
+              Explore abaixo as notas máximas, médias e os cortes reais homologados no último vestibular. Selecione o curso e o sistema de cotas para ver a distribuição gráfica.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-12 gap-8 items-stretch">
+            
+            {/* Coluna Esquerda: Filtros */}
+            <div className="lg:col-span-5 bg-[#F8F9FA] border border-black/5 p-6 sm:p-8 rounded-3xl flex flex-col justify-between space-y-6">
+              
+              <div className="space-y-4">
+                {/* Seletor de Curso */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#002147] font-mono">1. Escolha o Curso</label>
+                  <select
+                    value={selectedCourse.curso}
+                    onChange={(e) => {
+                      const found = NOTAS_CORTE_REAIS.find(x => x.curso === e.target.value);
+                      if (found) {
+                        setSelectedCourse(found);
+                        // Se trocar para um curso que não tem cota para negros cadastrada, volta para universal
+                        if (!found.negros && systemType === "negros") {
+                          setSystemType("universal");
+                        }
+                      }
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-black/10 bg-white text-[#002147] font-medium text-sm focus:outline-none focus:border-[#00843D] cursor-pointer"
+                  >
+                    {NOTAS_CORTE_REAIS.map((item) => (
+                      <option key={item.curso} value={item.curso}>
+                        {item.curso.replace(" (BACHARELADO)", "").replace(" (BACHARELADO/LICENCIATURA/PSICÓLOGO)", "")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Seletor de Cota */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#002147] font-mono">2. Escolha o Sistema</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setSystemType("universal")}
+                      className={`px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all ${systemType === "universal" ? "bg-[#002147] border-[#002147] text-white" : "bg-white border-black/10 text-[#4A5568] hover:bg-gray-50"}`}
+                    >
+                      Universal
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (selectedCourse.negros) {
+                          setSystemType("negros");
+                        }
+                      }}
+                      disabled={!selectedCourse.negros}
+                      className={`px-3 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all ${!selectedCourse.negros ? "opacity-40 cursor-not-allowed border-dashed" : ""} ${systemType === "negros" ? "bg-[#002147] border-[#002147] text-white" : "bg-white border-black/10 text-[#4A5568] hover:bg-gray-50"}`}
+                      title={!selectedCourse.negros ? "Sem cota declarada para negros no último vestibular para este curso" : ""}
+                    >
+                      Cota Negros
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informação Adicional */}
+              <div className="pt-6 border-t border-black/5 flex items-start gap-2.5 text-xs text-gray-500">
+                <Info size={16} className="text-[#00843D] shrink-0 mt-0.5" />
+                <p>
+                  Estes dados representam a 1ª chamada oficial do triênio 2023-2025. O banco de dados completo do Vetor PAS cobre todos os 52 cursos, chamadas subsequentes e todas as cotas públicas (L1 a L10) desde 2018.
+                </p>
+              </div>
+
+            </div>
+
+            {/* Coluna Direita: Dashboard de Métricas */}
+            <div className="lg:col-span-7 bg-[#002147] border border-black/10 p-6 sm:p-8 rounded-3xl text-white flex flex-col justify-between shadow-[0_15px_40px_rgba(0,33,71,0.12)] relative overflow-hidden">
+              {/* Efeito Glow Interno */}
+              <div className="absolute -right-20 -top-20 w-[200px] h-[200px] rounded-full bg-[#00AEEF]/10 blur-[60px] pointer-events-none" />
+
+              {activeMetrics ? (
+                <div className="space-y-6 relative z-10 w-full">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-block font-mono text-[0.65rem] tracking-[0.25em] uppercase text-[#7FD8F7] border border-[#7FD8F7]/30 px-2.5 py-1 rounded">
+                      MÉTRICAS OFICIAIS CEBRASPE
+                    </span>
+                    <span className="text-[11px] text-[#00AEEF] font-mono">Homologado</span>
+                  </div>
+
+                  {/* Nome do curso no painel */}
+                  <div>
+                    <h4 className="text-[#7FD8F7] text-xs font-mono uppercase tracking-wider">Curso Selecionado</h4>
+                    <p className="text-lg sm:text-xl font-bold tracking-tight text-white mt-0.5 truncate">
+                      {selectedCourse.curso}
+                    </p>
+                  </div>
+
+                  {/* Grande Exibição da Nota de Corte */}
+                  <div className="pt-2">
+                    <p className="text-xs text-[#00AEEF] font-mono uppercase tracking-wider">Nota de Corte (Minimo)</p>
+                    <p className="text-5xl sm:text-6xl font-black tracking-tight text-white mt-1">
+                      {activeMetrics.min >= 0 ? "+" : ""}
+                      {activeMetrics.min.toFixed(3)}
+                    </p>
+                    <p className="text-xs text-white/50 mt-1.5">
+                      Nota do último classificado convocado para matrícula.
+                    </p>
+                  </div>
+
+                  {/* Grid de Máxima e Média */}
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                    <div>
+                      <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Nota Média</p>
+                      <p className="text-lg font-bold text-white mt-0.5">
+                        {activeMetrics.media >= 0 ? "+" : ""}
+                        {activeMetrics.media.toFixed(3)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Nota Máxima (1º Lugar)</p>
+                      <p className="text-lg font-bold text-[#00843D] mt-0.5">
+                        {activeMetrics.max >= 0 ? "+" : ""}
+                        {activeMetrics.max.toFixed(3)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Distribuição Gráfica */}
+                  <div className="space-y-3 pt-4">
+                    <p className="text-[10px] text-white/50 uppercase font-mono tracking-wider">Intervalo de Notas dos Aprovados</p>
+                    
+                    <div className="h-4 bg-white/10 rounded-full w-full relative">
+                      {/* Indicador de Nota de Corte (Min) */}
+                      <div 
+                        className="absolute w-3.5 h-3.5 rounded-full bg-[#FF6B6B] border-2 border-white -top-[3px] -translate-x-1/2 z-20 cursor-help"
+                        style={{ left: "10%" }}
+                        title={`Nota de Corte: ${activeMetrics.min.toFixed(3)}`}
+                      />
+                      {/* Indicador de Média */}
+                      <div 
+                        className="absolute w-3.5 h-3.5 rounded-full bg-[#00AEEF] border-2 border-white -top-[3px] -translate-x-1/2 z-20 cursor-help"
+                        style={{ left: "50%" }}
+                        title={`Média: ${activeMetrics.media.toFixed(3)}`}
+                      />
+                      {/* Indicador de Nota Máxima */}
+                      <div 
+                        className="absolute w-3.5 h-3.5 rounded-full bg-[#00843D] border-2 border-white -top-[3px] -translate-x-1/2 z-20 cursor-help"
+                        style={{ left: "90%" }}
+                        title={`Nota Máxima: ${activeMetrics.max.toFixed(3)}`}
+                      />
+                      {/* Track de preenchimento */}
+                      <div className="absolute top-0 bottom-0 left-[10%] right-[10%] bg-gradient-to-r from-[#FF6B6B] via-[#00AEEF] to-[#00843D] opacity-60 rounded-full" />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[9px] text-white/40 font-mono">
+                      <span>Corte: {activeMetrics.min.toFixed(3)}</span>
+                      <span>Média: {activeMetrics.media.toFixed(3)}</span>
+                      <span>Máx: {activeMetrics.max.toFixed(3)}</span>
+                    </div>
+                  </div>
+
+                </div>
+              ) : (
+                <div className="text-center py-20 text-white/50 text-sm">
+                  Dados indisponíveis para a categoria selecionada.
+                </div>
+              )}
+
+              {/* Botão de Chamada para a Lista de Espera */}
+              <div className="mt-8 pt-6 border-t border-white/10 text-center relative z-10">
+                <a
+                  href="#lista-espera"
+                  onClick={scrollToForm}
+                  className="inline-flex items-center gap-1 text-xs font-bold uppercase text-[#00AEEF] hover:text-[#33C1F3] transition-colors"
+                >
+                  <span>Simular minha nota contra estas médias</span>
+                  <CaretRight size={12} weight="bold" />
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
 
       {/* ============ HISTÓRIA DO FUNDADOR (CLEAN WHITE CARD WITH GREEN LEFT BORDER) ============ */}
       <section id="historia" className="py-24 bg-[#F8F9FA] border-b border-[#E2E8F0] scroll-mt-20">
