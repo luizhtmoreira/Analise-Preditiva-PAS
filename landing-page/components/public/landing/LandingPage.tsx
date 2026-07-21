@@ -511,7 +511,7 @@ export function LandingPage() {
 
             <div className="mt-10 pt-8 border-t border-black/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full border-2 border-[#00843D]/40 shadow-inner overflow-hidden relative bg-[#F8F9FA]">
+                <div className="w-10 h-10 rounded-full border-2 border-[#00843D]/40 shadow-inner overflow-hidden relative bg-[#F8F9FA] shrink-0">
                   <img
                     src="/luiz.jpeg"
                     alt="Luiz Moreira"
@@ -528,14 +528,14 @@ export function LandingPage() {
                   href="https://www.linkedin.com/in/luiz-henrique-tomaz-moreira"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#F8F9FA] hover:bg-[#00AEEF] hover:text-[#002147] text-[#4A5568] text-xs font-semibold transition-all border border-black/5 shadow-sm active:scale-95"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#F8F9FA] hover:bg-[#00AEEF] hover:text-[#002147] active:bg-[#00AEEF] active:text-[#002147] text-[#4A5568] text-xs font-semibold transition-all border border-black/5 shadow-sm active:scale-95"
                 >
                   <span>LinkedIn</span>
                   <span>↗</span>
                 </a>
                 <a
                   href="mailto:lhtmoreira@gmail.com"
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#F8F9FA] hover:bg-[#00843D] hover:text-white text-[#4A5568] text-xs font-semibold transition-all border border-black/5 shadow-sm active:scale-95"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#F8F9FA] hover:bg-[#00843D] hover:text-white active:bg-[#00843D] active:text-white text-[#4A5568] text-xs font-semibold transition-all border border-black/5 shadow-sm active:scale-95"
                 >
                   <span>E-mail</span>
                   <span>✉</span>
