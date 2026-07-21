@@ -96,3 +96,18 @@ _Avoid_: lead, escola potencial, prospect
 **Whitelabel**:
 Personalização visual do sistema por Tenant: logo, template PDF e cores. Configurado via campo `tenant` no perfil Supabase.
 _Avoid_: customização, branding, tema
+
+### Pré-Lançamento
+
+**Lista de Espera (Waitlist)**:
+Formulário de captura de interesse antecedendo o lançamento do MVP do Vetor PAS. Coleta Alunos interessados para acesso antecipado.
+_Avoid_: pré-cadastro, newsletter
+
+**Lead da Lista de Espera**:
+Registro de um Aluno interessado contendo Nome, E-mail, Escola e Curso Pretendido na UnB. Armazenado na tabela `waitlist` do Supabase.
+_Avoid_: contato, inscrito
+
+**História do Fundador**:
+Seção de conexão institucional no pré-lançamento relatando a experiência pessoal do fundador como ex-estudante do PAS 3 e a motivação para criar a solução.
+_Avoid_: sobre nós, quem somos
+
