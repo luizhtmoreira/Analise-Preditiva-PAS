@@ -91,14 +91,14 @@ export function LandingPage() {
             </div>
 
             <h2 className="font-heading text-2xl sm:text-4xl font-bold mb-6 text-white leading-snug">
-              "Eu já estive no seu lugar no PAS 3 — e sei a angústia que é não saber onde você está."
+              "Eu já estive no seu lugar no PAS 3, e sei como é a sensação de não saber se vai dar pra chegar na nota necessária."
             </h2>
             <div className="space-y-4 text-white/80 leading-relaxed text-sm sm:text-base">
               <p>
-                Quando eu estava prestando o PAS 3, passei meses tentando adivinhar se as minhas notas do PAS 1 e 2 seriam suficientes. Procurava planilhas e cálculos antigos na internet, mas nenhum me dava uma resposta real sobre a probabilidade de entrar no meu curso na UnB.
+                Quando eu estava estudando para o PAS 3, passei meses tentando adivinhar se era possível passar no curso que eu queria. A nota necessária eu sabia, mas qual era a chance de eu tirar aquela nota? Procurava na internet, mas nada me dava uma resposta real sobre a probabilidade de entrar no meu curso na UnB, se valia a pena tentar ele ou mudar a rota para garantir minha aprovação.
               </p>
               <p>
-                Foi por isso que criei o <strong>Vetor PAS</strong>: para que você não precise estudar no escuro. Usamos algoritmos de machine learning sobre os boletins oficiais do Cebraspe para te mostrar exatamente onde você está e o que precisa fazer na terceira etapa.
+                Foi por isso que criei o <strong>Vetor PAS</strong>: para que você não precise estudar no escuro. Usamos algoritmos de machine learning sobre os boletins oficiais do Cebraspe para te mostrar exatamente onde você está e o que precisa fazer na terceira etapa. Assim, você não precisa esperar a nota do PAS 3 sair para saber se tinha chance ou não.
               </p>
             </div>
             <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
