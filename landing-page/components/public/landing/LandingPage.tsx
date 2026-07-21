@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { WaitlistForm } from "./WaitlistForm";
-import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight, ChartBar, Info } from "@phosphor-icons/react";
+import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight, ChartBar, Info, List, X } from "@phosphor-icons/react";
 
 // Dados reais do último vestibular UnB (Triênio 2023-2025) extraídos do CSV oficial
 // Os 10 cursos com maior nota de corte (na ampla) na 1ª chamada, 2º semestre (único do triênio no arquivo)
@@ -71,6 +71,9 @@ export function LandingPage() {
   const [selectedCourse, setSelectedCourse] = useState<CorteData>(NOTAS_CORTE_REAIS[0]);
   const [systemType, setSystemType] = useState<"universal" | "negros">("universal");
 
+  // Menu Hambúrguer Responsivo
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   // Dropdown customizado para Escolha o Curso
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownSearch, setDropdownSearch] = useState("");
@@ -116,9 +119,11 @@ export function LandingPage() {
       
       {/* ============ STICKY NAVBAR ============ */}
       <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/95 border-b border-[#E2E8F0] transition-all duration-300">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4 relative">
           <BrandMark />
-          <div className="flex items-center gap-5 sm:gap-8 text-xs sm:text-sm font-semibold text-[#002147]">
+          
+          {/* Desktop Menu Links */}
+          <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-[#002147]">
             <a
               href="#corte-preview"
               onClick={(e) => {
@@ -160,6 +165,65 @@ export function LandingPage() {
               Build in Public
             </a>
           </div>
+
+          {/* Mobile Hamburger Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 text-[#002147] hover:bg-black/5 rounded-xl active:scale-95 transition-all cursor-pointer"
+            aria-label="Alternar menu"
+          >
+            {isMobileMenuOpen ? <X size={24} weight="bold" /> : <List size={24} weight="bold" />}
+          </button>
+
+          {/* Mobile Menu Dropdown Panel */}
+          {isMobileMenuOpen && (
+            <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-[#E2E8F0] shadow-lg py-4 px-6 flex flex-col font-semibold text-[#002147] animate-in fade-in slide-in-from-top-1 duration-150 z-50">
+              <a
+                href="#corte-preview"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsMobileMenuOpen(false);
+                  document.getElementById("corte-preview")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="hover:text-[#00843D] transition-colors py-3 border-b border-black/5 cursor-pointer text-sm"
+              >
+                Notas de Corte
+              </a>
+              <a
+                href="#historia"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsMobileMenuOpen(false);
+                  document.getElementById("historia")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="hover:text-[#00843D] transition-colors py-3 border-b border-black/5 cursor-pointer text-sm"
+              >
+                Minha História
+              </a>
+              <a
+                href="#ferramentas"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsMobileMenuOpen(false);
+                  document.getElementById("ferramentas")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="hover:text-[#00843D] transition-colors py-3 border-b border-black/5 cursor-pointer text-sm"
+              >
+                Ferramentas
+              </a>
+              <a
+                href="#build-in-public"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsMobileMenuOpen(false);
+                  document.getElementById("build-in-public")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="hover:text-[#00843D] transition-colors py-3 cursor-pointer text-sm"
+              >
+                Build in Public
+              </a>
+            </div>
+          )}
         </div>
       </nav>
 
