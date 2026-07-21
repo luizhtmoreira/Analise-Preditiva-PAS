@@ -14,17 +14,17 @@ export function LandingPage() {
 
   return (
     <div className="landing-root bg-white text-[#1D1D1F] min-h-screen selection:bg-[#00AEEF] selection:text-white">
-      {/* ============ HEADER & HERO (AZUL UNB #002147) ============ */}
+      {/* ============ HEADER & HERO (AZUL UNB DEEP GRADIENT) ============ */}
       <header
         className="relative overflow-hidden text-white"
         style={{
           background:
-            "linear-gradient(168deg, #002147 0%, #003366 52%, #003A70 100%)",
+            "linear-gradient(168deg, #002147 0%, #002D58 45%, #003666 80%, #002B54 100%)",
         }}
       >
         {/* Grade de fundo sutil */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-30"
+          className="absolute inset-0 pointer-events-none opacity-25"
           style={{
             backgroundImage:
               "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
@@ -45,7 +45,7 @@ export function LandingPage() {
         </nav>
 
         {/* Hero Body */}
-        <div className="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-20 sm:pt-16 sm:pb-28">
+        <div className="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-20 sm:pt-16 sm:pb-24">
           <div className="grid lg:grid-cols-12 gap-12 items-center">
             {/* Texto de Impacto */}
             <div className="lg:col-span-7 space-y-6">
@@ -70,11 +70,17 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* ============ HISTÓRIA DO FUNDADOR (AZUL ESCURO DISCRETO COM DETALHE EM VERDE) ============ */}
-      <section className="bg-[#001730] py-20 border-y border-white/10 text-white">
+      {/* ============ HISTÓRIA DO FUNDADOR (TRANSIÇÃO SUAVE DE AZUL) ============ */}
+      <section
+        className="relative text-white py-20 sm:py-24"
+        style={{
+          background:
+            "linear-gradient(180deg, #002B54 0%, #002347 40%, #001A38 100%)",
+        }}
+      >
         <div className="max-w-4xl mx-auto px-6">
-          <div className="bg-[#002147] border border-white/15 rounded-3xl p-8 sm:p-12 relative overflow-hidden shadow-2xl">
-            {/* Linha discreta de sotaque em Verde UnB no topo do card */}
+          <div className="bg-[#002850]/90 border border-white/15 rounded-3xl p-8 sm:p-12 relative overflow-hidden shadow-2xl backdrop-blur-md">
+            {/* Detalhe discreto em Verde UnB no topo do card */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-[#00843D]" />
 
             <div className="flex items-center gap-2 mb-4">
@@ -97,7 +103,7 @@ export function LandingPage() {
             </div>
             <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#001730] border border-[#00843D]/40 text-[#00843D] font-bold flex items-center justify-center font-mono text-sm shadow-inner">
+                <div className="w-10 h-10 rounded-full bg-[#001D3A] border border-[#00843D]/40 text-[#00843D] font-bold flex items-center justify-center font-mono text-sm shadow-inner">
                   VP
                 </div>
                 <div>
@@ -111,7 +117,7 @@ export function LandingPage() {
       </section>
 
       {/* ============ O QUE VAI ACESSAR (CINZA CLARO #F5F5F7 + CARDS BRANCOS) ============ */}
-      <section className="bg-[#F5F5F7] py-20 sm:py-28 border-b border-[#E6E6E8]">
+      <section className="bg-[#F5F5F7] py-20 sm:py-28 border-y border-[#E6E6E8]">
         <div className="max-w-6xl mx-auto px-6">
           <div className="max-w-2xl mb-14">
             <p className="font-mono text-[0.78rem] tracking-[0.22em] uppercase text-[#00843D] font-semibold mb-3">
@@ -168,8 +174,14 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ============ CTA FINAL ============ */}
-      <section className="bg-[#002147] text-white py-20 sm:py-24 relative overflow-hidden">
+      {/* ============ CTA FINAL (TRANSIÇÃO GRADUAL DE AZUL PARA O FOOTER) ============ */}
+      <section
+        className="text-white py-20 sm:py-24 relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(180deg, #002B54 0%, #002147 60%, #001A38 100%)",
+        }}
+      >
         <div className="max-w-4xl mx-auto px-6 text-center space-y-6 relative z-10">
           <span className="font-mono text-xs text-[#7FD8F7] uppercase tracking-[0.2em] bg-white/10 border border-white/15 px-3.5 py-1.5 rounded-full">
             Acesso Antecipado Gratuito
@@ -192,7 +204,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ============ FOOTER ============ */}
+      {/* ============ FOOTER (AZUL NOTURNO CONTINUADO) ============ */}
       <footer className="bg-[#001730] text-white/50 border-t border-white/10 py-8 text-xs">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <p>© {new Date().getFullYear()} Vetor PAS — Projeto independente sem vínculo oficial com a UnB ou o Cebraspe.</p>
