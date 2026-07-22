@@ -426,12 +426,40 @@ export function PreditorPage() {
   const [error, setError] = useState("");
   const [showGate, setShowGate] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user }, error }) => {
       console.log("Vetor PAS Auth Check - User:", user, "Error:", error);
-      setIsLoggedIn(!!user);
+      if (user) {
+        setIsLoggedIn(true);
+        setUserId(user.id);
+        
+        // Carrega notas e configuração salvas
+        supabase
+          .from("alunos_perfis")
+          .select("*")
+          .eq("id", user.id)
+          .single()
+          .then(({ data: profile, error }) => {
+            if (profile && !error) {
+              setPas1({
+                p1: String(profile.p1_pas1 ?? 0),
+                p2: String(profile.p2_pas1 ?? 0),
+                red: String(profile.red_pas1 ?? 0),
+              });
+              setPas2({
+                p1: String(profile.p1_pas2 ?? 0),
+                p2: String(profile.p2_pas2 ?? 0),
+                red: String(profile.red_pas2 ?? 0),
+              });
+              if (profile.cota) setCota(profile.cota);
+              if (profile.trienio) setTrienio(profile.trienio);
+              if (profile.curso_alvo) setCursoAlvo(profile.curso_alvo);
+            }
+          });
+      }
     });
   }, []);
 
@@ -450,6 +478,24 @@ export function PreditorPage() {
         is_logged_in: isLoggedIn,
       });
       setResult(data);
+
+      // Salva notas e configuração do aluno se estiver logado
+      if (isLoggedIn && userId) {
+        const supabase = createClient();
+        await supabase.from("alunos_perfis").upsert({
+          id: userId,
+          p1_pas1: Number(pas1.p1),
+          p2_pas1: Number(pas1.p2),
+          red_pas1: Number(pas1.red),
+          p1_pas2: Number(pas2.p1),
+          p2_pas2: Number(pas2.p2),
+          red_pas2: Number(pas2.red),
+          cota: cota,
+          trienio: trienio,
+          curso_alvo: cursoAlvo.trim() || null,
+          updated_at: new Date().toISOString()
+        });
+      }
     } catch {
       setError("Serviço indisponível. Verifique se a API está rodando.");
     } finally {
