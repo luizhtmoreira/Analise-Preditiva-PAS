@@ -109,7 +109,7 @@ export function WaitlistForm({
           required
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          placeholder="Ex: Ana Silva"
+          placeholder="Ex: Maria Resende"
           className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00843D] focus:ring-1 focus:ring-[#00843D] transition-all text-base"
         />
       </div>
@@ -153,7 +153,7 @@ export function WaitlistForm({
             required
             value={escola}
             onChange={(e) => setEscola(e.target.value)}
-            placeholder="Ex: Marista, Sigma..."
+            placeholder="Ex: Sigma, Olimpo..."
             className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-[#00843D] focus:ring-1 focus:ring-[#00843D] transition-all text-base"
           />
         </div>
