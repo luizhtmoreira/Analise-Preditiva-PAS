@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     description: "Preveja seu Argumento Final e sua probabilidade de aprovação na UnB com machine learning treinado em dados históricos do PAS.",
     images: [
       {
-        url: "/logo-vetorpas.svg",
+        url: "/logo-vetorpas.png",
         width: 500,
         height: 500,
         alt: "Vetor PAS Logo",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Vetor PAS — Análise Preditiva para o PAS/UnB",
     description: "Preveja seu Argumento Final e sua probabilidade de aprovação na UnB com machine learning treinado em dados históricos do PAS.",
-    images: ["/logo-vetorpas.svg"],
+    images: ["/logo-vetorpas.png"],
   },
 };
 
