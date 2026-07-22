@@ -19,5 +19,8 @@ Implementa a conversão rígida das notas padronizadas conforme o subitem de cá
 ### `statistics.py` e `recommender.py`
 Calculam a probabilidade percentual de aprovação (usando distribuições estatísticas sobre os cortes antigos) e, baseados no desempenho atual, podem sugerir cursos em que a aprovação do aluno seja mais garantida.
 
+### `ab_testing.py`
+Fornece utilitários para simulação e teste estatístico comparativo de notas. Permite validar mudanças nos pesos ou na acurácia do modelo comparando novos resultados contra o baseline estabelecido.
+
 !!! note "Base de Treinamento"
     Todos os modelos foram exaustivamente treinados e validados por meio de um *Backtest Temporal* em uma base contendo **48.758 alunos** espalhados por sete triênios (2016 - 2024).

@@ -2,7 +2,7 @@
 
 Para alimentar o banco de dados do Vetor PAS de forma escalável e automática, foram criados os módulos de extração.
 
-## `extract_pas1_pdf.py`
+## `src/extract_pas1_pdf.py`
 
 Gabaritos e resultados brutos do PAS 1 frequentemente são liberados pelo Cebraspe no formato PDF.
 Este script é um *parser* customizado que:
@@ -12,7 +12,7 @@ Este script é um *parser* customizado que:
 3. Trata os erros de leitura óptica comuns nestes documentos.
 4. Exporta a base limpa para formato tabular (CSV).
 
-## `extract_pas2_html.py`
+## `src/extract_pas2_html.py`
 
 Algumas notas finais ou boletins de desempenho do PAS 2 e 3 são publicados via portais da web estruturados em HTML.
 Para essa finalidade, desenvolvemos:

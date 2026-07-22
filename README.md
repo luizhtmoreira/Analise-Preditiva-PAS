@@ -3,9 +3,10 @@
 <div align="center">
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
-[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](#)
-[![LightGBM](https://img.shields.io/badge/LightGBM-F37021?style=for-the-badge&logo=lightgbm&logoColor=white)](#)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](#)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](#)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](#)
 [![Status](https://img.shields.io/badge/Status-Produção-success?style=for-the-badge)](#)
 
 *Plataforma de inteligência pedagógica e predição de resultados para o Programa de Avaliação Seriada (PAS) da Universidade de Brasília.*
@@ -55,10 +56,11 @@ Se o aluno tem um desempenho estável, a regressão linear ganha peso. Se o hist
 
 O sistema foi desenhado para ser rápido, escalável e de fácil manutenção:
 
-- **Frontend / Dashboard:** `Streamlit` para prototipação e entrega rápida de visualizações de dados.
-- **Backend / Processamento:** `Python` nativo com regras de negócio focadas em cálculos do edital do Cebraspe.
-- **Banco de Dados / Auth:** `Supabase` fornecendo PostgreSQL e armazenamento remoto seguro.
-- **Machine Learning:** `Scikit-Learn` e `LightGBM` (modelos serializados em `.joblib`).
+- **Frontend Web / App:** `Next.js` (React, TypeScript e TailwindCSS) hospedado na Vercel para a landing page institucional e portal do aluno/escola.
+- **Backend API:** `FastAPI` (Python) hospedado no Hugging Face Spaces para servir as predições e relatórios via API REST.
+- **Dashboard de Administração / Admin:** `Streamlit` para análises rápidas, prototipagem e controle pedagógico interno.
+- **Banco de Dados / Auth:** `Supabase` fornecendo PostgreSQL, Row Level Security (RLS) e gerenciamento de sessões.
+- **Machine Learning:** `Scikit-Learn` e `LightGBM` (modelos serializados em `.joblib`) embutidos no backend.
 - **Geração de Documentos:** `ReportLab` injetando dados em templates PDF dinâmicos.
 
 ---
@@ -67,48 +69,66 @@ O sistema foi desenhado para ser rápido, escalável e de fácil manutenção:
 
 ### Pré-requisitos
 - Python 3.10 ou superior.
+- Node.js 18 ou superior.
 - Git instalado.
 - Credenciais de acesso ao projeto no Supabase.
 
-### Passo a Passo
+### 1. Clonar e Configurar o Repositório
+```bash
+git clone https://github.com/luizhtmoreira/Analise-Preditiva-PAS.git
+cd Analise-Preditiva-PAS
+```
 
-1. **Clone o repositório:**
-   ```bash
-   git clone https://github.com/luizhtmoreira/Analise-Preditiva-PAS.git
-   cd Analise-Preditiva-PAS
-   ```
+### 2. Configurar o Backend (FastAPI + ML Core)
+```bash
+# Crie e ative o ambiente virtual
+python -m venv .venv
+source .venv/bin/activate # No Windows use: .venv\Scripts\activate
 
-2. **Crie e ative um ambiente virtual (recomendado):**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate # No Windows use: .venv\Scripts\activate
-   ```
+# Instale as dependências Python
+pip install -r requirements.txt
 
-3. **Instale as dependências:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Crie um arquivo .env na raiz com as chaves do Supabase:
+# SUPABASE_URL=sua_url
+# SUPABASE_KEY=sua_chave
+# ENV=DEV
 
-4. **Configure as Variáveis de Ambiente:**
-   Crie um arquivo `.env` na raiz do projeto com o seguinte formato:
-   ```env
-   SUPABASE_URL=sua_url_do_supabase
-   SUPABASE_KEY=sua_chave_do_supabase
-   ENV=DEV
-   ```
+# Inicie o servidor FastAPI local
+uvicorn api.main:app --reload --port 8000
+```
+O backend estará disponível em `http://localhost:8000`.
 
-5. **Inicie a Aplicação:**
-   ```bash
-   streamlit run app/streamlit_app.py
-   ```
+### 3. Configurar o Frontend (Next.js)
+```bash
+cd landing-page
 
-A plataforma estará disponível no seu navegador em `http://localhost:8501`.
+# Instale as dependências do Node
+npm install
+
+# Crie um arquivo .env.local baseado em .env.local.example com as chaves:
+# NEXT_PUBLIC_SUPABASE_URL=sua_url
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave
+# NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Inicie o servidor de desenvolvimento
+npm run dev
+```
+O frontend estará disponível em `http://localhost:3000`.
+
+### 4. Executar o Dashboard Streamlit (Opcional/Legado)
+Se precisar executar o dashboard Streamlit legado:
+```bash
+# Retorne à raiz do projeto com o ambiente virtual ativo
+cd ..
+streamlit run app/streamlit_app.py
+```
+Disponível em `http://localhost:8501`.
 
 ---
 
 ## 🧪 Testes
 
-O projeto utiliza o `pytest` para assegurar a integridade dos cálculos do edital, previsões e regras multi-tenant:
+O projeto utiliza o `pytest` para assegurar a integridade dos cálculos do edital, previsões e regras multi-tenant do backend:
 ```bash
 pytest tests/
 ```

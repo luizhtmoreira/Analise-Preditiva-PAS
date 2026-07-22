@@ -8,8 +8,8 @@ Os Requisitos Funcionais descrevem **o que** o sistema deve fazer. Eles represen
 
 | ID | Descrição | Prioridade |
 |---|---|---|
-| **RF01** | O sistema deve possuir uma tela de login seguro para autenticação de coordenadores e diretores. | Alta |
-| **RF02** | O sistema deve adaptar dinamicamente o logotipo e a paleta de cores de acordo com a escola autenticada (arquitetura *Multi-tenant / Whitelabel*). | Alta |
+| **RF01** | O sistema deve possuir uma tela de login seguro para autenticação de coordenadores, diretores e alunos. | Alta |
+| **RF02** | O sistema deve adaptar dinamicamente o logotipo e a paleta de cores de acordo com a escola parceira autenticada (arquitetura *Multi-tenant / Whitelabel*). | Alta |
 | **RF03** | O sistema deve permitir o *upload* (importação) de dados de turmas de alunos via arquivos tabulares (.csv ou .xlsx). | Alta |
 | **RF04** | O sistema deve classificar os alunos graficamente em um **Semáforo de Risco** (Verde, Amarelo ou Vermelho) baseado em sua proximidade do curso-alvo. | Alta |
 | **RF05** | O sistema deve prever a pontuação bruta final do aluno no PAS 3 utilizando os históricos das etapas passadas (PAS 1 e PAS 2). | Alta |
@@ -26,8 +26,8 @@ Os Requisitos Não-Funcionais descrevem **como** o sistema deve fazer. Eles repr
 
 | ID | Categoria | Descrição |
 |---|---|---|
-| **RNF01** | **Tecnologia** | O *backend* do sistema deve ser escrito na linguagem Python (versão 3.10 ou superior). |
-| **RNF02** | **Interface UI** | A camada de visualização e interface (*Dashboard*) deve ser totalmente renderizada utilizando o framework `Streamlit`. |
+| **RNF01** | **Tecnologia** | O *backend* do sistema deve ser escrito em Python (versão 3.10 ou superior) usando o framework `FastAPI` para a API REST. |
+| **RNF02** | **Interface UI** | A camada de visualização e interface (*Landing page e Dashboards*) deve ser totalmente renderizada utilizando o framework `Next.js` (React e TypeScript). |
 | **RNF03** | **Persistência** | O armazenamento de entidades, históricos de aprovação e autenticação de usuários deve ser feito no BaaS `Supabase` (PostgreSQL). |
 | **RNF04** | **Inteligência** | A estimativa de notas deve utilizar um modelo preditivo baseado em um *Ensemble Dinâmico* (englobando Regressão Linear e LightGBM). |
 | **RNF05** | **Performance** | O tempo de carregamento inicial do dashboard após o login não deve ultrapassar 3 segundos em conexões padrão. |

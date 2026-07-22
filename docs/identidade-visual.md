@@ -13,7 +13,7 @@ As duas cores institucionais da UnB formam a base do sistema visual da plataform
 | **Azul UnB** | 654 C | `#003A70` | 0 · 58 · 112 | C100 M65 Y0 K35 |
 | **Verde UnB** | 348 C | `#00843D` | 0 · 132 · 61 | C100 M0 Y100 K20 |
 
-> **Nota de implementação:** O Streamlit usa `#003366` como `primaryColor` — uma aproximação web-safe do Pantone 654. Para materiais impressos e exportações PDF, usar o valor exato `#003A70`.
+> **Nota de implementação:** No Next.js (TailwindCSS v4), essas cores são mapeadas como variáveis no `globals.css` (ex: `--color-primary: #003A70` e `--color-secondary: #00843D`). No Streamlit (legado/admin), usa-se `#003366` como `primaryColor` (aproximação web-safe). Para materiais impressos e exportações PDF, usar sempre o valor exato `#003A70`.
 
 ---
 
@@ -95,20 +95,33 @@ fig.update_layout(
 
 Pesos disponíveis em UnB Pro: Light · Regular · Regular Italic · **Bold** · Bold Italic · Black
 
-### Tipografia Digital (Streamlit / Web)
+### Tipografia Digital (Next.js / Web)
 
-O Streamlit utiliza `sans serif` como família base. As regras de hierarquia aplicadas via CSS:
+O Next.js utiliza fontes modernas (como Outfit, Inter ou defaults do sistema/Geist) integradas via PostCSS/Tailwind. As regras de hierarquia de títulos no frontend:
 
-| Tag | Peso | Letter-spacing |
-|---|---|---|
-| `h1` | 800 | -0.03em |
-| `h2` | 700 | -0.025em |
-| `h3` | 600 | -0.02em |
+| Tag | Peso | Tailwind Class | Letter-spacing |
+|---|---|---|---|
+| `h1` | 800 | `font-extrabold` | `-tracking-tight` / `-0.03em` |
+| `h2` | 700 | `font-bold` | `-tracking-tight` / `-0.025em` |
+| `h3` | 600 | `font-semibold` | `-tracking-normal` / `-0.02em` |
 
 ---
 
-## 6. Configuração Streamlit (`config.toml`)
+## 6. Configurações de UI
 
+### Next.js Tailwind (TailwindCSS v4 - `globals.css`)
+As cores e tokens de design do tema da UnB são definidos em CSS variables:
+```css
+@theme {
+  --color-primary: #003A70;
+  --color-secondary: #00843D;
+  --color-accent: #00AEEF;
+  --color-dark-bg: #001D3D;
+  --color-surface: #FFFFFF;
+}
+```
+
+### Streamlit Theme (`.streamlit/config.toml`)
 ```toml
 [theme]
 base                   = "light"
@@ -131,7 +144,7 @@ Cada escola parceira mapeia para um conjunto de assets visuais:
 | `ideal` | `assets/templates/logo_ideal.png` | MODELO IMPRESSO |
 | `default` | `assets/templates/logo_vetorpas.png` | MODELO IMPRESSO GENERICO |
 
-O mapeamento vive em `DOMAINS_CONFIG` em `app/streamlit_app.py`.
+O mapeamento vive centralizado no dicionário `DOMAINS_CONFIG` no backend FastAPI (através de `app/streamlit_app.py` no legado e repassado para a API de relatórios).
 
 ---
 

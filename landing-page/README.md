@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌐 Vetor PAS — Frontend Next.js
 
-## Getting Started
+Este diretório contém o frontend principal da plataforma **Vetor PAS**, desenvolvido com **Next.js (App Router)**, **TypeScript** e **TailwindCSS (v4)**.
 
-First, run the development server:
+O app engloba a Landing Page institucional pública, telas de login e cadastro, e a área logada de alunos e escolas parceiras (coordenadores).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 🚀 Como Iniciar Localmente
+
+### 1. Pré-requisitos
+- Node.js 18+ instalado.
+- Backend FastAPI rodando localmente (ou apontando para staging/produção).
+- Banco de Dados Supabase configurado.
+
+### 2. Configurar Variáveis de Ambiente
+Crie um arquivo `.env.local` na raiz desta pasta com as seguintes chaves (veja o `.env.local.example` como referência):
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=seu-anon-token-do-supabase
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Instalar e Rodar
+```bash
+# Instalar dependências
+npm install
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Iniciar o servidor local
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Abra [http://localhost:3000](http://localhost:3000) no seu navegador.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📂 Estrutura de Pastas
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+*   `app/` — Rotas e páginas (Next.js App Router).
+    *   `(public)/` — Rotas abertas a qualquer visitante (Preditor simplificado em `/predict` e análise histórica em `/temporal`).
+    *   `auth/` — Telas de autenticação (`/login`, `/cadastro`, `/entrar`).
+    *   `(dashboard)/` — Rotas privadas (`/app/*`) protegidas pelo `middleware.ts`.
+        *   `gestao/` — Semáforo de Risco e listagem de alunos da escola.
+        *   `relatorios/` — Geração e download de relatórios em PDF.
+        *   `escola/` — Painel analítico de desempenho da escola vs. população geral.
+        *   `comparacao/` — Comparador estatístico de turmas.
+*   `components/` — Componentes reutilizáveis do React.
+    *   `ui/` — Componentes de UI genéricos (botões, inputs, cards, selects).
+    *   `brand/` — Marca institucional (logotipos, curvas gaussianas).
+    *   `public/` — Componentes das páginas públicas.
+    *   `dashboard/` — Componentes da área administrativa.
+*   `lib/` — Utilitários, conexões com Supabase e definições de tipos TypeScript.
+*   `public/` — Ativos estáticos (SVG, logos, imagens).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🎨 Whitelabeling e Customização de Temas
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+A identidade visual dinâmica (multi-tenant) é gerenciada no arquivo `/app/layout.tsx` e herdada pelas páginas internas:
+- O layout lê o identificador do `tenant` associado ao perfil do usuário logado via Supabase.
+- Elementos visuais (como logotipo, cores de fundo e bordas) se ajustam dinamicamente baseados na correspondência da escola parceira.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🧪 Build e Verificação
+Para validar se o projeto compila sem erros de tipografia ou linters antes de realizar o deploy:
+```bash
+npm run build
+```
