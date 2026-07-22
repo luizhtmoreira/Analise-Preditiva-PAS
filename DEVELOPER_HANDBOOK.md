@@ -23,20 +23,20 @@ O Vetor PAS resolve essa dor usando modelos de Machine Learning (treinados em da
 
 O ecossistema de branches do Git é dividido estrategicamente para gerenciar o pré-lançamento e o MVP:
 
-1.  **`main` (Página de Espera Ativa)**:
-    *   **Propósito**: Contém o site de pré-lançamento do projeto com um formulário de lista de espera (waitlist) e a história do fundador.
-    *   **Deploy**: É a branch de produção oficial conectada à Vercel. Qualquer alteração aqui é implantada na URL de produção ([vetorpas.com.br](https://vetorpas.com.br)).
-2.  **`feat/nextjs-frontend` (Painel e Landing Page Principal)**:
-    *   **Propósito**: Contém a landing page principal e toda a interface de dashboards do portal do aluno e portal da escola do MVP completo.
-    *   **Status**: Sob desenvolvimento ativo constante. Quando finalizada, substituirá a landing page temporária na branch `main`.
+1.  **`main` (Página de Espera - PRODUÇÃO)**:
+    *   **Propósito**: Contém o site de pré-lançamento do projeto com o formulário de lista de espera (waitlist) e a história do fundador.
+    *   **Status**: **100% Implementado e Implantado**. É a branch de produção oficial conectada à Vercel. Qualquer alteração aqui é implantada automaticamente na URL pública ([vetorpas.com.br](https://vetorpas.com.br)).
+2.  **`feat/nextjs-frontend` (Painel e Landing Page Principal - DESENVOLVIMENTO)**:
+    *   **Propósito**: Contém a landing page principal definitiva e a interface completa de dashboards do portal do aluno e da escola.
+    *   **Status**: **Em desenvolvimento constante (Local)**. Esta branch ainda não foi mergeada para a `main`, portanto suas páginas não estão acessíveis em produção.
 3.  **`feat/grill`**:
-    *   **Propósito**: Branch secundária para discussões/testes de design ou refatorações pontuais.
+    *   **Propósito**: Branch secundária de testes e experimentações.
 
 ---
 
-## 3. Arquitetura do Sistema
+## 3. Arquitetura do Sistema e Status de Deploy
 
-O sistema opera de forma totalmente desacoplada em três camadas:
+O sistema opera de forma desacoplada em três camadas. Abaixo está a especificação técnica e o status de deploy de cada uma:
 
 ```mermaid
 graph TD
@@ -49,21 +49,24 @@ graph TD
   RL -->|Retorna PDF| User
 ```
 
-### Camadas Tecnológicas
+### Camadas Tecnológicas e Status
+
 1.  **Frontend (Diretório `landing-page/`)**:
-    *   Framework: **Next.js (App Router)** com React, TypeScript e TailwindCSS (v4).
-    *   Hospedagem: **Vercel** (conectado à branch `main` para a versão temporária).
+    *   **Tecnologia**: **Next.js (App Router)** com React, TypeScript e TailwindCSS (v4).
+    *   **Status de Deploy**: **Ativo em Produção na Vercel**. A branch `main` serve a Landing Page Temporária de espera. A branch `feat/nextjs-frontend` (portal completo) é executada apenas localmente (`http://localhost:3000`) por enquanto.
 2.  **Backend API (Diretório `api/`)**:
-    *   Framework: **FastAPI** (Python).
-    *   Hospedagem: **Hugging Face Spaces** (Dockerizado).
+    *   **Tecnologia**: **FastAPI** (Python).
+    *   **Status de Deploy**: **Apenas Local (localhost:8000)**. A hospedagem no **Hugging Face Spaces** (via Docker) está planejada e decidida na arquitetura (ADR 0004), mas ainda não foi ativada em produção. A URL de produção da Vercel precisará apontar para o link do Space através da variável `API_URL` assim que o deploy for feito.
 3.  **BaaS / Banco de Dados / Auth**:
-    *   Plataforma: **Supabase** (PostgreSQL).
-    *   Segurança: Row Level Security (RLS) habilitada para garantir o isolamento rígido de dados sensíveis entre escolas.
-4.  **Processador Analítico (Core - `src/pas_intelligence/`)**:
-    *   Bibliotecas: Scikit-Learn, LightGBM, Pandas, Numpy.
-    *   Modelos serializados: `.joblib` em `models/` (guardados no Dropbox e sincronizados via Git LFS).
+    *   **Tecnologia**: **Supabase** (PostgreSQL).
+    *   **Status de Deploy**: **Ativo e Conectado em Produção**. O banco de dados e o provedor de autenticação estão funcionando tanto localmente quanto na URL de produção.
+4.  **Processador Analítico (Core - `src/pas_intelligence/` e `src/pdf_generator.py`)**:
+    *   **Tecnologia**: Modelos serializados `.joblib` em Python executados com Scikit-Learn/LightGBM e geração de PDFs com ReportLab.
+    *   **Status de Deploy**: **100% Implementado**. Integrado à API local do FastAPI. O deploy final em produção ocorrerá junto com a API do FastAPI no Hugging Face Spaces.
 5.  **Dashboard Legado/Admin (`app/streamlit_app.py`)**:
-    *   Framework: **Streamlit** (Python). Utilizado para prototipagem rápida e painéis de controle internos/administrativos.
+    *   **Tecnologia**: **Streamlit** (Python).
+    *   **Status de Deploy**: **Apenas Local**. Utilizado internamente para administração e testes rápidos de novas lógicas.
+
 
 ---
 
