@@ -458,7 +458,6 @@ export function PreditorPage() {
               if (profile.cota) setCota(profile.cota);
               if (profile.trienio) setTrienio(profile.trienio);
               if (profile.curso_alvo) setCursoAlvo(profile.curso_alvo);
-              if (profile.semestre) setSemestre(profile.semestre);
             }
           });
       }
@@ -496,7 +495,6 @@ export function PreditorPage() {
           cota: cota,
           trienio: trienio,
           curso_alvo: cursoAlvo.trim() || null,
-          semestre: semestre,
           updated_at: new Date().toISOString()
         });
       }
