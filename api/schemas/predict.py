@@ -13,6 +13,7 @@ class PredictInput(BaseModel):
     trienio: str = "2024-2026"
     curso_alvo: Optional[str] = None
     is_logged_in: bool = False
+    semestre: Optional[str] = "1°"
 
 
 class CourseResult(BaseModel):

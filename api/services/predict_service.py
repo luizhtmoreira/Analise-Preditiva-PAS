@@ -52,7 +52,18 @@ def predict_student(inp: PredictInput) -> PredictResponse:
         all_courses = list(set(list(m1.keys()) + list(m2.keys())))
         curso_matched = _find_best_match(inp.curso_alvo, all_courses, cutoff=0.4) if all_courses else inp.curso_alvo
 
-        for semestre, m in [("1°", m1), ("2°", m2)]:
+        semestres_para_buscar = []
+        if inp.is_logged_in:
+            if inp.semestre == "1°":
+                semestres_para_buscar = [("1°", m1)]
+            elif inp.semestre == "2°":
+                semestres_para_buscar = [("2°", m2)]
+            else:
+                semestres_para_buscar = [("1°", m1), ("2°", m2)]
+        else:
+            semestres_para_buscar = [("1°", m1), ("2°", m2)]
+
+        for semestre, m in semestres_para_buscar:
             nota = m.get(curso_matched)
             if nota:
                 prob = calculate_approval_probability(arg_previsto, nota, rmse=ARG_FINAL_MAE)
@@ -73,7 +84,15 @@ def predict_student(inp: PredictInput) -> PredictResponse:
     if inp.is_logged_in:
         # Com login: top 10 cursos com prob >= 30% ordenados por maior probabilidade
         candidates = []
-        for semestre, m in [("1°", m1), ("2°", m2)]:
+        semestres_para_buscar = []
+        if inp.semestre == "1°":
+            semestres_para_buscar = [("1°", m1)]
+        elif inp.semestre == "2°":
+            semestres_para_buscar = [("2°", m2)]
+        else:
+            semestres_para_buscar = [("1°", m1), ("2°", m2)]
+
+        for semestre, m in semestres_para_buscar:
             for course_key, nota in m.items():
                 prob = calculate_approval_probability(arg_previsto, nota, rmse=ARG_FINAL_MAE)
                 if prob >= MIN_PROB_THRESHOLD:

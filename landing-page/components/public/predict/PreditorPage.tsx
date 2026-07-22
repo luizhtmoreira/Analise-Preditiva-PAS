@@ -420,6 +420,7 @@ export function PreditorPage() {
   const [cota, setCota] = useState("Sistema Universal");
   const [trienio, setTrienio] = useState("2024-2026");
   const [cursoAlvo, setCursoAlvo] = useState("");
+  const [semestre, setSemestre] = useState("Ambos");
   const [courses, setCourses] = useState<string[]>([]);
   const [result, setResult] = useState<PredictResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -457,6 +458,7 @@ export function PreditorPage() {
               if (profile.cota) setCota(profile.cota);
               if (profile.trienio) setTrienio(profile.trienio);
               if (profile.curso_alvo) setCursoAlvo(profile.curso_alvo);
+              if (profile.semestre) setSemestre(profile.semestre);
             }
           });
       }
@@ -476,6 +478,7 @@ export function PreditorPage() {
         p1_pas2: Number(pas2.p1), p2_pas2: Number(pas2.p2), red_pas2: Number(pas2.red),
         cota, trienio, curso_alvo: isLoggedIn ? (cursoAlvo.trim() || undefined) : undefined,
         is_logged_in: isLoggedIn,
+        semestre: isLoggedIn ? semestre : "Ambos",
       });
       setResult(data);
 
@@ -493,6 +496,7 @@ export function PreditorPage() {
           cota: cota,
           trienio: trienio,
           curso_alvo: cursoAlvo.trim() || null,
+          semestre: semestre,
           updated_at: new Date().toISOString()
         });
       }
@@ -572,7 +576,7 @@ export function PreditorPage() {
               {/* Config */}
               <div className="pred-card" style={{ padding: "22px 20px" }}>
                 <div className="section-label">Configuração do Candidato</div>
-                <div className="pred-grid-cfg">
+                <div className="pred-grid-cfg" style={isLoggedIn ? { gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" } : undefined}>
                   <div>
                     <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Triênio</p>
                     <div style={{ position: "relative" }}>
@@ -591,6 +595,21 @@ export function PreditorPage() {
                       <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.dim, pointerEvents: "none", fontSize: 12 }}>▾</span>
                     </div>
                   </div>
+                  {isLoggedIn && (
+                    <div>
+                      <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Semestre</p>
+                      <div style={{ position: "relative" }}>
+                        <select value={semestre} onChange={(e) => setSemestre(e.target.value)} className="pred-select">
+                          {["Ambos", "1°", "2°"].map((s) => (
+                            <option key={s} value={s} style={{ background: "#00305F" }}>
+                              {s === "Ambos" ? "Ambos" : `${s} Semestre`}
+                            </option>
+                          ))}
+                        </select>
+                        <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.dim, pointerEvents: "none", fontSize: 12 }}>▾</span>
+                      </div>
+                    </div>
+                  )}
                   <div style={{ gridColumn: "1 / -1" }}>
                     <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
                       Curso Alvo <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, fontSize: 11, color: C.faint }}>opcional</span>

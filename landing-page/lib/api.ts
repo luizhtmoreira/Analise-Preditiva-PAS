@@ -68,6 +68,7 @@ export async function fetchPredict(body: {
   p1_pas2: number; p2_pas2: number; red_pas2: number;
   cota?: string; trienio?: string; curso_alvo?: string;
   is_logged_in?: boolean;
+  semestre?: string;
 }) {
   const res = await fetch(`${API_URL}/api/predict`, {
     method: "POST",
