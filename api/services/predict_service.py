@@ -13,7 +13,7 @@ from api.services.gestao_service import (
 from pas_intelligence.statistics import calculate_approval_probability
 
 TOP_CURSOS_LIMIT = 10
-MIN_PROB_THRESHOLD = 0.30
+MIN_PROB_THRESHOLD = 0.20
 EB_MAE = 5.0  # margem aproximada para EB PAS 3
 
 
@@ -98,8 +98,8 @@ def predict_student(inp: PredictInput) -> PredictResponse:
                 if prob >= MIN_PROB_THRESHOLD:
                     candidates.append((course_key, nota, prob, semestre))
         
-        # Ordenar por maior probabilidade
-        candidates.sort(key=lambda x: x[2], reverse=True)
+        # Ordenar por menor probabilidade (mais desafiadores / maior nota de corte primeiro)
+        candidates.sort(key=lambda x: x[2])
         
         # Selecionar sem duplicar o course_key
         for course_key, nota, prob, semestre in candidates:
