@@ -176,24 +176,26 @@ export function TemporalPage({ data }: { data: TemporalResponse }) {
           <CursoCombobox value={curso} onChange={setCurso} cursos={data.cursos} />
 
           {curso && (
-            <div className="mt-6 rounded-2xl border border-white/13 bg-white/5 p-5 sm:p-6">
+            <div className="mt-6 rounded-2xl border border-white/13 bg-white/5 p-5 sm:p-6 relative">
               <p className="font-heading text-sm font-bold text-white mb-4">{curso}</p>
               {loadingCorte ? (
                 <p className="text-sm text-white/45 py-16 text-center">Carregando…</p>
               ) : cortes.length === 0 ? (
                 <p className="text-sm text-white/45 py-16 text-center">Sem dados de corte para este curso.</p>
               ) : (
-                <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={cortes} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-                    <CartesianGrid stroke={DARK.grid} vertical={false} />
-                    <XAxis dataKey="trienio" tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<DarkTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
-                    <Line type="monotone" dataKey="corte_1sem" name="Corte 1º semestre" stroke={DARK.cyan} strokeWidth={2.5} dot={{ r: 4, fill: DARK.cyan }} connectNulls />
-                    <Line type="monotone" dataKey="corte_2sem" name="Corte 2º semestre" stroke={DARK.amber} strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: DARK.amber }} connectNulls />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className="w-full h-[280px] relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={cortes} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                      <CartesianGrid stroke={DARK.grid} vertical={false} />
+                      <XAxis dataKey="trienio" tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<DarkTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
+                      <Line type="monotone" dataKey="corte_1sem" name="Corte 1º semestre" stroke={DARK.cyan} strokeWidth={2.5} dot={{ r: 4, fill: DARK.cyan }} connectNulls />
+                      <Line type="monotone" dataKey="corte_2sem" name="Corte 2º semestre" stroke={DARK.amber} strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: DARK.amber }} connectNulls />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
           )}
@@ -213,19 +215,21 @@ export function TemporalPage({ data }: { data: TemporalResponse }) {
             A média de P1 + P2 de todos os candidatos, ano a ano. Quedas indicam
             provas mais difíceis; o PAS 3 costuma puxar a média para cima.
           </p>
-          <div className="rounded-2xl border border-white/13 bg-white/5 p-5 sm:p-6">
-            <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={porAno} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-                <CartesianGrid stroke={DARK.grid} vertical={false} />
-                <XAxis dataKey="ano" tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<DarkTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 12, color: DARK.dim }} iconType="circle" iconSize={8} />
-                <Line type="monotone" dataKey="e1" name="PAS 1" stroke={DARK.cyan} strokeWidth={2.5} dot={{ r: 3, fill: DARK.cyan }} connectNulls />
-                <Line type="monotone" dataKey="e2" name="PAS 2" stroke={DARK.green} strokeWidth={2.5} dot={{ r: 3, fill: DARK.green }} connectNulls />
-                <Line type="monotone" dataKey="e3" name="PAS 3" stroke={DARK.amber} strokeWidth={2.5} dot={{ r: 3, fill: DARK.amber }} connectNulls />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="rounded-2xl border border-white/13 bg-white/5 p-5 sm:p-6 relative">
+            <div className="w-full h-[320px] relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={porAno} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                  <CartesianGrid stroke={DARK.grid} vertical={false} />
+                  <XAxis dataKey="ano" tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: DARK.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<DarkTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 12, color: DARK.dim }} iconType="circle" iconSize={8} />
+                  <Line type="monotone" dataKey="e1" name="PAS 1" stroke={DARK.cyan} strokeWidth={2.5} dot={{ r: 3, fill: DARK.cyan }} connectNulls />
+                  <Line type="monotone" dataKey="e2" name="PAS 2" stroke={DARK.green} strokeWidth={2.5} dot={{ r: 3, fill: DARK.green }} connectNulls />
+                  <Line type="monotone" dataKey="e3" name="PAS 3" stroke={DARK.amber} strokeWidth={2.5} dot={{ r: 3, fill: DARK.amber }} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
           {insight && (
             <p className="mt-4 text-[0.82rem] text-white/55 border-l-2 border-[#00AEEF] pl-3">

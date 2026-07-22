@@ -296,12 +296,12 @@ export function LandingPage() {
                 
                 <div
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full px-4 py-3 rounded-xl border border-black/15 bg-white text-[#002147] cursor-pointer flex items-center justify-between hover:border-[#00843D] transition-all text-sm select-none font-medium"
+                  className="w-full px-4 py-3 rounded-xl border border-black/15 bg-white text-[#002147] cursor-pointer flex items-center justify-between hover:border-[#00843D] transition-all text-sm select-none font-medium min-w-0"
                 >
-                  <span className="truncate">
+                  <span className="truncate min-w-0">
                     {selectedCourse.curso.replace(" (BACHARELADO)", "").replace(" (BACHARELADO/LICENCIATURA/PSICÓLOGO)", "")}
                   </span>
-                  <span className="text-[#002147]/50 text-xs transition-transform duration-200" style={{ transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                  <span className="text-[#002147]/50 text-xs transition-transform duration-200 shrink-0" style={{ transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                     ▼
                   </span>
                 </div>
@@ -379,10 +379,10 @@ export function LandingPage() {
             </div>
 
             {/* Coluna Direita: Dashboard de Métricas (Padronizado e Integrado Estilo História) */}
-            <div className="lg:col-span-7 bg-[#002147]/5 border-l-8 border-l-[#00AEEF] rounded-r-3xl border-y border-r border-[#002147]/10 p-6 sm:p-8 flex flex-col justify-between shadow-[0_10px_35px_rgba(0,33,71,0.03)] transition-all">
+            <div className="lg:col-span-7 min-w-0 bg-[#002147]/5 border-l-8 border-l-[#00AEEF] rounded-r-3xl border-y border-r border-[#002147]/10 p-6 sm:p-8 flex flex-col justify-between shadow-[0_10px_35px_rgba(0,33,71,0.03)] transition-all">
               
               {activeMetrics ? (
-                <div className="space-y-6 w-full">
+                <div className="space-y-6 w-full min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="inline-block font-mono text-[0.65rem] tracking-[0.25em] uppercase text-[#002147]/70 font-extrabold bg-[#002147]/5 px-2.5 py-1 rounded">
                       MÉTRICAS OFICIAIS CEBRASPE
@@ -390,7 +390,7 @@ export function LandingPage() {
                   </div>
 
                   {/* Nome do curso no painel */}
-                  <div>
+                  <div className="min-w-0">
                     <h4 className="text-[#002147]/60 text-xs font-mono uppercase tracking-wider font-bold">Curso Selecionado</h4>
                     <p className="text-lg sm:text-xl font-extrabold tracking-tight text-[#002147] mt-0.5 truncate">
                       {selectedCourse.curso}
