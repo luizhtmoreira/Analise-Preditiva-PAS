@@ -97,7 +97,13 @@ _Avoid_: lead, escola potencial, prospect
 Personalização visual do sistema por Tenant: logo, template PDF e cores. Configurado via campo `tenant` no perfil Supabase.
 _Avoid_: customização, branding, tema
 
-### Pré-Lançamento
+### Pré-Lançamento & Estratégia de Landing Pages
+
+**Estratégia de Landing Pages & Branches**:
+O projeto gerencia o ciclo de pré-lançamento e o MVP através de duas branches principais de frontend:
+- **`feature/landing-page-temporaria` (Temporária)**: Contém a landing page de pré-lançamento e captura de leads. É a versão ativa na URL de produção (`vetorpas.com.br`) temporariamente.
+- **`feat/nextjs-frontend` (Principal)**: Contém a landing page definitiva e os dashboards do portal do MVP. Em desenvolvimento constante; substituirá a versão temporária quando finalizada.
+- **`main`**: A landing page atualmente presente nesta branch é obsoleta e não será utilizada.
 
 **Lista de Espera (Waitlist)**:
 Formulário de captura de interesse antecedendo o lançamento do MVP do Vetor PAS. Coleta Alunos interessados para acesso antecipado.
@@ -114,5 +120,3 @@ _Avoid_: sobre nós, quem somos
 **Mobile-First Design**:
 Diretriz de design para a Landing Page Temporária: foco prioritário na experiência em smartphones (layouts empilhados, touch targets otimizados, formulário responsivo rápido), considerando que a maioria dos estudantes do PAS 3 acessará via celular (Instagram/WhatsApp).
 _Avoid_: versão mobile simples, adaptação mobile
-
-

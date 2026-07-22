@@ -6,6 +6,22 @@ O app engloba a Landing Page institucional pública, telas de login e cadastro, 
 
 ---
 
+## 🗺️ Estrutura de Branches & Landing Pages
+
+O projeto gerencia duas landing pages e fluxos de desenvolvimento através das seguintes branches:
+
+1. **`feature/landing-page-temporaria` (Branch Atual)**:
+   - **Propósito**: Contém a **Landing Page Temporária** de pré-lançamento.
+   - **Funcionalidades**: Focada em mobile-first, formulário de captura de lista de espera (waitlist) e história do fundador.
+   - **Deploy**: Atualmente implantada na URL de produção (`vetorpas.com.br`) para captação imediata de leads.
+2. **`feat/nextjs-frontend`**:
+   - **Propósito**: Contém a **Landing Page Principal** e o portal de dashboards do MVP.
+   - **Status**: Sob desenvolvimento constante e progressivo. Quando finalizada, substituirá a landing page temporária na produção.
+3. **`main`**:
+   - **Status**: A landing page presente atualmente nesta branch é obsoleta e não será utilizada. A branch `main` será atualizada diretamente pela `feat/nextjs-frontend` assim que o MVP estiver pronto.
+
+---
+
 ## 🚀 Como Iniciar Localmente
 
 ### 1. Pré-requisitos
