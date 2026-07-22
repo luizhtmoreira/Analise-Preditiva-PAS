@@ -117,6 +117,9 @@ def predict_student(inp: PredictInput) -> PredictResponse:
             ))
             if len(top_cursos) >= TOP_CURSOS_LIMIT:
                 break
+        
+        # Inverte para ordem decrescente (o de ~30% fica por último/décimo)
+        top_cursos.reverse()
     else:
         # Sem login: 3 cursos com corte mais próximo de arg_previsto (abs(nota - arg_previsto))
         candidates = []
@@ -181,3 +184,51 @@ def _parse_course_key(key: str) -> dict:
         return {"curso": parts[0].strip(), "turno": parts[1].strip(), "campus": campus}
 
     return {"curso": key.strip(), "turno": "", "campus": campus}
+
+
+def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) -> list[dict]:
+    import pandas as pd
+    df_corte = gestao_service._df_corte
+    if df_corte is None or not curso_key:
+        return []
+
+    # Parse course key
+    parts = _parse_course_key(curso_key)
+    curso_nome = parts["curso"]
+    turno = parts["turno"].upper()
+    campus = parts["campus"].upper()
+
+    # Filter system name
+    available_systems = list(df_corte["Sistema_Nome"].dropna().unique())
+    sistema = _find_best_match(cota, available_systems, cutoff=0.6) if available_systems else cota
+
+    # Filter mask
+    mask = (
+        (df_corte["Curso_Limpo"].str.upper() == curso_nome.upper()) &
+        (df_corte["Turno"].str.upper() == turno) &
+        (df_corte["Campus"].str.upper() == campus) &
+        (df_corte["Sistema_Nome"] == sistema) &
+        (df_corte["Trienio"] == trienio)
+    )
+    
+    # Semestre filter (1° ou 2°)
+    sem_db = "1°" if semestre.startswith("1") else "2°"
+    mask = mask & (df_corte["Semestre"] == sem_db)
+
+    sub = df_corte[mask].copy()
+    if sub.empty:
+        return []
+
+    # Extract digits to sort calls (e.g. "1ª" -> 1, "2ª" -> 2)
+    sub["chamada_num"] = sub["Chamada"].astype(str).str.extract(r"(\d+)").fillna(0).astype(int)
+    sub = sub.sort_values("chamada_num")
+
+    out = []
+    for _, row in sub.iterrows():
+        out.append({
+            "chamada": str(row.get("Chamada", "")),
+            "campus": str(row.get("Campus", "")),
+            "turno": str(row.get("Turno", "")),
+            "nota_corte": float(row.get("Min", 0.0)) if pd.notna(row.get("Min")) else 0.0
+        })
+    return out

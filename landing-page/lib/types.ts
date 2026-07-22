@@ -73,6 +73,13 @@ export interface CorteEvolucao {
   corte_2sem: number | null;
 }
 
+export interface ChamadaCorte {
+  chamada: string;
+  campus: string;
+  turno: string;
+  nota_corte: number;
+}
+
 /* ── Escola vs. População ─────────────────────────────────────── */
 
 export interface EtapaComparativo {

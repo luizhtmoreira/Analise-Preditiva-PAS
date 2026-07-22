@@ -34,3 +34,9 @@ class PredictResponse(BaseModel):
     top_cursos: list[CourseResult]
     trienio_ref: str
     modelo_disponivel: bool
+
+class ChamadaCorte(BaseModel):
+    chamada: str
+    campus: str
+    turno: str
+    nota_corte: float

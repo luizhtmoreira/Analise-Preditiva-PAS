@@ -2,10 +2,11 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand/BrandMark";
-import { fetchPredict, fetchCourses } from "@/lib/api";
-import type { PredictResponse, CourseResult } from "@/lib/types";
+import { fetchPredict, fetchCourses, fetchCorteEvolucao, fetchCourseChamadas } from "@/lib/api";
+import type { PredictResponse, CourseResult, CorteEvolucao, ChamadaCorte } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 
 /* ─── constants ─────────────────────────────────────────────────── */
 
@@ -321,6 +322,182 @@ function TopCursosTable({ cursos, isLoggedIn }: { cursos: CourseResult[]; isLogg
   );
 }
 
+const CustomLabel = (props: any) => {
+  const { x, y, value, index, listLength } = props;
+  if (value === null || value === undefined) return null;
+  
+  const isLast = index === listLength - 1;
+  
+  if (isLast) {
+    return (
+      <g>
+        {/* Background rectangle for the tooltip-like label */}
+        <rect
+          x={x - 42}
+          y={y - 34}
+          width={84}
+          height={20}
+          rx={4}
+          fill="#002147"
+          stroke="rgba(0,174,239,0.5)"
+          strokeWidth={1.5}
+        />
+        <text
+          x={x}
+          y={y - 20}
+          fill="#fff"
+          fontSize={10}
+          fontWeight="bold"
+          textAnchor="middle"
+          fontFamily="monospace"
+        >
+          {`Atual: ${value.toFixed(2)}`}
+        </text>
+        {/* Draw a tiny downward arrow below the rectangle */}
+        <polygon
+          points={`${x-4},${y-14} ${x+4},${y-14} ${x},${y-10}`}
+          fill="#002147"
+        />
+      </g>
+    );
+  }
+  
+  return (
+    <text
+      x={x}
+      y={y - 12}
+      fill="rgba(255,255,255,0.75)"
+      fontSize={11}
+      textAnchor="middle"
+      fontFamily="monospace"
+    >
+      {value.toFixed(2)}
+    </text>
+  );
+};
+
+function CorteTendenciaCard({
+  curso,
+  campus,
+  turno,
+  semestre,
+  data,
+}: {
+  curso: string;
+  campus: string;
+  turno: string;
+  semestre: string;
+  data: CorteEvolucao[];
+}) {
+  const chartData = useMemo(() => {
+    return data
+      .map((item) => {
+        // Formato triênio: "2023-2025" -> extrai "2025" como ano de término
+        const year = item.trienio.includes("-") ? item.trienio.split("-")[1] : item.trienio;
+        // Escolhe o corte do semestre ativo do curso_alvo (com segurança de fallback)
+        const corte = semestre.startsWith("1") ? item.corte_1sem : item.corte_2sem;
+        // Fallback se o semestre selecionado não tiver dados históricos
+        const finalCorte = corte !== null ? corte : (item.corte_1sem !== null ? item.corte_1sem : item.corte_2sem);
+        
+        return {
+          year,
+          corte: finalCorte !== null ? Number(finalCorte.toFixed(2)) : null,
+          trienio: item.trienio,
+        };
+      })
+      .filter((item) => item.corte !== null);
+  }, [data, semestre]);
+
+  if (chartData.length === 0) return null;
+
+  return (
+    <div className="pred-result pred-result-trend" style={{ position: "relative", width: "100%", marginTop: 8 }}>
+      <p className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 14 }}>
+        Análise de Tendência de Corte: {curso}
+      </p>
+      
+      <div style={{
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: 14,
+        padding: "28px 20px 16px 12px",
+        height: 280,
+        position: "relative"
+      }}>
+        {/* Subtítulo discreto no topo */}
+        <div style={{ position: "absolute", top: 12, left: 16, fontSize: 11, color: C.dim, fontWeight: 600 }}>
+          Tendência: {curso} ({campus} - {turno}) — {semestre.startsWith("1") || semestre.startsWith("2") ? `${semestre} Semestre` : "Semestre Geral"}
+        </div>
+        
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 35, right: 30, left: -20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+            <XAxis
+              dataKey="year"
+              stroke="rgba(255,255,255,0.4)"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              dy={10}
+            />
+            <YAxis
+              stroke="rgba(255,255,255,0.4)"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              domain={["dataMin - 10", "dataMax + 10"]}
+              dx={-5}
+            />
+            <Line
+              type="monotone"
+              dataKey="corte"
+              stroke={C.cyan}
+              strokeWidth={3}
+              dot={{ r: 5, stroke: C.cyan, strokeWidth: 2, fill: "#fff" }}
+              activeDot={{ r: 7, stroke: "#fff", strokeWidth: 2, fill: C.cyan }}
+              label={<CustomLabel listLength={chartData.length} />}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function ChamadasHistoricoTable({ chamadas }: { chamadas: ChamadaCorte[] }) {
+  if (!chamadas || chamadas.length === 0) return null;
+  return (
+    <div className="pred-result pred-result-chamadas" style={{ width: "100%", marginTop: 8 }}>
+      <p className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
+        <span>🕥</span> Histórico de Chamadas (Lista de Espera)
+      </p>
+      <div style={{ border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, overflow: "hidden", background: "rgba(255,255,255,0.02)" }}>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <table style={{ width: "100%", minWidth: 500, borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "rgba(255,255,255,0.05)" }}>
+                {["Chamada", "Campus", "Turno", "Nota de Corte"].map((h) => (
+                  <th key={h} className="mono" style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: C.cyanSoft, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {chamadas.map((c, i) => (
+                <tr key={i} className="pred-row" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <td style={{ padding: "10px 16px", fontSize: 13, fontWeight: 600, color: C.text }}>{c.chamada}</td>
+                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>{c.campus.toUpperCase()}</td>
+                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>{c.turno.toUpperCase()}</td>
+                  <td className="mono" style={{ padding: "10px 16px", fontSize: 13, color: C.cyanSoft, fontWeight: 600 }}>{c.nota_corte.toFixed(3)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── soft gate modal ───────────────────────────────────────────── */
 
 function SoftGateModal({ onClose }: { onClose: () => void }) {
@@ -428,6 +605,10 @@ export function PreditorPage() {
   const [showGate, setShowGate] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [evolutionData, setEvolutionData] = useState<CorteEvolucao[] | null>(null);
+  const [loadingEvolution, setLoadingEvolution] = useState(false);
+  const [chamadasData, setChamadasData] = useState<ChamadaCorte[] | null>(null);
+  const [loadingChamadas, setLoadingChamadas] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -467,6 +648,45 @@ export function PreditorPage() {
   useEffect(() => {
     fetchCourses(cota, trienio).then(setCourses).catch(() => setCourses([]));
   }, [cota, trienio]);
+
+  useEffect(() => {
+    if (result && result.curso_alvo_result) {
+      const c = result.curso_alvo_result;
+      const courseKey = `${c.curso} - ${c.turno} (${c.campus})`;
+      
+      const targetTrienio = result.trienio_ref || trienio;
+      const targetSemestre = c.semestre;
+
+      setLoadingEvolution(true);
+      fetchCorteEvolucao(courseKey)
+        .then((data) => {
+          setEvolutionData(data);
+        })
+        .catch((err) => {
+          console.error("Erro ao buscar evolução do corte:", err);
+          setEvolutionData(null);
+        })
+        .finally(() => {
+          setLoadingEvolution(false);
+        });
+
+      setLoadingChamadas(true);
+      fetchCourseChamadas(courseKey, cota, targetTrienio, targetSemestre)
+        .then((data) => {
+          setChamadasData(data);
+        })
+        .catch((err) => {
+          console.error("Erro ao buscar histórico de chamadas:", err);
+          setChamadasData(null);
+        })
+        .finally(() => {
+          setLoadingChamadas(false);
+        });
+    } else {
+      setEvolutionData(null);
+      setChamadasData(null);
+    }
+  }, [result]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -670,6 +890,21 @@ export function PreditorPage() {
                 </p>
                 <ArgCard result={result} />
                 {result.curso_alvo_result && <CursoAlvoCard c={result.curso_alvo_result} />}
+                
+                {result.curso_alvo_result && evolutionData && (
+                  <CorteTendenciaCard
+                    curso={result.curso_alvo_result.curso}
+                    campus={result.curso_alvo_result.campus}
+                    turno={result.curso_alvo_result.turno}
+                    semestre={result.curso_alvo_result.semestre}
+                    data={evolutionData}
+                  />
+                )}
+                
+                {result.curso_alvo_result && chamadasData && (
+                  <ChamadasHistoricoTable chamadas={chamadasData} />
+                )}
+
                 <TopCursosTable cursos={result.top_cursos} isLoggedIn={isLoggedIn} />
 
                 {/* Soft gate CTA */}

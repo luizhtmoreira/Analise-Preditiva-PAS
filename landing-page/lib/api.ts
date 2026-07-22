@@ -39,6 +39,13 @@ export async function fetchCorteEvolucao(curso: string) {
   return res.json();
 }
 
+export async function fetchCourseChamadas(curso: string, cota: string, trienio: string, semestre: string): Promise<any[]> {
+  const params = new URLSearchParams({ curso, cota, trienio, semestre });
+  const res = await fetch(`${API_URL}/api/courses/chamadas?${params}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export async function fetchEscola(inscricoes: string[], trienio = "") {
   const res = await fetch(`${API_URL}/api/escola/analyze`, {
     method: "POST",
