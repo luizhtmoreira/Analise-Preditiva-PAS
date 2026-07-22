@@ -12,6 +12,7 @@ class PredictInput(BaseModel):
     cota: str = "Sistema Universal"
     trienio: str = "2024-2026"
     curso_alvo: Optional[str] = None
+    is_logged_in: bool = False
 
 
 class CourseResult(BaseModel):

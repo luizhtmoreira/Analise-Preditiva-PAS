@@ -5,6 +5,7 @@ import { BrandMark } from "@/components/brand/BrandMark";
 import { fetchPredict, fetchCourses } from "@/lib/api";
 import type { PredictResponse, CourseResult } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 /* ─── constants ─────────────────────────────────────────────────── */
 
@@ -276,12 +277,12 @@ function CursoAlvoCard({ c }: { c: CourseResult }) {
   );
 }
 
-function TopCursosTable({ cursos }: { cursos: CourseResult[] }) {
+function TopCursosTable({ cursos, isLoggedIn }: { cursos: CourseResult[]; isLoggedIn: boolean }) {
   if (!cursos.length) return null;
   return (
     <div className="pred-result pred-result-4">
       <p className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 14 }}>
-        Cursos acessíveis com sua previsão
+        {isLoggedIn ? "Cursos acessíveis com sua previsão" : "Cursos mais próximos da sua previsão"}
       </p>
       <div style={{ border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, overflow: "hidden" }}>
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -413,6 +414,7 @@ function SoftGateModal({ onClose }: { onClose: () => void }) {
 const emptyScores = () => ({ p1: "0", p2: "0", red: "0" });
 
 export function PreditorPage() {
+  const router = useRouter();
   const [pas1, setPas1] = useState(emptyScores());
   const [pas2, setPas2] = useState(emptyScores());
   const [cota, setCota] = useState("Sistema Universal");
@@ -423,6 +425,14 @@ export function PreditorPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showGate, setShowGate] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user);
+    });
+  }, []);
 
   useEffect(() => {
     fetchCourses(cota, trienio).then(setCourses).catch(() => setCourses([]));
@@ -435,7 +445,8 @@ export function PreditorPage() {
       const data = await fetchPredict({
         p1_pas1: Number(pas1.p1), p2_pas1: Number(pas1.p2), red_pas1: Number(pas1.red),
         p1_pas2: Number(pas2.p1), p2_pas2: Number(pas2.p2), red_pas2: Number(pas2.red),
-        cota, trienio, curso_alvo: cursoAlvo.trim() || undefined,
+        cota, trienio, curso_alvo: isLoggedIn ? (cursoAlvo.trim() || undefined) : undefined,
+        is_logged_in: isLoggedIn,
       });
       setResult(data);
     } catch {
@@ -537,7 +548,32 @@ export function PreditorPage() {
                     <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
                       Curso Alvo <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, fontSize: 11, color: C.faint }}>opcional</span>
                     </p>
-                    <CourseCombobox value={cursoAlvo} onChange={setCursoAlvo} courses={courses} />
+                    {isLoggedIn ? (
+                      <CourseCombobox value={cursoAlvo} onChange={setCursoAlvo} courses={courses} />
+                    ) : (
+                      <div
+                        onClick={() => router.push("/auth/entrar?next=/predict")}
+                        style={{
+                          background: "rgba(255,255,255,0.02)",
+                          border: "1px dashed rgba(255,255,255,0.15)",
+                          borderRadius: 10,
+                          padding: "12px 14px",
+                          fontSize: 13,
+                          color: C.dim,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                        className="hover:border-[#00AEEF]/50 transition-colors"
+                      >
+                        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>🔒</span>
+                          <span>Entre ou cadastre-se para selecionar um curso alvo</span>
+                        </span>
+                        <span style={{ fontSize: 12, color: C.cyan, fontWeight: 600 }}>Entrar →</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -570,7 +606,7 @@ export function PreditorPage() {
                 </p>
                 <ArgCard result={result} />
                 {result.curso_alvo_result && <CursoAlvoCard c={result.curso_alvo_result} />}
-                <TopCursosTable cursos={result.top_cursos} />
+                <TopCursosTable cursos={result.top_cursos} isLoggedIn={isLoggedIn} />
 
                 {/* Soft gate CTA */}
                 <div style={{

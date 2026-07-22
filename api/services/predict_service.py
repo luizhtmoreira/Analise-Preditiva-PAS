@@ -66,18 +66,39 @@ def predict_student(inp: PredictInput) -> PredictResponse:
                 )
                 break
 
-    # Top cursos acessíveis
+    # Coletar todos os cursos elegíveis
     seen: set[str] = set()
-    top_cursos: list[CourseResult] = []
+    all_eligible: list[tuple[str, float, str]] = []
 
     for semestre, m in [("1°", m1), ("2°", m2)]:
-        for course_key, nota in sorted(m.items(), key=lambda x: x[1], reverse=True):
+        for course_key, nota in m.items():
             if course_key in seen:
                 continue
-            prob = calculate_approval_probability(arg_previsto, nota, rmse=ARG_FINAL_MAE)
-            if prob < MIN_PROB_THRESHOLD:
-                continue
             seen.add(course_key)
+            all_eligible.append((course_key, nota, semestre))
+
+    top_cursos: list[CourseResult] = []
+    if inp.is_logged_in:
+        # Com login: top 8 cursos com prob >= 30% ordenados por maior probabilidade
+        for course_key, nota, semestre in all_eligible:
+            prob = calculate_approval_probability(arg_previsto, nota, rmse=ARG_FINAL_MAE)
+            if prob >= MIN_PROB_THRESHOLD:
+                parts = _parse_course_key(course_key)
+                top_cursos.append(CourseResult(
+                    curso=parts["curso"],
+                    turno=parts["turno"],
+                    campus=parts["campus"],
+                    nota_corte=round(nota, 3),
+                    prob=round(prob * 100, 1),
+                    semestre=semestre,
+                ))
+        top_cursos.sort(key=lambda c: c.prob, reverse=True)
+        top_cursos = top_cursos[:TOP_CURSOS_LIMIT]
+    else:
+        # Sem login: 3 cursos com corte mais próximo de arg_previsto (abs(nota - arg_previsto))
+        all_eligible.sort(key=lambda item: abs(item[1] - arg_previsto))
+        for course_key, nota, semestre in all_eligible[:3]:
+            prob = calculate_approval_probability(arg_previsto, nota, rmse=ARG_FINAL_MAE)
             parts = _parse_course_key(course_key)
             top_cursos.append(CourseResult(
                 curso=parts["curso"],
@@ -87,12 +108,6 @@ def predict_student(inp: PredictInput) -> PredictResponse:
                 prob=round(prob * 100, 1),
                 semestre=semestre,
             ))
-            if len(top_cursos) >= TOP_CURSOS_LIMIT:
-                break
-        if len(top_cursos) >= TOP_CURSOS_LIMIT:
-            break
-
-    top_cursos.sort(key=lambda c: c.prob, reverse=True)
 
     return PredictResponse(
         eb_pas3_previsto=round(eb_pas3_previsto, 3),
@@ -100,7 +115,7 @@ def predict_student(inp: PredictInput) -> PredictResponse:
         arg_min=round(arg_previsto - ARG_FINAL_MAE, 1),
         arg_max=round(arg_previsto + ARG_FINAL_MAE, 1),
         curso_alvo_result=curso_alvo_result,
-        top_cursos=top_cursos[:TOP_CURSOS_LIMIT],
+        top_cursos=top_cursos,
         trienio_ref=trienio_ref,
         modelo_disponivel=modelo_disponivel,
     )
