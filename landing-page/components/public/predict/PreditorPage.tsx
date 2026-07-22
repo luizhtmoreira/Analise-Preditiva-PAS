@@ -429,7 +429,8 @@ export function PreditorPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      console.log("Vetor PAS Auth Check - User:", user, "Error:", error);
       setIsLoggedIn(!!user);
     });
   }, []);
