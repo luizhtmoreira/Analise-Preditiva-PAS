@@ -12,12 +12,13 @@ from api.services.gestao_service import (
 )
 from pas_intelligence.statistics import calculate_approval_probability
 
-TOP_CURSOS_LIMIT = 8
+TOP_CURSOS_LIMIT = 10
 MIN_PROB_THRESHOLD = 0.30
 EB_MAE = 5.0  # margem aproximada para EB PAS 3
 
 
 def predict_student(inp: PredictInput) -> PredictResponse:
+    print(f"--- API PREDICT --- is_logged_in: {inp.is_logged_in}, cota: {inp.cota}, trienio: {inp.trienio}")
     eb_p1 = inp.p1_pas1 + inp.p2_pas1
     eb_p2 = inp.p1_pas2 + inp.p2_pas2
     c_eb  = eb_p2 - eb_p1
