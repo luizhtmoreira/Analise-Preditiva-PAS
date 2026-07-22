@@ -17,6 +17,11 @@ O Vetor PAS resolve essa dor usando modelos de Machine Learning (treinados em da
 2.  **Quanto Falta (Engenharia Reversa):** Calcular exatamente qual a nota mínima (Escore Bruto) que o aluno precisa tirar no PAS 3 para alcançar a nota de corte do curso desejado.
 3.  **Gestão Pedagógica B2B:** Permitir que escolas parceiras façam o upload de turmas inteiras e visualizem o risco dos alunos através de um **Semáforo de Risco** (Verde = Baixo Risco, Amarelo = Médio Risco, Vermelho = Alto Risco).
 
+### 📢 Construindo em Público (Build in Public)
+O Vetor PAS está sendo desenvolvido sob a filosofia **Build in Public**. Isso significa que:
+- O progresso do desenvolvimento, ideias de design, validações e desafios técnicos são compartilhados abertamente com a comunidade.
+- A **Landing Page Temporária** com o formulário de lista de espera (waitlist) foi colocada em produção na `main` desde cedo para validar o interesse e coletar leads qualificados organicamente enquanto o MVP principal (na branch `feat/nextjs-frontend`) é construído.
+
 ---
 
 ## 2. Estratégia de Branches e Landing Pages
