@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { PublicHeader } from "@/components/public/PublicHeader";
 import { fetchPredict, fetchCourses, fetchCorteEvolucao, fetchCourseChamadas } from "@/lib/api";
 import type { PredictResponse, CourseResult, CorteEvolucao, ChamadaCorte } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -739,21 +740,7 @@ export function PreditorPage() {
         }}
       >
 
-        {/* ── Header ── */}
-        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,26,53,0.75)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 40 }}>
-          <div style={{ maxWidth: 680, margin: "0 auto", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <BrandMark sublabel="Preditor PAS 3" />
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div className="hidden sm:flex" style={{ alignItems: "center", gap: 8 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.green, boxShadow: `0 0 8px ${C.green}`, display: "inline-block" }} />
-                <span style={{ fontSize: 11, color: C.dim }}>Modelo ativo</span>
-              </div>
-              <Link href="/" style={{ fontSize: 12, color: C.dim, textDecoration: "none" }} className="hover:!text-white transition-colors">
-                ← Início
-              </Link>
-            </div>
-          </div>
-        </div>
+        <PublicHeader />
 
         {/* ── Conteúdo ── */}
         <div className="pred-grid-bg">

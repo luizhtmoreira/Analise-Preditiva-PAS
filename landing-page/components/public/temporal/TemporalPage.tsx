@@ -6,6 +6,7 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { PublicHeader } from "@/components/public/PublicHeader";
 import { fetchCorteEvolucao } from "@/lib/api";
 import type { TemporalResponse, CorteEvolucao } from "@/lib/types";
 
@@ -139,20 +140,7 @@ export function TemporalPage({ data }: { data: TemporalResponse }) {
       className="min-h-screen text-white"
       style={{ background: "linear-gradient(168deg, #002147 0%, #003366 60%, #003A70 100%)" }}
     >
-      {/* Header */}
-      <div className="border-b border-white/10 sticky top-0 z-40 backdrop-blur-md bg-[#001A35]/75">
-        <div className="max-w-3xl mx-auto px-5 py-3.5 flex items-center justify-between">
-          <BrandMark sublabel="Análise Temporal" />
-          <div className="flex items-center gap-4">
-            <Link href="/predict" className="hidden sm:block text-xs text-white/55 hover:text-white transition-colors">
-              Preditor PAS 3
-            </Link>
-            <Link href="/" className="text-xs text-white/55 hover:text-white transition-colors">
-              ← Início
-            </Link>
-          </div>
-        </div>
-      </div>
+      <PublicHeader />
 
       <div className="max-w-3xl mx-auto px-5 py-14 pb-24">
         <p className="landing-reveal font-mono text-xs tracking-[0.22em] uppercase text-[#7FD8F7] mb-3.5">

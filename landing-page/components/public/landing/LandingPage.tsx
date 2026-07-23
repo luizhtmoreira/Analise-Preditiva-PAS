@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { BrandMark } from "@/components/brand/BrandMark";
 import { CurvaGaussiana } from "@/components/brand/CurvaGaussiana";
+import { PublicHeader } from "@/components/public/PublicHeader";
 
 const FEATURES_PUBLICAS = [
   {
@@ -9,6 +9,13 @@ const FEATURES_PUBLICAS = [
     descricao:
       "Insira seus escores das duas primeiras etapas e receba a previsão do seu Argumento Final — com a probabilidade de aprovação no curso que você quer.",
     detalhe: "ensemble de 4 modelos · ponderado pela sua volatilidade",
+  },
+  {
+    titulo: "Calculadora de Estratégia",
+    href: "/calculadora",
+    descricao:
+      "Defina seu curso alvo e descubra qual escore você precisa tirar na Parte 2 do PAS 3 para alcançar a nota de corte.",
+    detalhe: "reality check histórico · customização de expectativas",
   },
   {
     titulo: "Análise Temporal",
@@ -62,6 +69,7 @@ const PASSOS = [
 export function LandingPage() {
   return (
     <div className="landing-root">
+      <PublicHeader />
       {/* ============ HERO ============ */}
       <header
         className="relative overflow-hidden text-white"
@@ -80,30 +88,6 @@ export function LandingPage() {
             maskImage: "radial-gradient(ellipse 90% 70% at 50% 30%, black, transparent)",
           }}
         />
-
-        <nav className="relative z-10 max-w-6xl mx-auto flex items-center justify-between px-6 pt-7">
-          <BrandMark />
-          <div className="flex items-center gap-1 sm:gap-2 text-sm">
-            <Link
-              href="/predict"
-              className="hidden sm:block px-3 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              Preditor
-            </Link>
-            <Link
-              href="/temporal"
-              className="hidden sm:block px-3 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              Análise Temporal
-            </Link>
-            <Link
-              href="/auth/login"
-              className="px-4 py-2 rounded-lg font-medium border border-white/25 text-white hover:bg-white hover:text-[#003366] transition-colors"
-            >
-              Sou coordenador
-            </Link>
-          </div>
-        </nav>
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-0 sm:pt-24">
           <div className="max-w-3xl">
