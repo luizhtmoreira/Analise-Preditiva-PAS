@@ -152,3 +152,18 @@ export interface StudentRow {
   p2_pas2: number;
   red_pas2: number;
 }
+
+export interface StrategyResponse {
+  p1_estimado: number;
+  p2_necessario: number;
+  red_estimada: number;
+  total_pas3: number;
+  arg_pas3_necessario: number;
+  status: string;
+  mensagem: string;
+  prob_hist: number;
+  amostra: number;
+  p1_ia: number;
+  red_ia: number;
+}
+

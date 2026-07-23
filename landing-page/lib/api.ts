@@ -85,3 +85,29 @@ export async function fetchPredict(body: {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+export async function fetchCoursesCutoff(curso: string, cota: string, trienio: string, semestre: string): Promise<{ cutoff: number }> {
+  const params = new URLSearchParams({ curso, cota, trienio, semestre });
+  const res = await fetch(`${API_URL}/api/courses/cutoff?${params}`);
+  if (!res.ok) return { cutoff: 0 };
+  return res.json();
+}
+
+export async function fetchStrategy(body: {
+  p1_pas1: number; p2_pas1: number; red_pas1: number;
+  p1_pas2: number; p2_pas2: number; red_pas2: number;
+  nota_alvo: number;
+  ciclo_aluno: string;
+  p1_override?: number | null;
+  red_override?: number | null;
+  base_projecao?: string;
+}) {
+  const res = await fetch(`${API_URL}/api/predict/strategy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
