@@ -40,3 +40,32 @@ class ChamadaCorte(BaseModel):
     campus: str
     turno: str
     nota_corte: float
+
+
+class StrategyInput(BaseModel):
+    p1_pas1: float
+    p2_pas1: float
+    red_pas1: float
+    p1_pas2: float
+    p2_pas2: float
+    red_pas2: float
+    nota_alvo: float
+    ciclo_aluno: str
+    p1_override: Optional[float] = None
+    red_override: Optional[float] = None
+    base_projecao: str = "Utilizar Projeção Tendência"
+
+
+class StrategyResponse(BaseModel):
+    p1_estimado: float
+    p2_necessario: float
+    red_estimada: float
+    total_pas3: float
+    arg_pas3_necessario: float
+    status: str
+    mensagem: str
+    prob_hist: float
+    amostra: int
+    p1_ia: float
+    red_ia: float
+

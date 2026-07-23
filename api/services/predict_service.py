@@ -3,7 +3,7 @@ Preditor PAS 3 — previsão individual de EB e Argumento Final.
 """
 import numpy as np
 
-from api.schemas.predict import PredictInput, PredictResponse, CourseResult
+from api.schemas.predict import PredictInput, PredictResponse, CourseResult, StrategyInput, StrategyResponse
 from api.services import gestao_service          # referência ao módulo, não ao valor
 from api.services.gestao_service import (
     _find_best_match,
@@ -198,6 +198,17 @@ def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) 
     turno = parts["turno"].upper()
     campus = parts["campus"].upper()
 
+    # Resolve reference triennium if not present in database (e.g. future triennium)
+    trienio_ref = trienio
+    if trienio not in df_corte["Trienio"].dropna().unique():
+        try:
+            start, end = map(int, trienio.split("-"))
+            trienio_ref = f"{start - 1}-{end - 1}"
+            if trienio_ref not in df_corte["Trienio"].dropna().unique():
+                trienio_ref = "2022-2024"
+        except Exception:
+            trienio_ref = "2022-2024"
+
     # Filter system name
     available_systems = list(df_corte["Sistema_Nome"].dropna().unique())
     sistema = _find_best_match(cota, available_systems, cutoff=0.6) if available_systems else cota
@@ -208,7 +219,7 @@ def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) 
         (df_corte["Turno"].str.upper() == turno) &
         (df_corte["Campus"].str.upper() == campus) &
         (df_corte["Sistema_Nome"] == sistema) &
-        (df_corte["Trienio"] == trienio)
+        (df_corte["Trienio"] == trienio_ref)
     )
     
     # Semestre filter (1° ou 2°)
@@ -232,3 +243,67 @@ def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) 
             "nota_corte": float(row.get("Min", 0.0)) if pd.notna(row.get("Min")) else 0.0
         })
     return out
+
+
+def predict_strategy(inp: StrategyInput) -> StrategyResponse:
+    from pas_intelligence.target_calculator import TargetCalculator, get_strategy_prediction
+    from pas_intelligence.statistics import calculate_cohort_evolution_probability
+    from api.services.gestao_service import TRIENNIUM_STATS, STATS_PAS3_TREND, _df_cohort
+    from api.schemas.predict import StrategyResponse
+
+    notas_validas = {
+        'P1_PAS1': inp.p1_pas1,
+        'P2_PAS1': inp.p2_pas1,
+        'Red_PAS1': inp.red_pas1,
+        'P1_PAS2': inp.p1_pas2,
+        'P2_PAS2': inp.p2_pas2,
+        'Red_PAS2': inp.red_pas2
+    }
+
+    # Calcula as previsões automáticas da IA (p1_ia, red_ia)
+    calc = TargetCalculator()
+    previsao_ia = calc.predict_stable_components(notas_validas)
+    p1_ia = float(previsao_ia.get('p1_pred', 0.0))
+    red_ia = float(previsao_ia.get('red_pred', 0.0))
+
+    # Executa predição de rota de aprovação
+    result = get_strategy_prediction(
+        notas_existentes=notas_validas,
+        nota_alvo=inp.nota_alvo,
+        ciclo_aluno=inp.ciclo_aluno,
+        triennium_stats=TRIENNIUM_STATS,
+        stats_pas3_trend=STATS_PAS3_TREND,
+        p1_override=inp.p1_override,
+        red_override=inp.red_override,
+        base_projecao=inp.base_projecao
+    )
+
+    # Reality Check (coorte histórica)
+    prob_hist = 0.0
+    amostra = 0
+    eb_pas3_necessario = result.p1_estimado + result.p2_necessario
+    
+    if _df_cohort is not None and not _df_cohort.empty:
+        try:
+            eb_pas1 = inp.p1_pas1 + inp.p2_pas1
+            eb_pas2 = inp.p1_pas2 + inp.p2_pas2
+            aluno_dados = {'eb_pas1': eb_pas1, 'eb_pas2': eb_pas2}
+            prob_hist, amostra = calculate_cohort_evolution_probability(aluno_dados, eb_pas3_necessario, _df_cohort)
+        except Exception as e:
+            print(f"Erro ao calcular probabilidade de coorte: {e}")
+            pass
+
+    return StrategyResponse(
+        p1_estimado=result.p1_estimado,
+        p2_necessario=result.p2_necessario,
+        red_estimada=result.red_estimada,
+        total_pas3=result.total_pas3,
+        arg_pas3_necessario=result.arg_pas3_necessario,
+        status=result.status,
+        mensagem=result.mensagem,
+        prob_hist=round(prob_hist, 1),
+        amostra=amostra,
+        p1_ia=p1_ia,
+        red_ia=red_ia
+    )
+
