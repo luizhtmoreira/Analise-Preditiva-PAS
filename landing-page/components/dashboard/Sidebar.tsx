@@ -9,6 +9,7 @@ import {
   FileText,
   Target,
   TrendingUp,
+  Calculator,
   LogOut,
   Menu,
   X,
@@ -25,9 +26,11 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
 ];
 
 const PUBLIC_NAV: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/predict",  label: "Preditor PAS 3",   icon: Target },
-  { href: "/temporal", label: "Análise Temporal", icon: TrendingUp },
+  { href: "/predict",     label: "Preditor PAS 3",            icon: Target },
+  { href: "/calculadora", label: "Calculadora de Estratégia", icon: Calculator },
+  { href: "/temporal",    label: "Análise Temporal",          icon: TrendingUp },
 ];
+
 
 const TENANT_LABELS: Record<string, string> = {
   marista: "Colégio Marista",
