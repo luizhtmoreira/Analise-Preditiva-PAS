@@ -1,3 +1,4 @@
+import re
 import sys
 from pathlib import Path
 
@@ -6,8 +7,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import pytest  # type: ignore
 
 from pas_extraction import ResultadoExtracao, extrair_edital  # type: ignore
-from pas_extraction.models import FamiliaDesconhecidaError, FamiliaEdital  # type: ignore
+from pas_extraction.models import (  # type: ignore
+    FamiliaDesconhecidaError,
+    FamiliaEdital,
+)
 from pas_extraction.schema import canonizar, classificar_familia  # type: ignore
+from pas_extraction.validacao import validar_sequencia_e_ordem  # type: ignore
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 FIXTURE_RESULTADO_FINAL = FIXTURES_DIR / "resultado_final_22_campos.pdf"
@@ -16,13 +21,27 @@ FIXTURE_RESULTADO_FINAL = FIXTURES_DIR / "resultado_final_22_campos.pdf"
 # 'data/pdfs/Ed_38_2024_PAS_3_2022-2024_Res_final_não_eliminados.pdf' 1 6 <destino>`.
 # Páginas 1-6 (acima do "3 a 5" sugerido) de propósito: é o intervalo mais curto que
 # inclui uma troca real de curso (ADMINISTRAÇÃO -> AGRONOMIA, na página 6), que é o
-# comportamento que este ticket pede para os cabeçalhos intercalados no fluxo. Alguns
-# candidatos a registro nessas páginas têm número partido por espaço (ex.: "1 7.539") —
-# corrupção real preservada pela fatia, fora do escopo desta costura (ver ticket 02).
-CONTAGEM_ESPERADA = 170
+# comportamento que este ticket pede para os cabeçalhos intercalados no fluxo.
+#
+# Ticket 02: 19 dos candidatos a registro nessas páginas têm um campo numérico partido
+# por espaço (ex.: "1 7.539") ou sinal negativo separado (ex.: "- 21.683") — antes do
+# ticket 02 eram descartados inteiros (170 sobreviviam); agora `_tentar_float` repara o
+# valor e `campos_formato_invalido` sinaliza o campo, então os 19 passam a aparecer no
+# resultado (189 no total). Só 1 candidato continua descartado de verdade: o último
+# registro da página 6, cortado pelo limite da fixture (span incompleto, não corrupção).
+CONTAGEM_ESPERADA = 189
 CURSO_1 = "ADMINISTRAÇÃO (BACHARELADO)"
 CURSO_2 = "AGRONOMIA (BACHARELADO)"
 
+# Segunda fixture: página 1 (schema) + página 186 de Ed_38 — não contíguas, geradas com
+# `fatiar_paginas` (ver fixtures.py) em vez de `fatiar_fixture`. A página 186 contém DOIS
+# cursos pequenos por inteiro (ARQUIVOLOGIA, 16 Alunos; CIÊNCIAS AMBIENTAIS, 9 Alunos) —
+# ao contrário da fixture de 6 páginas, onde todo curso está truncado (só uma fração dele
+# cabe na fatia), aqui a classificação 1..N de cada Sistema fecha sem buraco nenhum. É a
+# única forma de ter um "curso completo" pequeno o bastante para fixture: um curso grande
+# como ADMINISTRAÇÃO nunca caberia inteiro numa fatia pequena.
+FIXTURE_CURSO_COMPLETO = FIXTURES_DIR / "resultado_final_curso_completo.pdf"
+CURSO_PEQUENO_COMPLETO = "CIÊNCIAS AMBIENTAIS (BACHARELADO)"
 
 def _pular_se_fixture_ausente(caminho: Path) -> None:
     if not caminho.exists():
@@ -153,6 +172,193 @@ class TestExtrairEditalResultadoFinal:
         for r in resultado.registros:
             assert r.inscricao.isdigit() and len(r.inscricao) == 8
             assert not any(ch.isdigit() for ch in r.nome)
+
+
+class TestValidacaoFormatoNumerico:
+    """Ticket 02, verificação 1: `^-?\\d+\\.\\d{3}$` exato contra o texto bruto.
+
+    Número partido por espaço não é mais descartado (era o comportamento do ticket 01) —
+    `_tentar_float` repara o valor removendo o espaço interno, e o campo é sinalizado em
+    `validacao.campos_formato_invalido` para quem for filtrar por confiança.
+    """
+
+    def test_numero_partido_no_meio_e_reparado_e_sinalizado(self):
+        # Regressão do caso do protótipo "56.29 1 que deve virar 56.291": aqui o exemplo
+        # real da fixture é "1 7.539" -> 17.539 (mesma classe de corrupção, espaço solto
+        # dentro do número; ver spec.md e scripts/NOTES.md, achado 5c).
+        _pular_se_fixture_ausente(FIXTURE_RESULTADO_FINAL)
+
+        resultado = extrair_edital(FIXTURE_RESULTADO_FINAL)
+        # Único registro com exatamente este campo sinalizado nesta fixture —
+        # identificado pela própria condição sob teste, não por inscrição.
+        registro = next(
+            r for r in resultado.registros
+            if r.validacao.campos_formato_invalido == ("eb_p2_e1",)
+        )
+
+        assert registro.eb_p2_e1 == 17.539
+        assert registro.validacao.campos_formato_invalido == ("eb_p2_e1",)
+        assert not registro.validacao.valido
+
+    def test_sinal_negativo_separado_e_reparado_e_sinalizado(self):
+        # Regressão do caso do protótipo "- 58.570 com o sinal negativo separado": aqui o
+        # exemplo real da fixture é "- 21.683" -> -21.683, no campo argumento_final, e
+        # "4.6 14" -> 4.614 no mesmo registro (dois campos partidos, dois tipos de corte).
+        _pular_se_fixture_ausente(FIXTURE_RESULTADO_FINAL)
+
+        resultado = extrair_edital(FIXTURE_RESULTADO_FINAL)
+        # Único registro com exatamente estes dois campos sinalizados nesta fixture —
+        # identificado pela própria condição sob teste, não por inscrição.
+        registro = next(
+            r for r in resultado.registros
+            if set(r.validacao.campos_formato_invalido) == {"eb_p1_e2", "argumento_final"}
+        )
+
+        assert registro.argumento_final == -21.683
+        assert registro.eb_p1_e2 == 4.614
+        assert set(registro.validacao.campos_formato_invalido) == {"eb_p1_e2", "argumento_final"}
+
+    def test_registro_sem_corrupcao_nao_e_sinalizado(self):
+        _pular_se_fixture_ausente(FIXTURE_RESULTADO_FINAL)
+
+        resultado = extrair_edital(FIXTURE_RESULTADO_FINAL)
+        registro = next(r for r in resultado.registros if r.validacao.campos_formato_invalido == ())
+
+        assert registro.validacao.campos_formato_invalido == ()
+
+    def test_total_de_registros_sinalizados_por_formato(self):
+        # 19 registros da fixture têm exatamente um campo numérico partido por espaço —
+        # fixa a contagem para que uma mudança no reparo não esconda regressão silenciosa.
+        _pular_se_fixture_ausente(FIXTURE_RESULTADO_FINAL)
+
+        resultado = extrair_edital(FIXTURE_RESULTADO_FINAL)
+
+        sinalizados = [r for r in resultado.registros if r.validacao.campos_formato_invalido]
+        assert len(sinalizados) == 19
+
+
+class TestCabecalhoDeCursoEngolido:
+    """Ticket 02, regressão do caso do protótipo: cabeçalho de curso colado ao fim do
+    último registro do curso anterior (achado (a) do NOTES.md, exemplo real "ENGENHARIA
+    DE REDES DE COMUNICAÇÃO (BACHARELADO)"). A fixture reproduz a mesma classe de
+    corrupção com a troca real ADMINISTRAÇÃO -> AGRONOMIA que ela contém: o cabeçalho do
+    novo curso, no PDF de origem, vem colado sem separador ao fim do último registro do
+    curso anterior. Regressão: nem o último registro do curso 1 nem o primeiro do curso 2
+    devem carregar fragmento do cabeçalho dentro dos seus campos.
+    """
+
+    def test_registros_ao_redor_da_troca_de_curso_nao_carregam_o_cabecalho(self):
+        _pular_se_fixture_ausente(FIXTURE_RESULTADO_FINAL)
+
+        resultado = extrair_edital(FIXTURE_RESULTADO_FINAL)
+        cursos = [r.curso for r in resultado.registros]
+        indice_transicao = cursos.index(CURSO_2)
+        ultimo_curso_1 = resultado.registros[indice_transicao - 1]
+        primeiro_curso_2 = resultado.registros[indice_transicao]
+
+        for r in (ultimo_curso_1, primeiro_curso_2):
+            assert not any(ch.isdigit() for ch in r.nome)
+            assert r.inscricao.isdigit() and len(r.inscricao) == 8
+
+
+class TestSequenciaDeClassificacao:
+    """Ticket 02, verificação 2: classificação como sequência 1..N por curso e Sistema.
+
+    `CURSO_PEQUENO_COMPLETO` é o único curso, entre as fixtures deste projeto, extraído
+    por inteiro (as demais são recortes truncados de um curso maior — ver comentário da
+    constante) — por isso é a única base em que "sem buraco" é uma afirmação real, não um
+    artefato do corte da fixture.
+    """
+
+    def test_curso_completo_sem_corrupcao_nao_tem_buraco(self):
+        _pular_se_fixture_ausente(FIXTURE_CURSO_COMPLETO)
+
+        resultado = extrair_edital(FIXTURE_CURSO_COMPLETO)
+        grupo = [r for r in resultado.registros if r.curso == CURSO_PEQUENO_COMPLETO]
+
+        assert len(grupo) == 9
+        assert all(r.validacao.valido for r in grupo)
+        assert all(not r.validacao.buracos_classificacao for r in grupo)
+
+    def test_registro_que_o_parser_perdeu_deixa_buraco_detectavel(self):
+        # Regressão do caso do protótipo "registros colados, o segundo perde o número de
+        # inscrição" (achado (b) do NOTES.md): quando isso acontece, a âncora do segundo
+        # registro nunca é encontrada e ele simplesmente não existe na lista extraída —
+        # não sobra nada nele mesmo para apontar o problema (spec.md, "Camadas de
+        # validação"). Simula exatamente essa perda a partir de dados reais e completos:
+        # remove um registro real da lista que `extrair_edital` já extraiu, e confere que
+        # o buraco aparece na posição certa para os demais.
+        _pular_se_fixture_ausente(FIXTURE_CURSO_COMPLETO)
+
+        resultado = extrair_edital(FIXTURE_CURSO_COMPLETO)
+        grupo = [r for r in resultado.registros if r.curso == CURSO_PEQUENO_COMPLETO]
+        # Identificado pela própria posição sob teste, não por nome — único registro do
+        # curso na posição 4 do Sistema Universal.
+        removido = next(r for r in grupo if r.classificacoes[1] == 4)
+        assert removido.classificacoes[1] == 4  # posição que vai faltar, Sistema Universal
+
+        restante = [r for r in grupo if r is not removido]
+        validar_sequencia_e_ordem(restante)
+
+        assert len(restante) == 8
+        for r in restante:
+            assert r.validacao.buracos_classificacao == {1: (4,)}
+            assert not r.validacao.valido
+
+    def test_registro_de_posicao_maxima_perdido_e_um_ponto_cego_conhecido(self):
+        # Limitação inerente à técnica (documentada em validacao.py): N é inferido como
+        # o maior valor observado, então perder justo o registro de posição N encolhe o
+        # "esperado" junto com ele — nenhum buraco aparece. Fixa esse comportamento como
+        # conhecido (não como bug) para que não seja "descoberto" de novo mais tarde; é
+        # exatamente o oposto do teste anterior (que perde uma posição do meio).
+        _pular_se_fixture_ausente(FIXTURE_CURSO_COMPLETO)
+
+        resultado = extrair_edital(FIXTURE_CURSO_COMPLETO)
+        grupo = [r for r in resultado.registros if r.curso == CURSO_PEQUENO_COMPLETO]
+        # Identificado pela própria posição sob teste, não por nome — único registro do
+        # curso na posição máxima (9) do Sistema Universal.
+        removido = next(r for r in grupo if r.classificacoes[1] == 9)
+        assert removido.classificacoes[1] == 9  # a maior posição do Sistema Universal aqui
+
+        restante = [r for r in grupo if r is not removido]
+        validar_sequencia_e_ordem(restante)
+
+        assert all(not r.validacao.buracos_classificacao for r in restante)
+
+
+class TestOrdemAlfabetica:
+    """Ticket 02, verificação 3: ordem alfabética dentro do curso."""
+
+    def test_curso_completo_sem_corrupcao_esta_em_ordem(self):
+        _pular_se_fixture_ausente(FIXTURE_CURSO_COMPLETO)
+
+        resultado = extrair_edital(FIXTURE_CURSO_COMPLETO)
+        grupo = [r for r in resultado.registros if r.curso == CURSO_PEQUENO_COMPLETO]
+
+        assert all(not r.validacao.fora_de_ordem_alfabetica for r in grupo)
+
+    def test_registros_colados_fora_de_ordem_sao_sinalizados(self):
+        # Regressão da mesma classe de corrupção do teste anterior: registros colados
+        # embaralham a ordem em que os nomes aparecem no fluxo. Simula isso trocando dois
+        # registros reais e adjacentes de posição, e confere que só o que ficou fora do
+        # lugar é sinalizado — os outros sete continuam válidos.
+        _pular_se_fixture_ausente(FIXTURE_CURSO_COMPLETO)
+
+        resultado = extrair_edital(FIXTURE_CURSO_COMPLETO)
+        grupo = [r for r in resultado.registros if r.curso == CURSO_PEQUENO_COMPLETO]
+        # Qualquer par adjacente serve: o grupo já está confirmado em ordem alfabética
+        # pelo teste anterior, então trocar dois adjacentes sempre produz exatamente uma
+        # quebra — a posição j (o antigo i) fica fora de ordem relativa à posição i (o
+        # antigo j). Não depende de nome específico, então não precisa de literal aqui.
+        i, j = 3, 4
+        nome_esperado_fora_de_ordem = grupo[i].nome
+
+        embaralhado = list(grupo)
+        embaralhado[i], embaralhado[j] = embaralhado[j], embaralhado[i]
+        validar_sequencia_e_ordem(embaralhado)
+
+        fora_de_ordem = [r.nome for r in embaralhado if r.validacao.fora_de_ordem_alfabetica]
+        assert fora_de_ordem == [nome_esperado_fora_de_ordem]
 
 
 if __name__ == "__main__":
