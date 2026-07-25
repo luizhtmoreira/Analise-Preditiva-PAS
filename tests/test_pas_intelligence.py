@@ -426,5 +426,48 @@ class TestTargetCalculator:
         assert res.p2_necessario == 0.0
 
 
+# =============================================================================
+# TESTES: pas_constants.py (ticket 12 — OFFICIAL_STATS com valores oficiais)
+# =============================================================================
+
+class TestExamStats:
+    """Testes para o ExamStats com Parte 1 por língua (ticket 12)."""
+
+    def test_m_p1_e_dp_p1_sao_media_das_tres_linguas(self):
+        """m_p1/dp_p1 continuam existindo, mas como média simples das três línguas."""
+        from pas_intelligence.pas_constants import ExamStats, ValorLingua  # type: ignore
+
+        stats = ExamStats(
+            m_p2=25.0, dp_p2=13.0, m_red=6.0, dp_red=2.0,
+            parte_1={
+                "inglesa": ValorLingua(3.0, 2.0),
+                "francesa": ValorLingua(6.0, 2.6),
+                "espanhola": ValorLingua(3.0, 2.0),
+            },
+        )
+
+        assert stats.m_p1 == pytest.approx(4.0)  # (3 + 6 + 3) / 3
+        assert stats.dp_p1 == pytest.approx(2.2)  # (2.0 + 2.6 + 2.0) / 3
+
+    def test_official_stats_tem_24_entradas_com_tres_linguas_cada(self):
+        """As 21 entradas antigas mais o triênio 2023/2025 (3 Etapas), todas com Parte 1
+        completa — nenhuma ficou com estimativa parcial de língua."""
+        from pas_intelligence.pas_constants import OFFICIAL_STATS  # type: ignore
+
+        assert len(OFFICIAL_STATS) == 24
+        assert (2023, 1) in OFFICIAL_STATS and (2024, 2) in OFFICIAL_STATS and (2025, 3) in OFFICIAL_STATS
+        for chave, stats in OFFICIAL_STATS.items():
+            assert set(stats.parte_1) == {"inglesa", "francesa", "espanhola"}, chave
+
+    def test_consumidor_analytics_service_continua_funcionando(self):
+        """api/services/analytics_service.py lê s.m_p1 e s.m_p1 + s.m_p2 — a interface não
+        pode quebrar mesmo com a mudança de forma da Parte 1."""
+        from pas_intelligence.pas_constants import OFFICIAL_STATS  # type: ignore
+
+        s = OFFICIAL_STATS[(2022, 1)]
+        assert isinstance(s.m_p1, float)
+        assert isinstance(s.m_p1 + s.m_p2, float)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
