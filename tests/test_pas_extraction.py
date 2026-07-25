@@ -1,3 +1,4 @@
+import csv
 import re
 import sys
 from pathlib import Path
@@ -13,6 +14,8 @@ from pas_extraction.models import (  # type: ignore
     FamiliaDesconhecidaError,
     FamiliaEdital,
 )
+from pas_extraction.cotas import deduzir_cota_declarada  # type: ignore
+from pas_extraction.csv_writer import CSV_COLUMNS, escrever_csv  # type: ignore
 from pas_extraction.schema import canonizar, classificar_familia  # type: ignore
 from pas_extraction.validacao import validar_sequencia_e_ordem  # type: ignore
 
@@ -44,6 +47,31 @@ CURSO_2 = "AGRONOMIA (BACHARELADO)"
 # como ADMINISTRAÇÃO nunca caberia inteiro numa fatia pequena.
 FIXTURE_CURSO_COMPLETO = FIXTURES_DIR / "resultado_final_curso_completo.pdf"
 CURSO_PEQUENO_COMPLETO = "CIÊNCIAS AMBIENTAIS (BACHARELADO)"
+
+# Ticket 06: dois Alunos reais de ARQUIVOLOGIA são classificados nos Sistemas 1, 3, 5, 7 e
+# 9 — o fecho para baixo de {Renda, PPI}, o padrão de cota mais rico que existe nas
+# fixtures deste projeto (nenhuma delas tem Aluno PcD; ver relatório do ticket 06 para a
+# contagem no corpus inteiro). Os testes selecionam por curso + tamanho do padrão, nunca
+# por nome ou inscrição — nenhum dos dois precisa ser um literal no código.
+CURSO_COM_PADRAO_RICO = "ARQUIVOLOGIA (BACHARELADO)"
+
+# Quarta fixture: Ed_31 (2016/2018), página 1 (schema) + páginas 82-83, onde um registro
+# real cai na virada de página. Ela existe para exercitar o único padrão de cota **não
+# fecho** encontrado no corpus inteiro (ver relatório do ticket 06): a extração de texto
+# emite o número da página no *início* do texto dela, então o último registro da página
+# 82, cujo 22º campo só começa na 83, lê o número da página seguinte como se fosse a 10ª
+# classificação. Gerada com:
+#   python -c "
+#   import sys; sys.path.insert(0, 'src')
+#   from pas_extraction.fixtures import fatiar_paginas
+#   fatiar_paginas(
+#       'data/pdfs/Ed_31_2016-2018_PAS_3_Res_final_nao_eliminados.pdf',
+#       [1, 82, 83],
+#       'tests/fixtures/resultado_final_cota_suspeita.pdf',
+#   )"
+# O Aluno afetado é identificado pelo próprio sinal que o ticket 06 pede (o padrão que não
+# é fecho), nunca por inscrição — é o único registro suspeito neste recorte.
+FIXTURE_COTA_SUSPEITA = FIXTURES_DIR / "resultado_final_cota_suspeita.pdf"
 
 # Terceira fixture: Ed_27 (2021/2023, tipo D + redação), a única família com duas seções
 # de schema diferente no mesmo arquivo (ticket 05). Página 1 (schema) + páginas 99-101
@@ -452,6 +480,208 @@ class TestParseDirigidoPorSecao:
         resultado = extrair_edital(FIXTURE_RESULTADO_FINAL)
 
         assert len(resultado.registros) == CONTAGEM_ESPERADA
+
+
+def _classificacoes(*sistemas: int) -> dict:
+    """Monta o dicionário de 10 classificações a partir dos Sistemas em que o Aluno aparece.
+
+    A posição em si (1º, 2º, ...) é irrelevante para a dedução de cota — o que importa é
+    só *ter* ou *não ter* classificação em cada Sistema; qualquer inteiro serve.
+    """
+    return {i: (1 if i in sistemas else None) for i in range(1, 11)}
+
+
+class TestCotaDeclarada:
+    """Ticket 06: os quatro atributos binários deduzidos do padrão das 10 classificações.
+
+    Os Sistemas de Escola Pública são **aninhados**: quem é ≤1,5 SM concorre também às
+    vagas de >1,5 SM, quem é PPI concorre também às não-PPI (cascata da Lei 12.711). Então
+    o padrão observado é sempre o *fecho para baixo* do reticulado, e os atributos do Aluno
+    são os do subsistema **mais específico** em que ele aparece.
+    """
+
+    def test_aluno_so_no_universal_nao_declara_cota_nenhuma(self):
+        # 71% dos Alunos. É por isso que o campo se chama *cota declarada* e nunca *cota
+        # elegível*: aqui é impossível distinguir quem não tem direito a cota de quem tem
+        # e optou por não usar — o dado registra a opção, não a elegibilidade.
+        cota = deduzir_cota_declarada(_classificacoes(1))
+
+        assert not cota.sistema_negros
+        assert not cota.escola_publica
+        assert not cota.renda_baixa
+        assert not cota.ppi
+        assert not cota.pcd
+        assert cota.perfil == "Universal"
+        assert not cota.padrao_suspeito
+
+    def test_cota_para_negros_nao_e_escola_publica(self):
+        # O Aluno opta por um sistema ou por outro na inscrição: Cota para Negros nunca
+        # coocorre com subsistema de Escola Pública.
+        cota = deduzir_cota_declarada(_classificacoes(1, 2))
+
+        assert cota.sistema_negros
+        assert not cota.escola_publica
+        assert cota.perfil == "Cota para Negros"
+        assert not cota.padrao_suspeito
+
+    def test_escola_publica_sem_nenhum_outro_atributo(self):
+        # Fecho de atributos vazio: só o subsistema menos específico de todos (9), que não
+        # exige renda baixa, nem PPI, nem PcD.
+        cota = deduzir_cota_declarada(_classificacoes(1, 9))
+
+        assert cota.escola_publica
+        assert not cota.renda_baixa and not cota.ppi and not cota.pcd
+        assert cota.perfil == "EP / Alta Renda / Não-PPI"
+        assert not cota.padrao_suspeito
+
+    def test_os_atributos_vem_do_subsistema_mais_especifico(self):
+        # {3, 5, 7, 9} é o fecho para baixo de {Renda, PPI}: o Aluno aparece no subsistema
+        # 3 (o mais específico, que exige os dois) e, por cascata, em todos os que exigem
+        # menos. Os atributos são os do 3 — não os do 9, onde ele também aparece.
+        cota = deduzir_cota_declarada(_classificacoes(1, 3, 5, 7, 9))
+
+        assert cota.escola_publica and cota.renda_baixa and cota.ppi
+        assert not cota.pcd
+        assert cota.perfil == "EP / Baixa Renda / PPI"
+        assert not cota.padrao_suspeito
+
+    def test_fecho_completo_dos_quatro_atributos(self):
+        # O Aluno mais específico possível (EP + renda baixa + PPI + PcD) aparece nos 8
+        # subsistemas de Escola Pública ao mesmo tempo — o fecho inteiro do reticulado.
+        cota = deduzir_cota_declarada(_classificacoes(1, 3, 4, 5, 6, 7, 8, 9, 10))
+
+        assert cota.escola_publica and cota.renda_baixa and cota.ppi and cota.pcd
+        assert cota.perfil == "EP / Baixa Renda / PPI / PcD"
+        assert not cota.padrao_suspeito
+
+    def test_padrao_que_nao_e_fecho_e_sinalizado_e_nao_descartado(self):
+        # Aparecer no subsistema 3 (exige renda baixa + PPI) sem aparecer no 5, 7 e 9
+        # (que exigem menos) é impossível pela cascata da Lei 12.711 — é sinal de
+        # corrupção de extração. O registro continua com os atributos deduzidos do
+        # subsistema mais específico observado; só ganha a marca de suspeito.
+        cota = deduzir_cota_declarada(_classificacoes(1, 3))
+
+        assert cota.padrao_suspeito
+        assert cota.escola_publica and cota.renda_baixa and cota.ppi
+        assert cota.perfil == "EP / Baixa Renda / PPI"
+
+    def test_negros_junto_de_escola_publica_e_padrao_impossivel(self):
+        # O Aluno opta por um sistema ou por outro na inscrição, então os dois nunca
+        # coocorrem (confirmado no corpus: a única ocorrência em 66.313 registros é um
+        # artefato de extração). Sem esta checagem, {1,2,3,5,7,9} passaria limpo — o lado
+        # de Escola Pública é um fecho válido — e ainda teria a declaração de Negros
+        # apagada do rótulo, que é corrupção silenciosa.
+        cota = deduzir_cota_declarada(_classificacoes(1, 2, 3, 5, 7, 9))
+
+        assert cota.padrao_suspeito
+        # Nada é descartado: as duas declarações continuam legíveis nos booleanos, mesmo
+        # com o rótulo tendo de escolher uma delas.
+        assert cota.sistema_negros
+        assert cota.escola_publica and cota.renda_baixa and cota.ppi
+
+    def test_todo_aluno_nao_eliminado_recebe_cota_declarada(self):
+        # Os campos são ranking, não aprovação: o perfil é registrado para todos os
+        # Alunos extraídos, não só para os aprovados.
+        _pular_se_fixture_ausente(FIXTURE_RESULTADO_FINAL)
+
+        resultado = extrair_edital(FIXTURE_RESULTADO_FINAL)
+
+        assert len(resultado.registros) == CONTAGEM_ESPERADA
+        assert all(r.cota_declarada is not None for r in resultado.registros)
+        assert all(isinstance(r.cota_declarada.perfil, str) for r in resultado.registros)
+
+    def test_perfil_de_aluno_real_com_padrao_conhecido(self):
+        # Padrão conferido no Edital real (Ed_38, ARQUIVOLOGIA): classificação nos
+        # Sistemas 1, 3, 5, 7 e 9, e traço nos demais. Selecionado por curso + tamanho do
+        # padrão (não é tautológico: a seleção não afirma QUAIS sistemas, só quantos) —
+        # não precisa de inscrição para identificar o registro.
+        _pular_se_fixture_ausente(FIXTURE_CURSO_COMPLETO)
+
+        resultado = extrair_edital(FIXTURE_CURSO_COMPLETO)
+        aluno = next(
+            r for r in resultado.registros
+            if r.curso == CURSO_COM_PADRAO_RICO
+            and sum(1 for v in r.classificacoes.values() if v is not None) == 5
+        )
+
+        assert [i for i in range(1, 11) if aluno.classificacoes[i] is not None] == [1, 3, 5, 7, 9]
+        assert aluno.cota_declarada.escola_publica
+        assert aluno.cota_declarada.renda_baixa
+        assert aluno.cota_declarada.ppi
+        assert not aluno.cota_declarada.pcd
+        assert not aluno.cota_declarada.sistema_negros
+        assert aluno.cota_declarada.perfil == "EP / Baixa Renda / PPI"
+        assert not aluno.cota_declarada.padrao_suspeito
+
+    def test_nenhum_padrao_real_da_fixture_viola_o_fecho(self):
+        # A validação que sustenta o modelo, no recorte da fixture: todo padrão observado
+        # é fecho para baixo válido do reticulado.
+        _pular_se_fixture_ausente(FIXTURE_RESULTADO_FINAL)
+
+        resultado = extrair_edital(FIXTURE_RESULTADO_FINAL)
+
+        suspeitos = [r.nome for r in resultado.registros if r.cota_declarada.padrao_suspeito]
+        assert suspeitos == []
+
+    def test_padrao_suspeito_real_sobrevive_na_saida_com_a_marca(self):
+        # O caso real que a checagem de fecho pegou no corpus (8 ocorrências em 66.313
+        # registros, todas desta mesma forma): o Aluno é o último registro da página, seu
+        # 22º campo só começa na página seguinte, e o número dessa página — que a extração
+        # emite no início do texto dela — entra no lugar da 10ª classificação. O padrão
+        # resultante ({1, 10}) é impossível pela cascata da Lei 12.711: aparecer no
+        # subsistema que exige PcD sem aparecer no 9, que não exige nada.
+        #
+        # Este teste fixa o comportamento do ticket 06 (sinalizar, não descartar), não o
+        # bug de parse que o originou — esse é de outra camada e está fora deste ticket
+        # (ver relatório, seção de escopo). Quando ele for corrigido, o registro passa a
+        # ter padrão {1} e este teste falha de propósito: é o lembrete de revisitá-lo.
+        _pular_se_fixture_ausente(FIXTURE_COTA_SUSPEITA)
+
+        resultado = extrair_edital(FIXTURE_COTA_SUSPEITA)
+        # Identificado pelo próprio sinal sob teste — é o único registro suspeito deste
+        # recorte (confirmado logo abaixo) — não precisa de inscrição para selecioná-lo.
+        aluno = next(r for r in resultado.registros if r.cota_declarada.padrao_suspeito)
+
+        assert [i for i in range(1, 11) if aluno.classificacoes[i] is not None] == [1, 10]
+        assert aluno.cota_declarada.padrao_suspeito
+        # Não descartado: o registro continua na saída, com os atributos deduzidos do
+        # subsistema mais específico que foi observado.
+        assert aluno in resultado.registros
+        assert aluno.cota_declarada.pcd and aluno.cota_declarada.escola_publica
+        # E é o único do recorte — a marca não é ruído que atinge todo mundo.
+        suspeitos = [r for r in resultado.registros if r.cota_declarada.padrao_suspeito]
+        assert suspeitos == [aluno]
+
+    def test_as_seis_colunas_derivadas_saem_no_csv_junto_das_classificacoes_cruas(self, tmp_path):
+        _pular_se_fixture_ausente(FIXTURE_CURSO_COMPLETO)
+
+        resultado = extrair_edital(FIXTURE_CURSO_COMPLETO)
+        destino = tmp_path / "resultado_final.csv"
+        escrever_csv([resultado], destino)
+
+        with destino.open(encoding="utf-8") as f:
+            linhas = list(csv.DictReader(f))
+
+        derivadas = ("sistema_negros", "escola_publica", "renda_baixa", "ppi", "pcd", "perfil_cota")
+        assert all(coluna in CSV_COLUMNS for coluna in derivadas)
+        # As 10 classificações cruas continuam lá, junto das derivadas.
+        assert all(f"classificacao_sistema_{i}" in CSV_COLUMNS for i in range(1, 11))
+        assert len(linhas) == len(resultado.registros)
+
+        # Mesmo critério de seleção do teste de perfil acima: curso + tamanho do padrão,
+        # não inscrição.
+        linha = next(
+            l for l in linhas
+            if l["curso"] == CURSO_COM_PADRAO_RICO
+            and sum(1 for i in range(1, 11) if l[f"classificacao_sistema_{i}"] != "-") == 5
+        )
+        assert linha["escola_publica"] == "True"
+        assert linha["renda_baixa"] == "True"
+        assert linha["ppi"] == "True"
+        assert linha["pcd"] == "False"
+        assert linha["sistema_negros"] == "False"
+        assert linha["perfil_cota"] == "EP / Baixa Renda / PPI"
+        assert linha["classificacao_sistema_2"] == "-"
 
 
 if __name__ == "__main__":
