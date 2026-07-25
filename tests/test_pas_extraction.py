@@ -13,8 +13,11 @@ from pas_extraction import ResultadoExtracao, extrair_edital  # type: ignore
 from pas_extraction.models import (  # type: ignore
     FamiliaDesconhecidaError,
     FamiliaEdital,
+    Proveniencia,
+    RegistroResultadoFinal,
+    ValidacaoRegistro,
 )
-from pas_extraction.cotas import deduzir_cota_declarada  # type: ignore
+from pas_extraction.cotas import CotaDeclarada, deduzir_cota_declarada  # type: ignore
 from pas_extraction.csv_writer import CSV_COLUMNS, escrever_csv  # type: ignore
 from pas_extraction.schema import canonizar, classificar_familia  # type: ignore
 from pas_extraction.validacao import validar_sequencia_e_ordem  # type: ignore
@@ -403,6 +406,61 @@ class TestSequenciaDeClassificacao:
         validar_sequencia_e_ordem(restante)
 
         assert all(not r.validacao.buracos_classificacao for r in restante)
+
+
+def _registro_minimo(inscricao: str, nome: str, sistema_1: int) -> RegistroResultadoFinal:
+    """O menor `RegistroResultadoFinal` que serve para exercitar `validar_sequencia_e_ordem`
+    isoladamente — só o Sistema Universal é preenchido, o resto é preenchimento inerte."""
+    return RegistroResultadoFinal(
+        campus="Darcy Ribeiro", curso="Curso Sintético", turno="Matutino",
+        inscricao=inscricao, nome=nome,
+        eb_p1_e1=0.0, eb_p2_e1=0.0, red_e1=0.0,
+        eb_p1_e2=0.0, eb_p2_e2=0.0, red_e2=0.0,
+        eb_p1_e3=0.0, eb_p2_e3=0.0, red_e3=0.0,
+        argumento_final=0.0,
+        classificacoes={1: sistema_1},
+        cota_declarada=CotaDeclarada(
+            sistema_negros=False, escola_publica=False, renda_baixa=False,
+            ppi=False, pcd=False, perfil="Universal", padrao_suspeito=False,
+        ),
+        proveniencia=Proveniencia(arquivo_origem="sintetico.pdf", edital="1", trienio="2022/2024", pagina=1),
+        validacao=ValidacaoRegistro(
+            campos_formato_invalido=(), buracos_classificacao={}, fora_de_ordem_alfabetica=False,
+        ),
+    )
+
+
+class TestLimiteDePlausibilidadeDosBuracos:
+    """Ticket 08, achado na rodada completa: o campo de classificação não passa pela
+    mesma validação de formato dos 9 campos numéricos (ticket 02) — um dígito colado (a
+    mesma classe de corrupção do número de página vazando pro último campo, documentada
+    em `cotas.py`) pode virar uma posição absurda. Caso real, corpus inteiro: um único
+    registro leu uma posição de 6 dígitos no Sistema Universal de um curso com ~900
+    classificados — sem limite, `esperado` vira um `range` de centenas de milhares de
+    posições, e o único registro corrompido explode o relatório e o CSV do corpus inteiro
+    (visto na prática: 6,4 GB em vez dos ~25 MB esperados). Ver `validacao._buracos_por_sistema`.
+    """
+
+    def test_posicao_implausivel_nao_gera_buraco_gigante(self):
+        registros = [_registro_minimo(f"{i:08d}", f"Aluno {i}", i) for i in range(1, 10)]
+        registros.append(_registro_minimo("99999999", "Aluno Corrompido", 280852))
+
+        validar_sequencia_e_ordem(registros)
+
+        # O Sistema com a posição implausível fica de fora do cômputo — não é um buraco
+        # contável, e nenhum registro (nem o corrompido, nem os 9 legítimos) carrega um
+        # `buracos_classificacao` com centenas de milhares de posições.
+        assert all(not r.validacao.buracos_classificacao for r in registros)
+
+    def test_buraco_legitimo_continua_detectado_com_o_limite_ativo(self):
+        # O limite não pode apagar o sinal real: um curso de 9 candidatos com a posição 5
+        # faltando continua acusando o buraco normalmente.
+        posicoes = [1, 2, 3, 4, 6, 7, 8, 9, 10]
+        registros = [_registro_minimo(f"{i:08d}", f"Aluno {i}", p) for i, p in enumerate(posicoes, start=1)]
+
+        validar_sequencia_e_ordem(registros)
+
+        assert all(r.validacao.buracos_classificacao == {1: (5,)} for r in registros)
 
 
 class TestOrdemAlfabetica:
