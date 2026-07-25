@@ -97,6 +97,11 @@ _Avoid_: lead, escola potencial, prospect
 Personalização visual do sistema por Tenant: logo, template PDF e cores. Configurado via campo `tenant` no perfil Supabase.
 _Avoid_: customização, branding, tema
 
+**Tela de Perfil (`/perfil`)**:
+Área exclusiva do Aluno Cadastrado para visualização de dados da conta (e-mail, escola vinculada), atualização da escola e acionamento de logout.
+_Avoid_: página do usuário, minha conta, configurações de usuário
+
+
 ### Pré-Lançamento
 
 **Lista de Espera (Waitlist)**:

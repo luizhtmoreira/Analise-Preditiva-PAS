@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 
 /* ─── lista de escolas ──────────────────────────────────────────── */
 // Substitua por consulta ao banco quando a tabela de escolas existir.
-const ESCOLAS = [
+export const ESCOLAS = [
   "Colégio Marista de Brasília",
   "Colégio Ideal",
   "Colégio Dom Bosco",
@@ -40,7 +40,7 @@ const ESCOLAS = [
 
 /* ─── autocomplete de escola ─────────────────────────────────────── */
 
-function EscolaCombobox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function EscolaCombobox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
