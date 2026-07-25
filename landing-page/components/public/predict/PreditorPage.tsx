@@ -733,26 +733,91 @@ export function PreditorPage() {
                       <CourseCombobox value={cursoAlvo} onChange={setCursoAlvo} courses={courses} />
                     ) : (
                       <div
-                        onClick={() => router.push("/auth/entrar?next=/predict")}
+                        onClick={() => router.push("/auth/cadastro?next=/predict")}
                         style={{
-                          background: "rgba(255,255,255,0.02)",
-                          border: "1px dashed rgba(255,255,255,0.15)",
-                          borderRadius: 10,
-                          padding: "12px 14px",
-                          fontSize: 13,
-                          color: C.dim,
+                          background: "linear-gradient(135deg, rgba(0, 174, 239, 0.08) 0%, rgba(0, 33, 71, 0.4) 100%)",
+                          border: "1px solid rgba(0, 174, 239, 0.3)",
+                          borderRadius: 12,
+                          padding: "16px",
                           cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
+                          transition: "all 0.2s ease-in-out",
+                          boxShadow: "0 4px 20px rgba(0, 174, 239, 0.08)",
                         }}
-                        className="hover:border-[#00AEEF]/50 transition-colors"
+                        className="hover:border-[#00AEEF] hover:shadow-[0_4px_25px_rgba(0,174,239,0.18)] transition-all"
                       >
-                        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span>🔒</span>
-                          <span>Entre ou cadastre-se para selecionar um curso alvo</span>
-                        </span>
-                        <span style={{ fontSize: 12, color: C.cyan, fontWeight: 600 }}>Entrar →</span>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: C.cyan,
+                              background: "rgba(0, 174, 239, 0.12)",
+                              border: "1px solid rgba(0, 174, 239, 0.25)",
+                              borderRadius: 20,
+                              padding: "3px 10px",
+                              letterSpacing: "0.02em",
+                            }}
+                          >
+                            <span>✨</span> Recurso para Aluno Cadastrado
+                          </span>
+                        </div>
+
+                        <h4 style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: "0 0 4px 0", display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>🔒</span> Desbloquear seleção de Curso Alvo
+                        </h4>
+
+                        <p style={{ fontSize: 12, color: C.dim, margin: "0 0 14px 0", lineHeight: 1.45 }}>
+                          Selecione seu curso pretendido para calcular a probabilidade exata de aprovação e ter acesso ao <strong>Painel Multi-Curso</strong> + <strong>Quanto Falta</strong>.
+                        </p>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, paddingTop: 4 }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push("/auth/cadastro?next=/predict");
+                            }}
+                            style={{
+                              background: C.cyan,
+                              color: "#002147",
+                              border: "none",
+                              borderRadius: 8,
+                              padding: "8px 14px",
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              transition: "transform 0.15s ease",
+                            }}
+                            className="hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            <span>Cadastrar-se grátis</span>
+                            <span>→</span>
+                          </button>
+
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push("/auth/entrar?next=/predict");
+                            }}
+                            style={{
+                              fontSize: 12,
+                              color: C.cyan,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                              textUnderlineOffset: 3,
+                            }}
+                            className="hover:opacity-80"
+                          >
+                            Já tem conta? Entrar
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
