@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Run the app
+# Run the (locally gitignored) Streamlit app — not part of the public repo, see note below
 streamlit run app/streamlit_app.py
 
 # Run tests
@@ -20,17 +20,17 @@ python calculate.py
 
 ## Architecture
 
-The project is a Streamlit dashboard for predicting student outcomes in PAS/UnB (a Brazilian university entrance program). The backend lives in `src/pas_intelligence/`; the app reads from Supabase and serialized ML models under `models/`.
+The public backend lives in `src/pas_intelligence/`; it reads from Supabase and serialized ML models under `models/`. The original Streamlit dashboard (`app/streamlit_app.py`) is deprecated and gitignored — it still runs locally via `streamlit run app/streamlit_app.py` if present on disk, but it is not tracked in git or published, since it's being superseded by the Next.js frontend (`landing-page/`) + FastAPI backend (`api/`).
 
 ### Key modules
 
-- **`app/streamlit_app.py`** — single-file Streamlit app. Adds `src/` to `sys.path` at startup. Imports from `pas_intelligence` and `pdf_generator`. Contains the multi-tenant config dict `DOMAINS_CONFIG`.
+- **`app/streamlit_app.py`** (gitignored, local-only) — legacy single-file Streamlit app. Adds `src/` to `sys.path` at startup. Imports from `pas_intelligence` and `pdf_generator`. Contains the multi-tenant config dict `DOMAINS_CONFIG`.
 - **`src/pas_intelligence/ensemble.py`** — dynamic ensemble: weights models by student score volatility (Coefficient of Variation). Low CV → linear regression; high CV → LightGBM/RandomForest. Transition via sigmoid.
 - **`src/pas_intelligence/argument_calculator.py`** — computes the PAS *Argumento Final* using official Cebraspe weights (`PESO_P1=0.72`, `PESO_P2=8.28`, `PESO_REDACAO=1.00`). Also projects historical exam stats via linear regression for normalization.
 - **`src/pas_intelligence/target_calculator.py`** — reverse calculator: given a target course cutoff, determines the P2 score the student must achieve in PAS 3. Uses `p1_pas3_model.joblib` and `red_pas3_model.joblib` (both `HistGradientBoostingRegressor`) to estimate P1 and Redação.
 - **`src/pas_intelligence/statistics.py`** — probability of approval modeled as `P(X > cutoff)` where `X ~ N(predicted_arg, RMSE²)`, RMSE=13.49.
 - **`src/pas_intelligence/pas_constants.py`** — `OFFICIAL_STATS` dict keyed by `(year, stage)` with historical mean/std for P1, P2, and Redação used in score normalization.
-- **`scripts/pdf_generator.py`** — `PDFGenerator` class that injects data into whitelabel PDF templates via ReportLab. Templates are in `assets/templates/`.
+- **`src/pdf_generator.py`** — `PDFGenerator` class that injects data into whitelabel PDF templates via ReportLab. Templates are in `assets/templates/` (gitignored, local-only — whitelabel product asset, not published; same treatment as `models/`). Currently only consumed by the legacy Streamlit app; not yet ported to `api/`.
 
 ### ML models (`models/` — gitignored, hosted on Dropbox)
 
