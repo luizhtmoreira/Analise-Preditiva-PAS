@@ -1,10 +1,12 @@
 import re
 import sys
 from pathlib import Path
+from typing import Tuple
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import pytest  # type: ignore
+from pypdf import PdfReader  # type: ignore
 
 from pas_extraction import ResultadoExtracao, extrair_edital  # type: ignore
 from pas_extraction.models import (  # type: ignore
@@ -42,6 +44,55 @@ CURSO_2 = "AGRONOMIA (BACHARELADO)"
 # como ADMINISTRAÇÃO nunca caberia inteiro numa fatia pequena.
 FIXTURE_CURSO_COMPLETO = FIXTURES_DIR / "resultado_final_curso_completo.pdf"
 CURSO_PEQUENO_COMPLETO = "CIÊNCIAS AMBIENTAIS (BACHARELADO)"
+
+# Terceira fixture: Ed_27 (2021/2023, tipo D + redação), a única família com duas seções
+# de schema diferente no mesmo arquivo (ticket 05). Página 1 (schema) + páginas 99-101
+# (não contíguas com a 1, geradas com `fatiar_paginas`): 99 é a cauda da seção 1
+# (eliminados, registros de 4 campos), 100 tem o cabeçalho "2 DO RESULTADO FINAL DOS
+# CANDIDATOS NÃO ELIMINADOS" que marca a transição + o primeiro cabeçalho de
+# Campus/Curso/Turno da seção 2, 101 é só registros de 22 campos. Gerada com:
+#   python -c "
+#   import sys; sys.path.insert(0, 'src')
+#   from pas_extraction.fixtures import fatiar_paginas
+#   fatiar_paginas(
+#       'data/pdfs/Ed_27_PAS_3_2021_2023_Res_final_tipo_D_redação.pdf',
+#       [1, 99, 100, 101],
+#       'tests/fixtures/resultado_final_duas_secoes.pdf',
+#   )"
+FIXTURE_DUAS_SECOES = FIXTURES_DIR / "resultado_final_duas_secoes.pdf"
+# Contagem observada nas páginas 100-101 (registros de 22 campos, seção 2).
+CONTAGEM_ESPERADA_DUAS_SECOES = 55
+
+# Mesmo cabeçalho de transição que `resultado_final._SECAO_NAO_ELIMINADOS_RE` varre —
+# duplicado aqui de propósito: a prova de que a seção 1 não vaza precisa ser independente
+# do parser que está sendo testado, não reaproveitar a mesma regex de produção por atalho.
+_SECAO_NAO_ELIMINADOS_RE = re.compile(
+    r"\d\s*DO\s+RESULTADO\s+FINAL\s+DOS\s+CANDIDATOS\s+N[ÃA]O\s+ELIMINADOS", re.IGNORECASE,
+)
+# Registro de 4 campos (inscrição, nome, 2 notas) da seção 1 — formato de candidato
+# eliminado, ver módulo docstring de `resultado_final.py`.
+_REGISTRO_4_CAMPOS_RE = re.compile(
+    r"(?<!\d)(\d{8}),\s*([^,\d][^,]*?),\s*-?\d+\.\d{3},\s*-?\d+\.\d{3}\s*/"
+)
+
+
+def _ultimo_registro_da_secao_1(fixture: Path) -> Tuple[str, str]:
+    """(inscrição, nome) do último registro de 4 campos antes do cabeçalho de transição.
+
+    Lido direto do texto bruto da fixture, em tempo de execução — nunca como literal no
+    código, porque nome e inscrição são dado real de Aluno (ticket 05). A fixture é
+    gitignored, então o valor real nunca entra no git; a força da asserção do teste que
+    usa esta função não muda: ela continua provando que um registro específico e
+    identificável da seção 1 não vazou para a saída.
+    """
+    reader = PdfReader(str(fixture))
+    blob = " ".join(
+        re.sub(r"\s+", " ", p.extract_text(extraction_mode="plain") or "") for p in reader.pages
+    )
+    fim_secao_1 = _SECAO_NAO_ELIMINADOS_RE.search(blob).start()
+    matches = list(_REGISTRO_4_CAMPOS_RE.finditer(blob, 0, fim_secao_1))
+    return matches[-1].group(1), matches[-1].group(2).strip()
+
 
 def _pular_se_fixture_ausente(caminho: Path) -> None:
     if not caminho.exists():
@@ -359,6 +410,48 @@ class TestOrdemAlfabetica:
 
         fora_de_ordem = [r.nome for r in embaralhado if r.validacao.fora_de_ordem_alfabetica]
         assert fora_de_ordem == [nome_esperado_fora_de_ordem]
+
+
+class TestParseDirigidoPorSecao:
+    """Ticket 05: Editais de resultado final tipo D + redação têm duas seções com schemas
+    diferentes no mesmo arquivo. Só a seção de não eliminados (22 campos) é extraída; a
+    transição é detectada pelo cabeçalho numerado "2 DO RESULTADO FINAL DOS CANDIDATOS NÃO
+    ELIMINADOS", não por número de página fixo.
+    """
+
+    def test_apenas_a_secao_de_nao_eliminados_e_extraida(self):
+        _pular_se_fixture_ausente(FIXTURE_DUAS_SECOES)
+
+        resultado = extrair_edital(FIXTURE_DUAS_SECOES)
+
+        assert len(resultado.registros) == CONTAGEM_ESPERADA_DUAS_SECOES
+        assert all(len(r.classificacoes) == 10 for r in resultado.registros)
+
+    def test_nenhum_registro_da_secao_1_aparece_na_saida(self):
+        # A seção 1 (eliminados) tem registros de 4 campos (inscrição, nome, 2 notas) —
+        # sem o vetor de 9 notas, um registro dela nunca deveria compor um
+        # RegistroResultadoFinal. Prova isso por nome e inscrição reais da seção 1 (lidos
+        # da fixture em tempo de execução, nunca como literal — ver
+        # `_ultimo_registro_da_secao_1`), não só pela contagem total.
+        _pular_se_fixture_ausente(FIXTURE_DUAS_SECOES)
+
+        inscricao_secao_1, nome_secao_1 = _ultimo_registro_da_secao_1(FIXTURE_DUAS_SECOES)
+        resultado = extrair_edital(FIXTURE_DUAS_SECOES)
+        nomes = {r.nome for r in resultado.registros}
+        inscricoes = {r.inscricao for r in resultado.registros}
+
+        assert nome_secao_1 not in nomes
+        assert inscricao_secao_1 not in inscricoes
+
+    def test_edital_de_secao_unica_continua_sem_regressao(self):
+        # A fixture de seção única (ticket 01) não tem o cabeçalho de transição — o
+        # parser precisa continuar tratando o blob inteiro como uma seção só, e não
+        # descartar tudo por procurar um cabeçalho que não existe.
+        _pular_se_fixture_ausente(FIXTURE_RESULTADO_FINAL)
+
+        resultado = extrair_edital(FIXTURE_RESULTADO_FINAL)
+
+        assert len(resultado.registros) == CONTAGEM_ESPERADA
 
 
 if __name__ == "__main__":
