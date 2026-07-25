@@ -1,5 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -59,9 +60,17 @@ export function AlunoLoginForm() {
         </div>
 
         <div>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-geist-mono), monospace" }}>
-            Senha
-          </label>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-geist-mono), monospace" }}>
+              Senha
+            </label>
+            <Link
+              href="/auth/esqueci-senha"
+              style={{ fontSize: 11, color: "#7FD8F7", textDecoration: "none", fontWeight: 500 }}
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
           <input
             type="password" value={password} required autoComplete="current-password"
             placeholder="••••••••"

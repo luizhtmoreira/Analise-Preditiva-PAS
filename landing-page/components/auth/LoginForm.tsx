@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -47,9 +48,17 @@ export function LoginForm() {
           />
         </div>
         <div>
-          <label className="block mb-1.5 font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[#6E6E73]">
-            Senha
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[#6E6E73]">
+              Senha
+            </label>
+            <Link
+              href="/auth/esqueci-senha"
+              className="text-xs text-[#00AEEF] hover:underline font-medium"
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
           <Input
             type="password"
             value={password}
