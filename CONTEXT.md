@@ -81,6 +81,12 @@ _Avoid_: comparação de cursos, dashboard do aluno
 Cálculo reverso por curso: dado os EBs fixos do PAS 1 e PAS 2 do Aluno Cadastrado, qual EB mínimo ele precisa no PAS 3 para atingir a Nota de Corte. Calculado via `target_calculator`. Disponível para todos os cursos no Painel Multi-Curso.
 _Avoid_: meta, objetivo, score necessário
 
+**Simulador de Itens**:
+Sub-ferramenta da Calculadora de Estratégia/Quanto Falta. Converte o EB necessário ($X$) no PAS 3 em combinações exatas ou simuladas de acertos por tipo de item (Tipo A, Tipo B, Tipo C). Protegida por Soft Gate (exibe preview em teaser para não-cadastrados e exige login para interação completa).
+_Avoid_: simulador de questões, simulador de acertos
+
+
+
 **Soft Gate**:
 Mecanismo de conversão do Preditor: o primeiro curso é calculado livremente; ao tentar adicionar um segundo curso, o sistema solicita login/cadastro. O Aluno já viu o valor antes de ser solicitado a criar conta.
 _Avoid_: paywall, bloqueio, gate
