@@ -280,6 +280,7 @@ function CursoAlvoCard({ c }: { c: CourseResult }) {
 }
 
 function TopCursosTable({ cursos, isLoggedIn }: { cursos: CourseResult[]; isLoggedIn: boolean }) {
+  const router = useRouter();
   if (!cursos.length) return null;
   return (
     <div className="pred-result pred-result-4">
@@ -319,6 +320,98 @@ function TopCursosTable({ cursos, isLoggedIn }: { cursos: CourseResult[]; isLogg
         </table>
         </div>
       </div>
+
+      {!isLoggedIn && (
+        <div
+          onClick={() => router.push("/auth/cadastro?next=/predict")}
+          style={{
+            marginTop: 16,
+            background: "linear-gradient(135deg, rgba(0, 174, 239, 0.08) 0%, rgba(0, 33, 71, 0.4) 100%)",
+            border: "1px solid rgba(0, 174, 239, 0.3)",
+            borderRadius: 14,
+            padding: "16px 20px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+            transition: "all 0.2s ease-in-out",
+            boxShadow: "0 4px 20px rgba(0, 174, 239, 0.08)",
+          }}
+          className="hover:border-[#00AEEF] hover:shadow-[0_4px_25px_rgba(0,174,239,0.18)] transition-all"
+        >
+          <div style={{ flex: "1 1 280px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: C.cyan,
+                  background: "rgba(0, 174, 239, 0.12)",
+                  border: "1px solid rgba(0, 174, 239, 0.25)",
+                  borderRadius: 20,
+                  padding: "2px 8px",
+                }}
+              >
+                ✨ Painel Multi-Curso
+              </span>
+            </div>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: "0 0 4px 0" }}>
+              Quer comparar suas chances em múltiplos cursos da UnB?
+            </h4>
+            <p style={{ fontSize: 12, color: C.dim, margin: 0, lineHeight: 1.4 }}>
+              Crie sua conta para simular vários cursos ao mesmo tempo e ver exatamente o <strong>Quanto Falta</strong> no PAS 3.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push("/auth/cadastro?next=/predict");
+              }}
+              style={{
+                background: C.cyan,
+                color: "#002147",
+                border: "none",
+                borderRadius: 8,
+                padding: "9px 16px",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                whiteSpace: "nowrap",
+              }}
+              className="hover:scale-[1.02] active:scale-[0.98] transition-transform"
+            >
+              <span>Criar Conta Grátis</span>
+              <span>→</span>
+            </button>
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push("/auth/entrar?next=/predict");
+              }}
+              style={{
+                fontSize: 12,
+                color: C.cyan,
+                fontWeight: 600,
+                cursor: "pointer",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+                whiteSpace: "nowrap",
+              }}
+              className="hover:opacity-80"
+            >
+              Entrar
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
