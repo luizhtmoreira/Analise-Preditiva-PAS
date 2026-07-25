@@ -184,20 +184,12 @@ export function PublicHeader() {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2 ml-1">
-              <Link
-                href="/auth/entrar"
-                className="text-[0.78rem] sm:text-sm px-3 sm:px-4 py-2 rounded-lg font-semibold bg-[#00AEEF] text-[#002147] hover:bg-[#33C1F3] transition-all whitespace-nowrap shadow-md shadow-[#00AEEF]/20"
-              >
-                Entrar
-              </Link>
-              <Link
-                href="/auth/login"
-                className="hidden sm:inline-flex text-[0.78rem] sm:text-sm px-3 py-2 rounded-lg font-medium text-white/70 hover:text-white hover:bg-white/5 transition-all whitespace-nowrap"
-              >
-                Coordenação
-              </Link>
-            </div>
+            <Link
+              href="/auth/entrar"
+              className="text-[0.78rem] sm:text-sm px-4 py-2 rounded-lg font-semibold bg-[#00AEEF] text-[#002147] hover:bg-[#33C1F3] transition-all whitespace-nowrap shadow-md shadow-[#00AEEF]/20 ml-1"
+            >
+              Entrar
+            </Link>
           )}
         </nav>
       </div>
