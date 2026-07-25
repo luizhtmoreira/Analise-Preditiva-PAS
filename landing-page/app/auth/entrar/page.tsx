@@ -56,7 +56,7 @@ export default function EntrarAlunoPage() {
               color: "#7FD8F7", marginBottom: 8,
             }}
           >
-            Painel Multi-Curso
+            Área do Aluno
           </p>
           <h1
             style={{

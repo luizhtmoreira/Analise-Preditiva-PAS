@@ -57,7 +57,7 @@ export default function CadastroAlunoPage() {
               color: "#7FD8F7", marginBottom: 8,
             }}
           >
-            Painel Multi-Curso · Gratuito
+            Área do Aluno · Cadastro
           </p>
           <h1
             style={{

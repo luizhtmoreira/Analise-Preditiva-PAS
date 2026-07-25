@@ -146,15 +146,15 @@ export function PerfilAlunoClient() {
           </form>
         </div>
 
-        {/* Multi-Course Shortcut Card */}
+        {/* Predictor Shortcut Card */}
         <div className="p-6 rounded-2xl bg-gradient-to-r from-[#00AEEF]/10 via-transparent to-transparent border border-[#00AEEF]/30 backdrop-blur-md shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1 max-w-md">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <Target size={18} className="text-[#00AEEF]" />
-              Painel Multi-Curso Liberado
+              Preditor PAS 3
             </h3>
             <p className="text-xs text-white/70 leading-relaxed">
-              Como Aluno Cadastrado, suas notas ficam salvas e você pode comparar chances de aprovação em múltiplos cursos da UnB simultaneamente.
+              Simule suas notas no PAS 3 e acompanhe sua probabilidade matemática de aprovação na UnB.
             </p>
           </div>
 

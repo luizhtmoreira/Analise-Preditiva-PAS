@@ -156,7 +156,7 @@ export function PublicHeader() {
                           className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors font-medium"
                         >
                           <Target size={14} className="text-[#00AEEF]" />
-                          <span>Painel Multi-Curso</span>
+                          <span>Preditor PAS 3</span>
                         </Link>
                       </>
                     ) : (
