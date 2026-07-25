@@ -17,6 +17,7 @@ from pas_extraction.csv_writer import escrever_csv  # type: ignore
 from pas_extraction.medias_desvios import escrever_csv_medias_desvios  # type: ignore
 from pas_extraction.rodada import (  # type: ignore
     RodadaCompleta,
+    derivar_notas_corte_da_rodada,
     formatar_markdown_corpus,
     formatar_terminal_corpus,
     gerar_relatorio_corpus,
@@ -178,6 +179,44 @@ class TestRelatorioDoCorpus:
         assert formatar_terminal_corpus(relatorio)
         assert formatar_markdown_corpus(relatorio)
         assert relatorio.divergencias_nome == ()
+
+
+class TestNotasDeCorteDaRodada:
+    """Ticket 10 — a derivação que consome as duas Famílias da rodada de uma vez.
+
+    A regra de derivação em si é testada em `test_pas_extraction_notas_corte.py`, com
+    registros sintéticos; aqui só a costura: os registros das duas Famílias chegam
+    achatados na derivação, sem releitura de PDF."""
+
+    def test_deriva_a_partir_das_duas_familias_da_rodada(self):
+        _pular_se_ausente(FIXTURE_RESULTADO_FINAL, FIXTURE_CONVOCACAO)
+
+        rodada = rodar([FIXTURE_RESULTADO_FINAL, FIXTURE_CONVOCACAO])
+        derivacao = derivar_notas_corte_da_rodada(rodada)
+
+        # Cada convocado da fixture ou define/entra num corte, ou é contado como sem
+        # Argumento Final — nenhum some pelo caminho. (As duas fixtures são de Editais de
+        # triênios diferentes, então na prática nenhum casa: é o caso "Convocação sem o
+        # Resultado Final do mesmo triênio no corpus", que precisa sair contado.)
+        convocados = sum(len(r.registros) for r in rodada.convocacao)
+        sem_argumento = sum(q for _, q in derivacao.convocados_sem_argumento_final)
+        assert convocados > 0
+        assert sem_argumento > 0
+        assert derivacao.grupos_sem_chamada_conhecida == ()
+
+    def test_rodada_vazia_nao_lanca(self):
+        derivacao = derivar_notas_corte_da_rodada(RodadaCompleta())
+
+        assert derivacao.notas == ()
+        assert derivacao.convocados_sem_argumento_final == ()
+
+    def test_derivar_duas_vezes_produz_o_mesmo_resultado(self):
+        _pular_se_ausente(FIXTURE_RESULTADO_FINAL, FIXTURE_CONVOCACAO)
+        pdfs = [FIXTURE_RESULTADO_FINAL, FIXTURE_CONVOCACAO]
+
+        assert derivar_notas_corte_da_rodada(rodar(pdfs)) == derivar_notas_corte_da_rodada(
+            rodar(pdfs)
+        )
 
 
 if __name__ == "__main__":

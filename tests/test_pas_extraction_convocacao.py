@@ -7,11 +7,14 @@ import pytest  # type: ignore
 
 from pas_extraction.constants import MAPA_SISTEMAS  # type: ignore
 from pas_extraction.convocacao import (  # type: ignore
+    LISTA_CONVOCACAO,
+    LISTA_OUTRA_RELACAO,
     ResultadoExtracaoConvocacao,
     extrair_chamada_e_semestre,
     extrair_edital_convocacao,
+    parse_convocacao,
 )
-from pas_extraction.models import FamiliaEdital  # type: ignore
+from pas_extraction.models import ContextoEdital, FamiliaEdital  # type: ignore
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 FIXTURE_CONVOCACAO = FIXTURES_DIR / "convocacao_registro.pdf"
@@ -180,6 +183,171 @@ class TestExtrairEditalConvocacao:
             assert r.proveniencia.pagina >= 1
             assert r.semestre == "1"
             assert r.chamada == "1"
+
+
+class _PaginaFalsa:
+    def __init__(self, texto: str) -> None:
+        self._texto = texto
+
+    def extract_text(self, extraction_mode: str = "plain") -> str:
+        return self._texto
+
+
+class _ReaderFalso:
+    """Reader com texto colado de Editais reais, para exercitar o parse por linha sem
+    fatiar uma fixture nova por caso.
+
+    A fixture real (`convocacao_registro.pdf`) é uma fatia de Ed_28, que tem uma seção de
+    topo só; os casos abaixo precisam de Editais com **duas** seções (Ed_34/35/37/40-43,
+    triênio 2016/2018), e o que está sob teste é o parse de linha, não a leitura do PDF."""
+
+    def __init__(self, *textos: str) -> None:
+        self.pages = [_PaginaFalsa(t) for t in textos]
+
+
+# Colado de Ed_35 _2016-2018_PAS_3_Terceira_Convocacao.pdf (modo layout), com os nomes
+# trocados e a lista encurtada. A estrutura — numeração de sumário nos cabeçalhos, e a
+# seção 2 repetindo campus/curso com outro prefixo — é a do Edital real.
+_TEXTO_DUAS_SECOES = """
+1  DA   TERCEIRA      CONVOCAÇÃO         PARA  O  PRÉ-REGISTRO  ACADÊMICO  REFERENTE  AO  PRIMEIRO
+SEMESTRE DE 2019
+1.1 Convocação para o pré-registro acadêmico referente ao primeiro semestre de 2019, na seguinte
+1.1.1 CAMPUS DARCY RIBEIRO           – DIURNO
+1.1.1.1 ADMINISTRAÇÃO (BACHARELADO)
+16124894       Pedro de Vilhena Moraes Silva                    1
+16124895       Marina Alves Ferreira                            2
+2 DA RELAÇÃO DOS CANDIDATOS QUE NÃO COMPARECERAM AO PRÉ-REGISTRO ACADÊMICO
+2.1 Da relação dos candidatos que  não compareceram ao pré-registro acadêmico, na seguinte ordem:
+2.1.1 CAMPUS DARCY RIBEIRO – DIURNO
+2.1.1.1 ADMINISTRAÇÃO (BACHARELADO)
+16999999       Joana Ribeiro Dourado                            1
+3 DO PRÉ-REGISTRO ACADÊMICO
+3.1 O pré-registro é composto por duas fases, conforme descrito a seguir.
+"""
+
+_CONTEXTO = ContextoEdital(arquivo_origem="Ed_35.pdf", edital="35", trienio="2016/2018")
+
+
+class TestSecaoDeTopo:
+    """Ticket 10: um Edital de Convocação pode publicar **duas** listas de Alunos em
+    seções de topo diferentes — a convocação em si (seção 1) e a relação de quem não
+    compareceu/esteve ausente (seção 2). São 1.353 registros de outra lista em 7 dos 64
+    Editais reais; sem distinguir as duas, quem não compareceu entra no cálculo da Nota de
+    Corte como se tivesse sido chamado naquela chamada."""
+
+    def test_registros_da_secao_de_convocacao_sao_marcados_como_convocacao(self):
+        registros = parse_convocacao(
+            _ReaderFalso(_TEXTO_DUAS_SECOES), _CONTEXTO, semestre="1", chamada="3",
+        )
+
+        convocados = [r for r in registros if r.lista == LISTA_CONVOCACAO]
+        assert [r.inscricao for r in convocados] == ["16124894", "16124895"]
+
+    def test_registros_da_relacao_de_ausentes_sao_marcados_como_outra_lista(self):
+        registros = parse_convocacao(
+            _ReaderFalso(_TEXTO_DUAS_SECOES), _CONTEXTO, semestre="1", chamada="3",
+        )
+
+        outros = [r for r in registros if r.lista == LISTA_OUTRA_RELACAO]
+        assert [r.inscricao for r in outros] == ["16999999"]
+
+    def test_nenhum_registro_e_descartado_ao_separar_as_listas(self):
+        # As duas listas continuam saindo — o que muda é o rótulo, não a contagem: o
+        # spec proíbe descartar registro em silêncio (user story 23).
+        registros = parse_convocacao(
+            _ReaderFalso(_TEXTO_DUAS_SECOES), _CONTEXTO, semestre="1", chamada="3",
+        )
+
+        assert len(registros) == 3
+
+    def test_titulo_de_ausentes_que_menciona_convocacao_nao_vira_convocacao(self):
+        # Os Editais de 2016/2018 — justamente os que têm duas seções — escrevem
+        # "convocação" onde os outros escrevem "chamada" (ver `_CHAMADA_RE`). Uma regra
+        # que procurasse a palavra "convocação" para marcar convocados classificaria este
+        # título ao contrário.
+        texto = """
+2 DA RELAÇÃO DOS CANDIDATOS AUSENTES NA PRIMEIRA CONVOCAÇÃO
+2.1.1 CAMPUS DARCY RIBEIRO – DIURNO
+2.1.1.1 ADMINISTRAÇÃO (BACHARELADO)
+16999999       Joana Ribeiro Dourado                            1
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="3")
+
+        assert [r.lista for r in registros] == [LISTA_OUTRA_RELACAO]
+
+    def test_titulo_de_convocacao_quebrado_em_duas_linhas_continua_convocacao(self):
+        # Os títulos são longos e o modo `layout` preserva a quebra de linha do PDF. Se a
+        # classificação dependesse de achar "convocação" na linha do cabeçalho, um título
+        # cuja palavra caísse na segunda linha apagaria os convocados do Edital inteiro.
+        texto = """
+1 DO REGISTRO ACADÊMICO ON-LINE DOS CANDIDATOS SELECIONADOS EM PRIMEIRA
+CHAMADA PARA CONVOCAÇÃO
+1.1.1 CAMPUS DARCY RIBEIRO – DIURNO
+1.1.1.1 ADMINISTRAÇÃO (BACHARELADO)
+16124894       Pedro de Vilhena Moraes Silva                    1
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="1")
+
+        assert [r.lista for r in registros] == [LISTA_CONVOCACAO]
+
+    def test_registro_antes_de_qualquer_secao_reconhecida_conta_como_convocacao(self):
+        # Se o cabeçalho de seção não for reconhecido (layout inesperado), o parser volta
+        # ao comportamento anterior — marcar tudo como convocação — em vez de esvaziar a
+        # lista de convocados do Edital inteiro.
+        texto = """
+1.1.1 CAMPUS DARCY RIBEIRO – DIURNO
+1.1.1.1 ADMINISTRAÇÃO (BACHARELADO)
+16124894       Pedro de Vilhena Moraes Silva                    1
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="3")
+
+        assert [r.lista for r in registros] == [LISTA_CONVOCACAO]
+
+
+class TestRotuloDeCurso:
+    """Ticket 10: o rótulo de curso é o nome do curso, não a posição dele no sumário
+    daquele Edital."""
+
+    def test_rotulo_de_curso_nao_carrega_a_numeracao_do_sumario(self):
+        registros = parse_convocacao(
+            _ReaderFalso(_TEXTO_DUAS_SECOES), _CONTEXTO, semestre="1", chamada="3",
+        )
+
+        assert {r.curso for r in registros} == {"ADMINISTRAÇÃO (BACHARELADO)"}
+
+    def test_o_mesmo_curso_em_secoes_diferentes_recebe_o_mesmo_rotulo(self):
+        # No Edital real o mesmo curso aparece como "1.1.1.1 ADMINISTRAÇÃO" na seção 1 e
+        # "2.1.1.1 ADMINISTRAÇÃO" na seção 2; e entre Editais do mesmo triênio a numeração
+        # muda com a lista de cursos daquela chamada (CIÊNCIAS BIOLÓGICAS é 1.1.1.10 num
+        # Edital e 1.1.1.11 no seguinte). Agrupar por rótulo numerado partiria o mesmo
+        # curso em grupos diferentes, e a "maior chamada" sairia errada.
+        registros = parse_convocacao(
+            _ReaderFalso(_TEXTO_DUAS_SECOES), _CONTEXTO, semestre="1", chamada="3",
+        )
+
+        por_lista = {r.lista: r.curso for r in registros}
+        assert por_lista[LISTA_CONVOCACAO] == por_lista[LISTA_OUTRA_RELACAO]
+
+    def test_curso_sem_numeracao_continua_intacto(self):
+        # Os Editais de 2021/2023 em diante não numeram os cabeçalhos de curso — o
+        # rótulo deles não pode ser alterado por essa limpeza.
+        texto = """
+1.1.1 CAMPUS DARCY RIBEIRO – DIURNO
+ADMINISTRAÇÃO (BACHARELADO)
+21180305       Alberto Monteiro Torres                          9
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="1")
+
+        assert [r.curso for r in registros] == ["ADMINISTRAÇÃO (BACHARELADO)"]
+
+
+class TestListaNaFixtureReal:
+    def test_a_fixture_de_uma_secao_so_sai_inteira_como_convocacao(self):
+        _pular_se_fixture_ausente(FIXTURE_CONVOCACAO)
+
+        resultado = extrair_edital_convocacao(FIXTURE_CONVOCACAO)
+
+        assert {r.lista for r in resultado.registros} == {LISTA_CONVOCACAO}
 
 
 if __name__ == "__main__":

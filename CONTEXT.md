@@ -50,8 +50,8 @@ Pontuação cumulativa ponderada das três etapas do PAS usada pelo UnB para cla
 _Avoid_: nota final, pontuação final, score final
 
 **Nota de Corte**:
-Argumento Final mínimo exigido para aprovação em um curso específico na última chamada do PAS.
-_Avoid_: mínimo, cutoff
+Argumento Final mínimo exigido para aprovação em um curso específico na última chamada do PAS. É um número **por curso e por Sistema de Concorrência**, não um por curso: quem concorre por cota disputa outro corte. "Última chamada" é a última em que aquele *sistema* teve convocado — um sistema pode parar na 1ª chamada enquanto o curso vai até a 3ª. Derivada em `src/pas_extraction/notas_corte.py` (ticket 10), cruzando o Resultado Final (nota) com a Convocação (quem foi chamado).
+_Avoid_: mínimo, cutoff, nota de corte do curso (sem o sistema)
 
 ### Risco e predição
 
