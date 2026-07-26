@@ -17,16 +17,18 @@ from pas_extraction.models import (  # type: ignore
     RegistroResultadoFinal,
     ValidacaoRegistro,
 )
-from pas_extraction.reconciliacao import reconciliar_nomes  # type: ignore
+from pas_extraction.reconciliacao import canonizar_cursos, reconciliar_nomes  # type: ignore
 
 
 def _proveniencia(arquivo: str, pagina: int = 1) -> Proveniencia:
     return Proveniencia(arquivo_origem=arquivo, edital="1", trienio="2022/2024", pagina=pagina)
 
 
-def _resultado_final(inscricao: str, nome: str, arquivo: str = "Ed_rf.pdf") -> RegistroResultadoFinal:
+def _resultado_final(
+    inscricao: str, nome: str, arquivo: str = "Ed_rf.pdf", curso: str = "Curso A",
+) -> RegistroResultadoFinal:
     return RegistroResultadoFinal(
-        campus="Darcy Ribeiro", curso="Curso A", turno="Matutino",
+        campus="Darcy Ribeiro", curso=curso, turno="Matutino",
         inscricao=inscricao, nome=nome,
         eb_p1_e1=10.0, eb_p2_e1=10.0, red_e1=5.0,
         eb_p1_e2=10.0, eb_p2_e2=10.0, red_e2=5.0,
@@ -44,9 +46,11 @@ def _resultado_final(inscricao: str, nome: str, arquivo: str = "Ed_rf.pdf") -> R
     )
 
 
-def _convocacao(inscricao: str, nome: str, arquivo: str = "Ed_conv.pdf") -> RegistroConvocacao:
+def _convocacao(
+    inscricao: str, nome: str, arquivo: str = "Ed_conv.pdf", curso: str = "Curso A",
+) -> RegistroConvocacao:
     return RegistroConvocacao(
-        campus="Darcy Ribeiro", curso="Curso A", turno="Matutino",
+        campus="Darcy Ribeiro", curso=curso, turno="Matutino",
         inscricao=inscricao, nome=nome, sistema=1, semestre="1", chamada="1",
         proveniencia=_proveniencia(arquivo),
     )
@@ -152,3 +156,44 @@ class TestComDivergencia:
         reconciliar_nomes([registro], registros_conv)
 
         assert registro.nome == "Fulano de Tal"
+
+
+class TestCanonizarCursos:
+    """Achado em produção (Ed_35, 2016/2018): "ADMINISTRAÇÃO (BACHARELAD O)" — espaço
+    espúrio dentro de uma palavra que sobra depois do colapso de corridas de espaço (ver
+    `convocacao._ESPACOS_RE`), porque um único espaço é ambíguo demais pra mexer sem saber
+    o nome real do curso. `canonizar_cursos` usa a redundância do próprio corpus: a mesma
+    grafia canônica de `schema.canonizar` reconhece as duas como o mesmo curso, e a
+    variante mais frequente vence."""
+
+    def test_variante_rara_e_mapeada_para_a_mais_frequente(self):
+        registros_rf = [
+            _resultado_final("1", "A", curso="ADMINISTRAÇÃO (BACHARELADO)"),
+            _resultado_final("2", "B", curso="ADMINISTRAÇÃO (BACHARELADO)"),
+        ]
+        registros_conv = [_convocacao("3", "C", curso="ADMINISTRAÇÃO (BACHARELAD O)")]
+
+        mapa = canonizar_cursos(registros_rf, registros_conv)
+
+        assert mapa == {"ADMINISTRAÇÃO (BACHARELAD O)": "ADMINISTRAÇÃO (BACHARELADO)"}
+
+    def test_curso_sem_variante_nao_entra_no_mapa(self):
+        registros = [_resultado_final("1", "A", curso="MEDICINA (BACHARELADO)")]
+
+        assert canonizar_cursos(registros) == {}
+
+    def test_empate_de_frequencia_quebra_pela_grafia_mais_curta(self):
+        registros = [
+            _resultado_final("1", "A", curso="MEDICINA (BACHARELADO)"),
+            _convocacao("2", "B", curso="MEDICINA  (BACHARELADO)"),
+        ]
+
+        mapa = canonizar_cursos(registros)
+
+        assert mapa == {"MEDICINA  (BACHARELADO)": "MEDICINA (BACHARELADO)"}
+
+    def test_curso_none_e_ignorado(self):
+        registros = [_resultado_final("1", "A", curso="MEDICINA (BACHARELADO)")]
+        registros[0].curso = None
+
+        assert canonizar_cursos(registros) == {}

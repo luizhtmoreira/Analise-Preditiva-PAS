@@ -343,6 +343,68 @@ class TestCabecalhoDeCursoEngolido:
             assert r.inscricao.isdigit() and len(r.inscricao) == 8
 
 
+class TestCabecalhoDeCampusSemTurno:
+    """Regressão: achado real em Ed_31 (2016/2018), "1.1.4 CAMPUS UnB GAMA (FGA)" — o
+    único curso desse campus (Engenharias) nunca tem turno declarado no Edital. Antes,
+    `_CAMPUS_RE` exigia o sufixo "- TURNO"; sem ele o cabeçalho inteiro falhava o match e
+    nem campus nem turno avançavam, fazendo os 451 registros do curso herdarem por engano
+    o campus da seção anterior (UnB Ceilândia). Testado direto contra `_processar_cabecalhos`
+    porque é função pura sobre string — não precisa de PDF real nem de `_ReaderFalso`.
+
+    A primeira correção (turno opcional + lookahead pra numeração do próximo cabeçalho de
+    curso) tinha uma segunda falha, achada regenerando o corpus inteiro: no Ed_34
+    (2023/2025, pág. 230), campus e curso vêm colados na mesma linha, sem numeração
+    nenhuma separando os dois ("CAMPUS UNB GAMA (FGA) ENGENHARIAS – ..."). O lookahead não
+    tinha onde ancorar o fim do nome do campus e engolia o curso inteiro junto. Fix
+    definitivo: casar o nome do campus contra o conjunto fechado dos 4 campi do PAS/UnB
+    em vez de tentar adivinhar o fim via lookahead.
+    """
+
+    def test_campus_sem_turno_avanca_o_estado(self):
+        from pas_extraction.resultado_final import _processar_cabecalhos
+
+        estado = {"campus": "UnB CEILÂNDIA (FCE)", "curso": "TERAPIA OCUPACIONAL", "turno": "DIURNO"}
+        ruido = (
+            "1.1.4 CAMPUS UnB GAMA (FGA) 1.1.4.1 ENGENHARIAS – AEROESPACIAL/AUTOMOTIVA "
+            "(BACHARELADOS) "
+        )
+
+        _processar_cabecalhos(ruido, estado)
+
+        assert estado["campus"] == "UnB GAMA (FGA)"
+        assert estado["turno"] is None
+        assert estado["curso"] == "ENGENHARIAS – AEROESPACIAL/AUTOMOTIVA (BACHARELADOS)"
+
+    def test_campus_com_turno_continua_funcionando(self):
+        from pas_extraction.resultado_final import _processar_cabecalhos
+
+        estado = {"campus": None, "curso": None, "turno": None}
+        ruido = "1.1.3 CAMPUS UnB CEILÂNDIA (FCE) – DIURNO 1.1.3.1 ENFERMAGEM (BACHARELADO) "
+
+        _processar_cabecalhos(ruido, estado)
+
+        assert estado["campus"] == "UnB CEILÂNDIA (FCE)"
+        assert estado["turno"] == "DIURNO"
+        assert estado["curso"] == "ENFERMAGEM (BACHARELADO)"
+
+    def test_campus_e_curso_colados_na_mesma_linha_sem_numeracao(self):
+        # Achado real Ed_34 (2023/2025) pág. 230: sem turno E sem numeração de curso
+        # separando os dois — só o conjunto fechado de nomes de campus resolve.
+        from pas_extraction.resultado_final import _processar_cabecalhos
+
+        estado = {"campus": "DARCY RIBEIRO", "curso": "TERAPIA OCUPACIONAL", "turno": "DIURNO"}
+        ruido = (
+            "1.1.4 CAMPUS UNB GAMA (FGA) ENGENHARIAS – AEROESPACIAL / AUTOMOTIVA "
+            "(BACHARELADOS)** "
+        )
+
+        _processar_cabecalhos(ruido, estado)
+
+        assert estado["campus"] == "UNB GAMA (FGA)"
+        assert estado["turno"] is None
+        assert estado["curso"] == "ENGENHARIAS – AEROESPACIAL / AUTOMOTIVA (BACHARELADOS)"
+
+
 class TestSequenciaDeClassificacao:
     """Ticket 02, verificação 2: classificação como sequência 1..N por curso e Sistema.
 

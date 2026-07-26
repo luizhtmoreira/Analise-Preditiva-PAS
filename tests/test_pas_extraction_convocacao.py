@@ -340,6 +340,61 @@ ADMINISTRAÇÃO (BACHARELADO)
 
         assert [r.curso for r in registros] == ["ADMINISTRAÇÃO (BACHARELADO)"]
 
+    def test_cabecalho_de_curso_com_travessao_avanca_o_estado(self):
+        # Achado em produção (Ed_70, 2023/2025): nomes de curso compostos usam travessão
+        # "–" (U+2013), não hífen "-". _CURSO_RE não incluía "–" na classe de caracteres,
+        # então a linha inteira não casava _CURSO_RE.match, o estado "curso" não avançava,
+        # e Gabriel Soares de Melo (ENGENHARIAS – AEROESPACIAL/...) saiu gravado como
+        # TERAPIA OCUPACIONAL — o curso da seção anterior, herdado por engano.
+        texto = """
+1.1.3 CAMPUS UNB CEILÂNDIA (FCTS) – DIURNO
+TERAPIA OCUPACIONAL (BACHARELADO)
+23105303       Raissa Vittoria Magalhaes Ribeiro                 1
+1.1.4 CAMPUS UNB GAMA (FCTE) – DIURNO
+ENGENHARIAS – AEROESPACIAL / AUTOMOTIVA / ELETRÔNICA / ENERGIA / SOFTWARE
+23112791       Gabriel Soares de Melo                            1
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="1")
+
+        por_inscricao = {r.inscricao: r.curso for r in registros}
+        assert por_inscricao["23105303"] == "TERAPIA OCUPACIONAL (BACHARELADO)"
+        assert por_inscricao["23112791"] == (
+            "ENGENHARIAS – AEROESPACIAL / AUTOMOTIVA / ELETRÔNICA / ENERGIA / SOFTWARE"
+        )
+
+    def test_corrida_de_espacos_do_modo_layout_e_colapsada(self):
+        # Achado em produção (Ed_35, 2016/2018, pág. 1): o modo `layout` do pypdf às vezes
+        # justifica uma linha esticando espaço mesmo dentro de uma palavra —
+        # "ADMINISTRAÇÃO (BACHARELAD              O)", 14 espaços entre "D" e "O". A
+        # corrida de 2+ espaços colapsa para 1 (fixa também o caso comum, entre campus
+        # "DARCY    RIBEIRO"); o espaço espúrio isolado dentro da palavra não é
+        # reconstruído — isso exigiria reconhecer o nome do curso, não só normalizar
+        # espaço, e fica documentado como limitação conhecida.
+        texto = """
+1.1.1 CAMPUS DARCY    RIBEIRO – DIURNO
+ADMINISTRAÇÃO (BACHARELAD              O)
+23115326       Julia Franco Soares                              1
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="1")
+
+        assert [r.campus for r in registros] == ["DARCY RIBEIRO"]
+        assert [r.curso for r in registros] == ["ADMINISTRAÇÃO (BACHARELAD O)"]
+
+    def test_corrida_de_espacos_no_nome_e_colapsada(self):
+        # Mesmo artefato do modo `layout`, achado também no nome do candidato
+        # ("Gabriel   Costa Rosa", "Isabella Cristina Melo Macedo da          Silva").
+        # `_REGISTRO_RE` precisa do espaçamento bruto pra achar onde a coluna Sistema
+        # termina, então o colapso só acontece depois do match, no `nome` já extraído —
+        # nunca antes, na linha inteira.
+        texto = """
+1.1.1 CAMPUS DARCY RIBEIRO – DIURNO
+ADMINISTRAÇÃO (BACHARELADO)
+23115326       Julia Franco    Soares                            1
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="1")
+
+        assert [r.nome for r in registros] == ["Julia Franco Soares"]
+
 
 class TestListaNaFixtureReal:
     def test_a_fixture_de_uma_secao_so_sai_inteira_como_convocacao(self):
