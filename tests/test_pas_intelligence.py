@@ -286,6 +286,54 @@ class TestTargetCalculator:
         assert result['red_pred'] == pytest.approx(6.667, abs=0.001)
         assert result['method'] == 'weighted_avg'
 
+    def test_override_parcial_e_respeitado(self):
+        """Um override sozinho vale — não é descartado por o outro campo estar vazio.
+
+        Regressão do defeito 7 (ticket 04): a condição era `and`, então quem mexia só na
+        Redação tinha os dois overrides ignorados em silêncio e via na tela um P2 necessário
+        que não correspondia ao número digitado.
+        """
+        from pas_intelligence.target_calculator import TargetCalculator  # type: ignore
+        from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
+
+        calc = TargetCalculator()
+        calc.model_p1 = None
+        calc.model_red = None
+
+        notas = {
+            'P1_PAS1': 5.0, 'P2_PAS1': 20.0, 'Red_PAS1': 6.0,
+            'P1_PAS2': 6.0, 'P2_PAS2': 25.0, 'Red_PAS2': 7.0,
+        }
+        stats = HistoricalStats(
+            mean_p1=3.8, std_p1=2.1, mean_p2=30.7, std_p2=13.8, mean_red=7.6, std_red=1.9
+        )
+        # Fallback de média ponderada: P1 = (5+2·6)/3 = 5.667, Red = (6+2·7)/3 = 6.667
+        kwargs = dict(notas_existentes=notas, arg_alvo=50.0,
+                      stats_pas1=stats, stats_pas2=stats, stats_pas3=stats)
+
+        base = calc.calculate_required_score(**kwargs)
+        assert base.p1_estimado == pytest.approx(5.667, abs=0.01)
+        assert base.red_estimada == pytest.approx(6.667, abs=0.01)
+
+        # Só a Redação sobrescrita: ela muda, o P1 continua vindo da previsão.
+        so_red = calc.calculate_required_score(**kwargs, red_override=9.0)
+        assert so_red.red_estimada == pytest.approx(9.0)
+        assert so_red.p1_estimado == pytest.approx(5.667, abs=0.01)
+
+        # Só o P1 sobrescrito: simétrico.
+        so_p1 = calc.calculate_required_score(**kwargs, p1_override=8.0)
+        assert so_p1.p1_estimado == pytest.approx(8.0)
+        assert so_p1.red_estimada == pytest.approx(6.667, abs=0.01)
+
+        # E o override tem que efetivamente mover o P2 necessário, não só o texto da tela.
+        # Subir a Redação alivia a P2 (o Argumento da Etapa 3 alvo é fixo).
+        assert so_red.p2_necessario < base.p2_necessario
+
+        # Os dois juntos continuam funcionando como antes.
+        ambos = calc.calculate_required_score(**kwargs, p1_override=8.0, red_override=9.0)
+        assert ambos.p1_estimado == pytest.approx(8.0)
+        assert ambos.red_estimada == pytest.approx(9.0)
+
     def test_ml_model_integration(self):
         """Deve carregar modelos ML e retornar método 'ml' se arquivos existirem."""
         from pas_intelligence.target_calculator import TargetCalculator
@@ -305,15 +353,65 @@ class TestTargetCalculator:
         }
         
         result = calc.predict_stable_components(notas)
-        
+
         # Se carregou modelos, deve usar 'ml'
         if calc.model_p1 and calc.model_red:
             assert result['method'] == 'ml'
+            assert result['fallback_reason'] is None
+            assert calc.model_load_error is None
             assert 0 <= result['p1_pred'] <= 20
             assert 0 <= result['red_pred'] <= 10
         else:
-            # Se não carregou por algum motivo (ex: erro de versão sklearn), fallback
+            # Se não carregou (ex.: artefato serializado com outra versão de sklearn), a
+            # degradação tem que ser declarada — não pode passar por previsão de ML.
             assert result['method'] == 'weighted_avg'
+            assert calc.model_load_error, "degradação silenciosa: nenhum motivo registrado"
+            assert result['fallback_reason'] == calc.model_load_error
+
+    def test_degradacao_nao_e_silenciosa(self, caplog):
+        """Modelo que não carrega tem que gritar no log em nível ERROR."""
+        import logging
+        from pas_intelligence.target_calculator import TargetCalculator  # type: ignore
+
+        with caplog.at_level(logging.ERROR, logger="pas_intelligence.target_calculator"):
+            calc = TargetCalculator()
+
+        if calc.model_p1 and calc.model_red:
+            pytest.skip("Modelos ML carregaram normalmente — nada a degradar.")
+
+        assert caplog.records, "modelo indisponível não gerou registro em log"
+        assert any("média ponderada" in r.getMessage() for r in caplog.records)
+
+    def test_modo_estrito_derruba_em_vez_de_degradar(self, monkeypatch, tmp_path):
+        """Com PAS_STRICT_MODELS ativo, modelo indisponível levanta em vez de cair no fallback."""
+        from pas_intelligence.target_calculator import (  # type: ignore
+            TargetCalculator,
+            ModelLoadError,
+        )
+
+        monkeypatch.setenv("PAS_STRICT_MODELS", "1")
+
+        # tmp_path está vazio: indisponibilidade determinística, mesmo numa máquina
+        # onde models/ esteja íntegro.
+        with pytest.raises(ModelLoadError):
+            TargetCalculator(models_dir=tmp_path)
+
+    def test_modo_estrito_desligado_por_padrao(self, monkeypatch, tmp_path):
+        """Sem a variável, o comportamento é degradar — a máquina de dev pode não ter models/."""
+        from pas_intelligence.target_calculator import TargetCalculator  # type: ignore
+
+        monkeypatch.delenv("PAS_STRICT_MODELS", raising=False)
+
+        calc = TargetCalculator(models_dir=tmp_path)  # não levanta
+
+        notas = {
+            'P1_PAS1': 5.0, 'P2_PAS1': 20.0, 'Red_PAS1': 6.0,
+            'P1_PAS2': 6.0, 'P2_PAS2': 25.0, 'Red_PAS2': 7.0,
+        }
+        resultado = calc.predict_stable_components(notas)
+
+        assert resultado['method'] == 'weighted_avg'
+        assert 'não encontrado' in resultado['fallback_reason']
 
     def test_predict_stable_components_bounds(self):
         """Previsão deve respeitar limites (P1: 0-20, Red: 0-10) no fallback."""

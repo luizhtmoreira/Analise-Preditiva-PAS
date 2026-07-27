@@ -4,12 +4,15 @@ Extrai a lógica da seção 'Gestão de Ativos' do Streamlit (streamlit_app.py:1
 """
 import sys
 import difflib
+import logging
 import unicodedata
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 # Permite importar src/pas_intelligence/ quando rodando do root do projeto
 _ROOT = Path(__file__).parent.parent.parent
@@ -266,7 +269,10 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
                     prob_h, _ = calculate_cohort_evolution_probability({"eb_pas1": eb_p1, "eb_pas2": eb_p2}, eb_nec, _df_cohort)
                     historico_pct = round(prob_h, 1)
             except Exception:
-                pass
+                # O reality check é opcional: sem ele o resto da análise segue válido.
+                # Mas a falha vai para o log — o silêncio anterior escondeu por meses que
+                # os modelos de P1/Redação nem carregavam.
+                logger.exception("Reality check (cohort) falhou para o aluno; seguindo sem ele.")
 
         # Risco
         status, status_label = _classify_risk(prob_1, prob_2)

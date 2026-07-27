@@ -5,8 +5,10 @@ Este módulo implementa a lógica reversa do preditor PAS:
 dado o curso-alvo do aluno, calcula a nota mínima no PAS 3 necessária.
 """
 
-from typing import Dict, TypedDict, Optional, List
+from typing import Any, Dict, TypedDict, Optional, List
 from dataclasses import dataclass
+import logging
+import os
 import numpy as np  # type: ignore
 import joblib
 import pandas as pd
@@ -20,6 +22,25 @@ from .argument_calculator import (
     PESO_P2,
     PESO_REDACAO,
 )
+
+
+logger = logging.getLogger(__name__)
+
+
+class ModelLoadError(RuntimeError):
+    """Um modelo esperado em disco não pôde ser carregado ou usado."""
+
+
+def _modo_estrito() -> bool:
+    """
+    Em modo estrito, falha de modelo derruba em vez de degradar para média ponderada.
+
+    Produção liga `PAS_STRICT_MODELS=1`: lá o pacote de modelos é assado na imagem e a
+    ausência ou incompatibilidade dele é defeito de build, não condição de operação.
+    Fora dela o padrão é degradar, porque a máquina de quem desenvolve pode legitimamente
+    não ter `models/` (o diretório é gitignored).
+    """
+    return os.getenv("PAS_STRICT_MODELS", "").strip().lower() in {"1", "true", "yes"}
 
 
 @dataclass
@@ -44,44 +65,78 @@ class TargetCalculator:
     - P2 (Conhecimentos Gerais): Cálculo algébrico reverso
     """
     
-    def __init__(self):
-        """Inicializa a calculadora e carrega modelos ML se disponíveis."""
-        self.model_p1 = None
-        self.model_red = None
-        
-        try:
+    def __init__(self, models_dir: Optional[Path] = None):
+        """
+        Inicializa a calculadora e carrega os modelos ML.
+
+        Se um modelo não puder ser carregado, a degradação para média ponderada é
+        registrada em `self.model_load_error` e sai no log em nível ERROR — nunca em
+        silêncio. Em modo estrito (ver `_modo_estrito`), levanta `ModelLoadError`.
+
+        Args:
+            models_dir: diretório dos artefatos. Por padrão, `models/` na raiz do
+                projeto. Injetável para teste.
+        """
+        self.model_load_error: Optional[str] = None
+
+        if models_dir is None:
             # Caminho relativo: src/pas_intelligence/target_calculator.py -> ... -> models/
-            base_dir = Path(__file__).parent.parent.parent
-            models_dir = base_dir / "models"
-            
-            p1_path = models_dir / "p1_pas3_model.joblib"
-            red_path = models_dir / "red_pas3_model.joblib"
-            
-            if p1_path.exists():
-                self.model_p1 = joblib.load(p1_path)
-            
-            if red_path.exists():
-                self.model_red = joblib.load(red_path)
-                
+            models_dir = Path(__file__).parent.parent.parent / "models"
+
+        self.model_p1 = self._carregar_modelo(models_dir / "p1_pas3_model.joblib")
+        self.model_red = self._carregar_modelo(models_dir / "red_pas3_model.joblib")
+
+    def _carregar_modelo(self, caminho: Path):
+        """Carrega um modelo do disco, registrando o motivo se não der."""
+        if not caminho.exists():
+            self._registrar_degradacao(f"{caminho.name}: arquivo não encontrado em {caminho.parent}")
+            return None
+
+        try:
+            return joblib.load(caminho)
         except Exception as e:
-            print(f"Aviso: Não foi possível carregar modelos ML: {e}")
-    
+            # Causa mais comum: o artefato foi serializado com outra versão de
+            # scikit-learn e a receita de remontagem aponta para um módulo que mudou de
+            # lugar (ex.: ModuleNotFoundError: No module named '_loss').
+            self._registrar_degradacao(f"{caminho.name}: {type(e).__name__}: {e}")
+            return None
+
+    def _registrar_degradacao(self, motivo: str) -> None:
+        """Acumula o motivo da degradação, grita no log e derruba em modo estrito."""
+        self.model_load_error = (
+            motivo if self.model_load_error is None else f"{self.model_load_error}; {motivo}"
+        )
+
+        if _modo_estrito():
+            raise ModelLoadError(
+                f"PAS_STRICT_MODELS ativo e modelo indisponível — {self.model_load_error}"
+            )
+
+        logger.error(
+            "Modelo ML indisponível (%s). A calculadora reversa vai responder por média "
+            "ponderada, NÃO por ML.",
+            motivo,
+        )
+
     def predict_stable_components(
         self,
         notas: Dict[str, float]
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         """
         Prevê P1 e Redação do PAS 3.
-        
+
         Prioridade:
         1. Modelo ML (Random Forest) se disponível.
         2. Média Ponderada (Fallback).
-        
+
         Args:
             notas: Dicionário com notas do PAS 1 e 2.
-            
+
         Returns:
-            Dict com 'p1_pred' e 'red_pred' para o PAS 3
+            Dict com 'p1_pred', 'red_pred', 'method' ('ml' ou 'weighted_avg') e
+            'fallback_reason' — `None` quando veio de ML, e o motivo da degradação
+            quando veio da média ponderada. Quem consome o número precisa poder saber
+            de onde ele veio.
         """
         # Extrai notas para fallback ou uso geral
         p1_pas1 = notas.get('P1_PAS1', 0.0)
@@ -128,11 +183,14 @@ class TargetCalculator:
                 return {
                     'p1_pred': round(p1_pred, 3),
                     'red_pred': round(red_pred, 3),
-                    'method': 'ml'
+                    'method': 'ml',
+                    'fallback_reason': None,
                 }
             except Exception as e:
-                print(f"Erro na predição ML: {e}. Usando fallback.")
-        
+                # Os modelos carregaram mas a predição falhou — anomalia real (vetor de
+                # features fora do contrato, por exemplo), não condição de operação.
+                self._registrar_degradacao(f"predição ML falhou: {type(e).__name__}: {e}")
+
         # Fallback: Média Ponderada
         # (p1_pas1 * 1 + p1_pas2 * 2) / 3
         p1_pred = (p1_pas1 * 1 + p1_pas2 * 2) / 3
@@ -144,7 +202,8 @@ class TargetCalculator:
         return {
             'p1_pred': round(p1_pred, 3),
             'red_pred': round(red_pred, 3),
-            'method': 'weighted_avg'
+            'method': 'weighted_avg',
+            'fallback_reason': self.model_load_error or 'modelos ML não carregados',
         }
     
     def calculate_required_score(
@@ -159,9 +218,10 @@ class TargetCalculator:
     ) -> ReverseResult:
         """
         Calcula a nota necessária na Parte 2 do PAS 3 para atingir o argumento-alvo.
-        
-        Suporta overrides manuais para P1 e Redação (simulação de cenários).
-        
+
+        Suporta overrides manuais para P1 e Redação (simulação de cenários), **independentes
+        entre si**: passar só `red_override` mantém o P1 vindo da previsão, e vice-versa.
+
 
         
         Fórmulas:
@@ -200,14 +260,14 @@ class TargetCalculator:
         arg_pas3_necessario = (arg_alvo - arg_pas1 - 2 * arg_pas2) / 3
         
         # 3. Determina P1 e Redação do PAS 3 (Predição ou Override)
-        if p1_override is not None and red_override is not None:
-            p1_pred = p1_override
-            red_pred = red_override
-        else:
-            # Prevê usando ML/Média
+        # Cada override vale por si: quem mexe só na Redação — o caso mais provável, já que ela
+        # é o componente mais sensível (1 ponto de erro move o P2 necessário em ~0,95, contra
+        # ~0,60 do P1) — não pode ter o valor digitado descartado por causa do outro campo.
+        if p1_override is None or red_override is None:
             previsao = self.predict_stable_components(notas_existentes)
-            p1_pred = previsao['p1_pred']
-            red_pred = previsao['red_pred']
+
+        p1_pred = p1_override if p1_override is not None else previsao['p1_pred']
+        red_pred = red_override if red_override is not None else previsao['red_pred']
         
         # 4. Converte P1 e Redação previstos em argumentos
         arg_p1_pred = calculate_argument_part(
