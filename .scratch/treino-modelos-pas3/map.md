@@ -184,6 +184,19 @@ canônico fechar: o encaixe no `target_calculator` reverso, e os limites chutado
   → [relatório](relatorios/04-alvo-canonico-argumento-ou-tres-notas.md) ·
   [ADR-0009](../../docs/adr/0009-alvo-canonico-argumento-da-etapa-3.md)
 
+- [05 — Dataset de treino canônico](issues/05-dataset-de-treino-canonico.md) — **materializado**:
+  `python scripts/build_training_dataset.py` → `data/training/pas3_dataset.parquet`, **64.298
+  linhas**, uma por aluno-triênio. Aplica a regra do ticket 01 (`checksum_fecha == True`) e
+  calcula `A1`, `A2`, `A3` (ticket 04) com validação cruzada contra o `argumento_final` impresso
+  — divergência acima de 0,01 faz o build falhar em vez de publicar alvo errado. `nome` e
+  `inscricao` nunca saem do build; sobrevive só `id_pseudonimo` (SHA-256 sem sal, truncado).
+  Duplicata entre triênios: **144 alunos (0,46% das linhas)**, flag
+  `inscricao_repetida_entre_trienios` entregue ao ticket 06, sem ticket próprio. Escala do alvo
+  conferida estável nos 8 triênios (`A3`: média ~0, desvio ~9,1, sem degrau). `lingua_e1/e2/e3`
+  presentes, usadas no cálculo. Formato Parquet (não `.joblib` — é dataset, não modelo treinado;
+  a decisão do ticket 03 não se aplica aqui). `data/` já estava no `.gitignore`.
+  → [relatório](relatorios/05-dataset-de-treino-canonico.md)
+
 ## Restrições que o ticket 04 deixou nos tickets seguintes
 
 - **05 (dataset):** o alvo a materializar é `A3`; guardar também `A1` e `A2`, que viram features
