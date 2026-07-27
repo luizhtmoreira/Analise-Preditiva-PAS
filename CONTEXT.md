@@ -39,6 +39,10 @@ _Avoid_: fase, série, ano
 Conjunto das três etapas do PAS cursadas por um mesmo grupo de alunos (ex: triênio 2023–2025).
 _Avoid_: ciclo, turma
 
+**Etapa Ausente**:
+Etapa do PAS que o Aluno não realizou. O Edital de Resultado Final publica as três notas dessa Etapa como `0,000` — o que significa **ausência, não desempenho zero**. Só a Etapa 1 pode ser ausente em quem chega ao Resultado Final do PAS 3: faltar à Etapa 1 é permitido e o Aluno segue no programa, mas quem falta à Etapa 2 fica impedido de fazer a Etapa 3, e quem falta à Etapa 3 não aparece no Resultado Final.
+_Avoid_: nota zero, etapa zerada, aluno faltante, etapa em branco
+
 ### Pontuação
 
 **EB (Escore Bruto)**:
@@ -60,8 +64,16 @@ Classificação visual do risco de reprovação de um Aluno em relação ao curs
 _Avoid_: status, classificação, cor
 
 **Volatilidade (CV)**:
-Coeficiente de Variação calculado sobre os EBs das etapas anteriores do Aluno (`std/mean × 100`). Drive principal na escolha do modelo de predição pelo ensemble.
-_Avoid_: variação, instabilidade, desvio
+Coeficiente de Variação calculado sobre os EBs das etapas anteriores do Aluno (`std/mean × 100`). Drive principal na escolha do modelo de predição pelo ensemble. Mede **magnitude** de dispersão e é cega à **direção**: subir de 30 para 35 e cair de 35 para 30 produzem o mesmo CV. Não é sinônimo de Momentum.
+_Avoid_: variação, instabilidade, desvio, momentum
+
+**Momentum**:
+Direção e tamanho da evolução do Aluno de uma Etapa para a seguinte. Hipótese central do produto: quem sobe muito da Etapa 1 para a Etapa 2 tende a ir bem na Etapa 3. É grandeza **com sinal**, ao contrário da Volatilidade (CV). Indefinido — não zero — para o Aluno sem Etapa 1.
+_Avoid_: crescimento, variação, tendência, volatilidade
+
+**Aluno sem Etapa 1**:
+Aluno cuja Etapa 1 é uma Etapa Ausente: fez a Etapa 2, fará a Etapa 3, não fez a Etapa 1. É uma trajetória permitida pelo PAS e uma classe que o produto atende — não um cadastro incompleto. Para ele o Momentum é indefinido, e por isso a previsão do Argumento Final exige função própria; já o Quanto Falta é aritmética exata e vale sem alteração. Representa 8,7% do Resultado Final histórico.
+_Avoid_: aluno que só fez o PAS 2, aluno incompleto, aluno com nota zero, outlier
 
 ### Produto
 

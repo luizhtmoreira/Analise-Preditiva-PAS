@@ -123,6 +123,34 @@ canônico fechar: o encaixe no `target_calculator` reverso, e os limites chutado
   respondendo por média ponderada em silêncio.
   → [relatório](relatorios/03-formato-e-versionamento-do-artefato.md)
 
+- [14 — Alunos com Etapa 1 ausente](issues/14-alunos-com-etapa-1-ausente.md) — **é ausência, não
+  zero real**, fechado pela regra do PAS (que prevê as três células da tabela de etapas zeradas:
+  5.768 / 0 / 0) sem precisar do Edital normativo. **O produto atende a classe** — nenhum Aluno
+  recebe recusa —, e ela está no funil comercial. A previsão exige **função própria** porque o
+  **Momentum** é indefinido para ela; o **Quanto Falta já está correto hoje**, por aritmética
+  (`calculate_argument_etapa(0,0,0)` = z de zero = o que o Cebraspe aplica). Ausência passa a ser
+  **declarada, nunca inferida** de notas zeradas, porque na fonte por etapa ela é um silêncio e
+  "não encontrado" tem causa conhecida de defeito (tickets 13/18 do `pdf-extraction`). Dataset:
+  **64.298** = 60.013 com Etapa 1 + **4.285** sem, numa tabela só com coluna `etapa_1_ausente`.
+  Modelo único só com features da Etapa 2 **rejeitado**: apagaria o Momentum de 91% para acomodar
+  9%. **Atender ≠ treinar em todos** — o treino ficou para medição do ticket 10.
+  → [relatório](relatorios/14-alunos-com-etapa-1-ausente.md) ·
+  [ADR-0008](../../docs/adr/0008-aluno-sem-etapa-1-atendido-com-funcao-propria.md)
+
+## Restrições que o ticket 14 deixou nos tickets seguintes
+
+- **04 (alvo):** o alvo **decide o custo** desta classe — "Argumento direto" exige modelo separado;
+  "3 notas + fórmula" faz A1 e A2 saírem por aritmética. Conflita com a §8 do relatório 02, que
+  defende o Argumento Final por ser estável entre triênios. Decidir **sabendo** da troca.
+- **06 (régua):** holdout estratificado por `etapa_1_ausente`; todo candidato reporta **dois
+  números**, um por classe.
+- **09 (features):** proibido dropar as features da Etapa 1 como simplificação — decisão de
+  produto. O Momentum precisa estar representado **com sinal**.
+- **10 (família):** "aceita valor faltante nativamente" é critério **com peso**, não desempate
+  (linear/MLP fecham a porta da classe). Medir um-modelo-com-faltante vs. dois-modelos.
+- **11 (incerteza):** incerteza **por classe**, no mínimo duas. RMSE emprestado da maioria produz
+  probabilidade errada mesmo com previsão pontual certa.
+
 ## Not yet specified
 
 Névoa reconhecida, ainda sem nitidez para virar ticket:
@@ -146,6 +174,17 @@ Névoa reconhecida, ainda sem nitidez para virar ticket:
   defeitos dos tickets 14 e 15 do mapa `pdf-extraction` (ex. `MEDICINA/Darcy/Universal/
   2020-2022 = 199.162,872`). Isso não afeta treinar, mas afeta medir "probabilidade de
   aprovação" ponta a ponta. Revisitar quando aqueles fecharem.
+- **Extração dos Editais por etapa (PAS 1 e PAS 2 isolados).** Levantada no ticket 14. Não é
+  treino — é a fonte das notas do **Aluno vivo**, que está no meio do triênio e cujo Resultado
+  Final do PAS 3 ainda não existe. Precisa trazer **duas** coisas: as notas dos Alunos vivos *e* as
+  médias/desvios das etapas vivas — `OFFICIAL_STATS` tem 24 chaves e faltam `(2024,1)`, `(2025,1)`,
+  `(2025,2)`, porque a tabela foi montada dos Editais de PAS 3 e o do triênio 24-26 só sai em 2027.
+  Sem `(2024,1)`, o Quanto Falta não calcula o A1 do Aluno sem Etapa 1 do triênio vivo. Nasce com
+  `etapa_1_ausente` como campo de primeira classe, derivado de evidência **cruzada** (presente no
+  Edital da Etapa 2, ausente no da Etapa 1), nunca de notas zeradas. **Teste de aceite pronto:**
+  dos 865 registros com Etapa 1 Ausente em 2023/2025, quantos estão ausentes do Edital da Etapa 1
+  de 2023? Fecha a leitura de ausência com prova documental *e* mede a taxa de acerto do casamento
+  por nome numa população de resposta conhecida.
 - **Alunos que aparecem em mais de um triênio.** Medido pelo ticket 01: **146 inscrições
   (0,22%)**. Pequeno demais para ticket próprio, grande demais para ignorar — o ticket 06
   decide se o split agrupa por aluno. Fica aqui só até aquela decisão ser tomada.

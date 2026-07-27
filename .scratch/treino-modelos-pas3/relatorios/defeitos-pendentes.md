@@ -133,3 +133,113 @@ tem que passar a viver no `manifest.json`.
 
 **Severidade: média.** A feature degrada em vez de mentir, e agora avisa. Mas a calculadora
 reversa é um dos produtos anunciados e está sem ML há meses.
+
+---
+
+## 4. ~~Nota não informada é substituída por notas inventadas~~ — **CORRIGIDO em 2026-07-27**
+
+**Onde foi encontrado:** ticket 14 (Aluno sem Etapa 1), lendo o caminho de entrada da Gestão.
+`api/schemas/gestao.py:12,16` declara `red_pas1: float = 6.0` e `red_pas2: float = 6.0`;
+`landing-page/app/(dashboard)/gestao/page.tsx:31-36` coage o nulo do Supabase com
+`Number(s.p1_pas1 ?? 0)` e `Number(s.red_pas1 ?? 6)`. No Preditor público,
+`landing-page/components/public/predict/PreditorPage.tsx:413` inicializa o formulário com
+`emptyScores() = { p1: "0", p2: "0", red: "0" }`.
+
+**O defeito:** três estados do mundo colapsam no mesmo vetor de entrada — **não fez a Etapa**
+(fato definitivo), **não informado** (lacuna de cadastro) e **tirou zero** (raro, mas real numa
+nota isolada). E o colapso do segundo não é em zero: é numa Redação **mediana inventada**. Com as
+estatísticas de PAS 1 de `gestao_service.py:38` (`mean_red=6,9051`, `std_red=1,8409`):
+
+```
+Red = 6,0 → A_red = (6,0 − 6,9051)/1,8409 × 1,00 = −0,49
+Red = 0,0 → A_red = (0,0 − 6,9051)/1,8409 × 1,00 = −3,75
+```
+
+**+3,26 pontos de Argumento Final presenteados**, na direção do otimismo: o Coordenador Pedagógico
+vê o Aluno mais perto da Nota de Corte do que ele está.
+
+**Condição exata de disparo — e ela é mais estreita do que parece.** `??` é *nullish coalescing*:
+dispara em `null`/`undefined`, **não em `0`**. Logo:
+
+```js
+Number(0 ?? 6)     // → 0   nota zero registrada passa intacta
+Number(null ?? 6)  // → 6   só aqui a Redação é inventada
+```
+
+- **Hoje, com a Etapa 1 Ausente gravada como `0, 0, 0`** (a convenção do Edital), o defeito **não
+  encosta no Aluno sem Etapa 1**. O A1 dele sai correto.
+- **Ele dispara** em qualquer linha da `tabela_mestra` com `red_pas1`/`red_pas2` genuinamente NULL
+  — o estado "não informado". Quantas linhas são: **não medido**, depende de como a
+  `tabela_mestra` é populada.
+- **Ele passa a dispararar em 100% do Aluno sem Etapa 1** no instante em que o ADR-0008 for
+  implementado, porque ausência declarada significa `None` no lugar de `0`. **Consertar a
+  representação sem consertar o coalescing acorda o bug exatamente na classe que a mudança queria
+  proteger.**
+
+O `?? 0` das objetivas não é inocente por ser zero: também inventa — afirma "tirou nota
+catastrófica" onde a verdade é "não sei". Só é menos visível porque coincide com a convenção do
+Edital.
+
+O default do Pydantic é um terceiro disparo, independente: vale quando a **chave falta no JSON**,
+não quando ela vem nula. O frontend sempre manda a chave, então está dormente nesse caminho e vivo
+para qualquer outro chamador.
+
+**Corrigido em 2026-07-27** (ticket 14), em três arquivos:
+
+- `api/schemas/gestao.py` — `red_pas1`/`red_pas2` perderam o default `6.0`. As seis notas são
+  obrigatórias; nota nula ou chave ausente vira **422 nomeando o campo**, verificado
+  (`Field required` / `Input should be a valid number`).
+- `landing-page/app/(dashboard)/gestao/page.tsx` — o `?? 0` / `?? 6` saiu. As linhas são
+  **particionadas** em completas e incompletas; só as completas vão para a API, e as incompletas
+  aparecem num aviso nomeando Aluno e campos faltantes. Ninguém recebe número inventado e ninguém
+  some da tela em silêncio.
+- `landing-page/lib/api.ts` — o erro de `fetchGestao` passou a carregar o corpo da resposta. Sem
+  isso, o 422 preciso lia na tela como "API indisponível", e o conserto barulhento voltava a ser
+  silencioso.
+
+`pytest`: 248 passam, 2 falham — as duas pré-existentes (defeito 1 e `test_pdf_gen_manual`, que tem
+caminho Windows cravado). `eslint` e `tsc --noEmit` limpos nos arquivos tocados.
+
+**O que ainda falta, e é outro defeito:** o Preditor público
+(`landing-page/components/public/predict/PreditorPage.tsx:413`) continua nascendo com
+`emptyScores() = { p1: "0", p2: "0", red: "0" }`. Ali o zero é digitado por um humano, então a
+correção não é propagar nulo — é o **controle de ausência declarada** do
+[ADR-0008](../../../docs/adr/0008-aluno-sem-etapa-1-atendido-com-funcao-propria.md), que é decisão
+de interface e não entrou neste conserto.
+
+**Severidade: era média (dependia de quantas linhas da `tabela_mestra` têm Redação NULL — nunca
+medido, e provavelmente nenhuma, porque a carga vem direto do Cebraspe). O motivo de consertar
+agora foi outro:** a mudança de representação do ADR-0008 — ausência como `None` no lugar de `0` —
+transformaria este defeito num erro de 100% de cobertura exatamente na classe que a mudança
+pretendia proteger. Consertado antes, a ordem deixou de importar.
+
+---
+
+## 5. O roteador do ensemble é cego à direção do Momentum
+
+**Onde foi encontrado:** ticket 14, ao registrar o Momentum como hipótese central do produto.
+`src/pas_intelligence/ensemble.py:24-55` roteia por Volatilidade (CV), que é `std/mean` — grandeza
+sem sinal.
+
+**O defeito:**
+
+```
+CV([30, 35]) = 7,69%   ← subiu 5 pontos
+CV([35, 30]) = 7,69%   ← caiu 5 pontos
+```
+
+Idênticos. O Aluno que subiu e o Aluno que caiu recebem a **mesma decisão de roteamento**. A
+direção existe apenas em `c_eb`/`c_red`, que são features dos modelos, não do roteador. Ou seja: o
+mecanismo que decide *qual modelo usar* é cego exatamente à hipótese que motivou o produto.
+
+Caso limite relacionado, do mesmo módulo: sobre `[0, eb_pas2]` o CV devolve **exatamente 100%**
+para qualquer `eb_pas2`. Não é volatilidade alta — é a assinatura de grandeza indefinida (o
+Momentum do Aluno sem Etapa 1). O roteador não tem como distinguir os dois casos.
+
+**O que falta fazer:** entra como evidência no ticket 10, que julga se o meta-modelo por
+volatilidade paga o nível de indireção que custa. Se ficar, o roteador precisa de grandeza com
+sinal; se sair, o defeito morre junto.
+
+**Severidade: média.** Não produz número errado por si só — os modelos roteados recebem `c_eb` e
+`c_red` e enxergam a direção. Mas a escolha de *qual* modelo confiar é feita com metade da
+informação, e o ticket 10 mede num arranjo que já está sob julgamento.

@@ -293,6 +293,71 @@ Duas coisas diferentes, e a confusão é comum:
 O texto nativo do LightGBM dá a primeira, não a segunda. São 100 árvores encadeadas: legível por
 máquina, não compreensível por humano. **Legível ≠ explicável.**
 
+### Fora de distribuição (*out of distribution*)
+
+Uma entrada cujo padrão **não aparece no treino**. O caso do projeto: o Aluno sem Etapa 1 chega ao
+modelo com `EB_PAS1 = 0` e `Cresc_EB = +35`, combinação que nenhuma linha de treino tem.
+
+O que torna isso perigoso é o que **não** acontece: não dá erro, não dá aviso, não vem com
+confiança menor. O modelo responde um número com a mesma cara de todos os outros.
+
+E árvore tem uma propriedade agravante: **ela não extrapola**. Uma reta, pedindo `x = 0` quando só
+viu `x` perto de 30, pelo menos estende a reta. Uma árvore só sabe dizer "cai na folha dos menores
+que eu vi" — então a resposta gruda no pior PAS 1 que existiu no treino, seja lá qual for. Pode até
+sair na direção certa por acidente (o Aluno sem Etapa 1 *é* prejudicado), com magnitude que
+ninguém mediu.
+
+### Valor faltante (`NaN`, *missing value*)
+
+Marcar explicitamente "este número não existe", que é **diferente de zero**. Zero é um valor;
+faltante é a ausência de valor.
+
+Importa aqui porque as famílias de modelo se dividem nisso:
+
+- **LightGBM, HistGradientBoosting** — aceitam nativamente. Durante o treino a árvore aprende, em
+  cada nó, para que lado mandar quem está faltando. É informação aprendida, não chute.
+- **Regressão linear, MLP** — não aceitam. Exigem preencher o buraco com alguma coisa antes, e essa
+  coisa é sempre uma invenção.
+
+Por isso o ticket 10 não pode tratar "aceita faltante" como desempate: escolher linear ou MLP
+**fecha a porta** do Aluno sem Etapa 1 e obriga um pipeline separado.
+
+### Estratificar
+
+Garantir que uma divisão (treino/holdout) preserve a proporção de um grupo em cada parte, em vez de
+deixar por conta do sorteio.
+
+Sem estratificar por `etapa_1_ausente`, o holdout pode sair com poucos Alunos dessa classe, e a
+métrica deles vira ruído — dá para "melhorar o modelo" piorando os 9% sem que apareça em número
+nenhum.
+
+### Regime
+
+Um conjunto de linhas geradas pela **mesma regra**. O projeto tem dois exemplos e eles são de tipos
+diferentes:
+
+- **Regime de alvo** — as 1.483 linhas antigas cujo Argumento Final impresso segue a regra generosa
+  de Etapa ausente que ninguém reconstruiu. O *rótulo* delas é de outro mundo.
+- **Regime de feature** — o Aluno sem Etapa 1. O rótulo está certo; a *entrada* é de outro mundo.
+
+Misturar regimes num modelo só é legítimo — às vezes é até melhor, porque dá mais dado. Mas tem que
+ser **medido**, nunca presumido.
+
+### Momentum × Volatilidade
+
+Duas grandezas que parecem a mesma e não são:
+
+- **Volatilidade (CV)** — `std/mean`. Quanto as notas **variam**. Não tem sinal.
+- **Momentum** — para onde e quanto o Aluno **andou**. Tem sinal.
+
+```
+CV([30, 35]) = 7,69%   ← subiu 5
+CV([35, 30]) = 7,69%   ← caiu 5
+```
+
+O CV não distingue os dois. O `meta_model` roteia por CV, então ele decide qual modelo usar sem
+saber se o Aluno subiu ou caiu — cego exatamente à hipótese que motivou o produto (defeito 5).
+
 ### SHAP
 
 A técnica de XAI que reparte a previsão entre as features, dizendo quanto cada uma empurrou para

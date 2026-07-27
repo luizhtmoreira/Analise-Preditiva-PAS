@@ -1,8 +1,16 @@
 # 14 — Alunos com Etapa 1 ausente: fora do treino, ou caso que o produto precisa servir?
 
 **Type:** grilling
-**Status:** open
+**Status:** concluído — 2026-07-27
 **Blocked by:** nenhum — os tickets 01 e 02 já entregaram toda a evidência
+
+> **Resolvido.** É ausência, não zero real, e o produto **atende** essa classe. A previsão do
+> Argumento Final exige função própria (o Momentum é indefinido para ela); o Quanto Falta já a
+> atende corretamente hoje, por aritmética. A ausência passa a ser **declarada**, nunca inferida
+> de notas zeradas. Treinar em todos vs. treinar nos 60.013 **não** foi decidido aqui — é medição
+> do ticket 10.
+> → [relatório](../relatorios/14-alunos-com-etapa-1-ausente.md) ·
+> [ADR-0008](../../../docs/adr/0008-aluno-sem-etapa-1-atendido-com-funcao-propria.md)
 
 ## Question
 
@@ -41,12 +49,25 @@ alguma regra própria, não como "tirou zero". Instituição não compensa quem 
 quem não fez. A mecânica exata dessa regra não foi reconstruída (limitação declarada no
 relatório 02), e ela mudou: de 2018/2020 em diante o tratamento passa a ser literal.
 
-- [ ] Determinado, com evidência do Edital, se Etapa 1 zerada significa ausência ou zero real
-- [ ] Decidido se o produto precisa atender o aluno que só fez PAS 2 — pergunta ao dono do
-      produto, não inferência a partir dos dados
-- [ ] Se precisar: decidido como (modelo separado com features de uma etapa só? recusa
-      explícita na interface?) e isso vira ticket próprio
-- [ ] Se não precisar: exclusão confirmada, e a interface do app registra que esse aluno está
-      fora do escopo em vez de receber uma previsão silenciosamente ruim
-- [ ] Contagem final do dataset entregue ao ticket 05
-- [ ] Relatório em `relatorios/14-alunos-com-etapa-1-ausente.md`
+- [x] Determinado se Etapa 1 zerada significa ausência ou zero real — **ausência**. Fechado sem
+      arqueologia de Edital: a regra do PAS (pode faltar à Etapa 1; quem falta à 2 fica impedido
+      da 3; quem falta à 3 não entra no Resultado Final) **prevê as três células** da tabela de
+      etapas zeradas observada — 5.768 / 0 / 0.
+- [x] Decidido se o produto precisa atender o Aluno sem Etapa 1 — **sim**, e a classe está no
+      funil comercial (existe nas Escolas Parceiras), não só na estatística do Cebraspe.
+- [x] Decidido como — **função própria** para a previsão, porque o Momentum é indefinido para ela;
+      o Quanto Falta já a atende por aritmética exata. Um modelo com roteamento de faltante vs.
+      dois modelos separados é medição do ticket 10. Modelo único só com features da Etapa 2 foi
+      **rejeitado pelo dono do produto** (apagaria o Momentum de 91% para acomodar 9%).
+- [x] Recusa na interface — **descartada**. Nenhum Aluno recebe recusa. Em vez disso: a ausência
+      vira **declarada** (notas `Optional[float] = None`, campo próprio de ausência), separando
+      "não fez" de "não informado" de "tirou zero".
+- [x] Contagem final entregue ao ticket 05 — **64.298** linhas com `checksum_fecha`, das quais
+      **60.013** com Etapa 1 presente e **4.285** com Etapa 1 Ausente. O ticket 05 materializa uma
+      tabela só, com a coluna `etapa_1_ausente`, e **não deleta** os 4.285.
+- [x] Relatório em `relatorios/14-alunos-com-etapa-1-ausente.md`
+- [x] `CONTEXT.md`: **Etapa Ausente**, **Momentum**, **Aluno sem Etapa 1**; Volatilidade (CV)
+      afiada para registrar que é cega à direção.
+- [x] `docs/adr/0008-aluno-sem-etapa-1-atendido-com-funcao-propria.md`
+- [x] Defeitos 4 e 5 abertos em `relatorios/defeitos-pendentes.md` (`Red_PAS1 = 6.0` inventado;
+      roteador do ensemble cego à direção do Momentum).
