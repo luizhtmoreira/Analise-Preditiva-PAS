@@ -75,6 +75,24 @@ aqui: esta seção só ordena, não rastreia.
 | 10 | [Pipeline de treino reproduzível](issues/12-pipeline-de-treino-reproduzivel.md) | não | Sonnet, médio |
 | 11 | [Treinar, avaliar e promover](issues/13-treinar-avaliar-e-promover.md) | **sim** — revisar antes de promover | Opus, alto |
 
+**⚠ Timebox nos tickets 08, 09 e 10 — decidido no ticket 06, com medição.** A régua mediu o teto
+de acurácia antes de o mapa gastar sessões procurando por ele, e ele está a 0,2% de uma regressão
+linear de duas variáveis (dobra 5, classe majoritária):
+
+| preditor | RMSE em `A3` |
+|---|---:|
+| repete a Etapa 2 (`A3 = A2`) | 5,187 |
+| **regressão linear em (A1, A2)** | **4,690** |
+| LightGBM, 400 árvores, + os 6 EBs crus | **4,681** |
+
+`A1` e `A2` já contêm quase toda a informação existente sobre a Etapa 3; os ~26% restantes da
+variância são o ano do próprio Aluno e não estão no dado. **Estes três tickets entram com prazo
+curto e expectativa de empate**, não como exploração aberta — a regra de parada do ticket 06
+(menos de 1% relativo em dois tickets seguidos) provavelmente dispara já no 08. O ganho deste
+mapa não está em acurácia; está em coerência (ticket 04) e em incerteza honesta (ticket 11).
+Ressalva: não foram medidos `curso`/`campus`/`turno` nem língua — é o ticket 09 que mede, e o
+teto não está declarado sobre feature não medida.
+
 **Critério da coluna "Modelo / esforço":** **Você na sala = sim** (grilling/decisão de produto,
 sem métrica que resolva sozinha) → **Opus, alto**. **Não/delegável** → **Sonnet**, com esforço
 **médio** quando é engenharia mecânica de resultado previsível (filtrar linha, montar pipeline,
@@ -197,6 +215,38 @@ canônico fechar: o encaixe no `target_calculator` reverso, e os limites chutado
   a decisão do ticket 03 não se aplica aqui). `data/` já estava no `.gitignore`.
   → [relatório](relatorios/05-dataset-de-treino-canonico.md)
 
+- [06 — Esquema de validação](issues/06-esquema-de-validacao.md) — **validação deslizante**
+  (5 dobras, treina no passado e prevê o futuro) com **2023/2025 lacrado**, aberto uma vez no
+  ticket 13; abrir o lacre produz **um número, não uma decisão** — reajustar depois de ver queima
+  o lacre até o Edital de 2027. Embarca o modelo treinado nos 8 triênios, com o número do gêmeo
+  medido até 2022/2024 escrito no manifesto. **Não agrupa por aluno**: os 144 repetentes ficam,
+  porque sob split temporal a resposta do teste não existe em treino nenhum — e porque o Aluno
+  vivo pode ser um deles (mesmo princípio do ADR-0008). Quatro métricas com papéis distintos:
+  **RMSE decide**, MAE se fala, **viés** valida o RMSE como σ, erro de decisão **veta
+  conversando**. Corte pelo **menor corte entre os sistemas do Aluno** (32,3% não são Universal;
+  só 0,01% de `cota_padrao_suspeito`). Achado que atravessa o mapa: **a classe
+  `etapa_1_ausente` é 0,36% nos dois triênios antigos e ~10% nos recentes** — é o filtro do
+  ticket 01, não deriva do mundo; 1.465 linhas recuperáveis foram testadas e **não fecham**.
+  Quatro travas mecânicas impedem o ticket 08 de ler isso como deriva. Critério de aceite virou
+  **não-regressão + coerência + incerteza honesta**, não melhoria de acurácia — ver o timebox
+  acima.
+  → [relatório](relatorios/06-esquema-de-validacao.md)
+
+## Restrições que o ticket 06 deixou nos tickets seguintes
+
+- **07 (baseline):** a faixa de decisão é **congelada** no RMSE do melhor baseline trivial deste
+  ticket, e não se recalcula por modelo. O `13,49` não é "quase o baseline burro" — é um número
+  praticamente no teto, como todo o resto; o defeito dele é ser **o mesmo para todo Aluno**.
+- **08 (janela):** a curva de erro contra número de triênios é medida **só na classe
+  majoritária**. Para o Aluno sem Etapa 1 a pergunta é inrespondível com este dataset.
+- **09, 10:** timeboxados — ver acima. Comparação sempre **pareada dentro da dobra**, com a
+  janela segurada igual; nunca modelo A na dobra 2 contra modelo B na dobra 4.
+- **11 (incerteza):** o viés do baseline deu **+0,00** e a razão RMSE/MAE **1,26** (teórico 1,25)
+  — a forma normal se sustenta no baseline, então o trabalho do 11 é largura **por Aluno**, não
+  trocar a forma.
+- **13 (promoção):** único lugar do repositório autorizado a chamar
+  `holdout_final_use_uma_vez()`.
+
 ## Restrições que o ticket 04 deixou nos tickets seguintes
 
 - **05 (dataset):** o alvo a materializar é `A3`; guardar também `A1` e `A2`, que viram features
@@ -274,9 +324,11 @@ Névoa reconhecida, ainda sem nitidez para virar ticket:
   dos 865 registros com Etapa 1 Ausente em 2023/2025, quantos estão ausentes do Edital da Etapa 1
   de 2023? Fecha a leitura de ausência com prova documental *e* mede a taxa de acerto do casamento
   por nome numa população de resposta conhecida.
-- **Alunos que aparecem em mais de um triênio.** Medido pelo ticket 01: **146 inscrições
-  (0,22%)**. Pequeno demais para ticket próprio, grande demais para ignorar — o ticket 06
-  decide se o split agrupa por aluno. Fica aqui só até aquela decisão ser tomada.
+- ~~**Alunos que aparecem em mais de um triênio.**~~ **RESOLVIDO pelo ticket 06** — 144 Alunos,
+  todos nos quatro triênios recentes, 83 com uma perna no lacre. **Não se agrupa e não se
+  remove**: sob split temporal a resposta do teste não existe em treino nenhum, então não há
+  vazamento; e tirar repetentes do teste o tornaria menos parecido com a produção, não mais.
+  Ver §3 do [relatório 06](relatorios/06-esquema-de-validacao.md).
 
 ## Out of scope
 

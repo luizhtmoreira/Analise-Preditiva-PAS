@@ -189,13 +189,78 @@ Servidor caído você conserta; número errado entregue como certo você nunca d
 
 ## Parte 4 — Como se mede um modelo
 
-*(Ainda não decidido — vale para os tickets 07 e 10.)*
+*(Decidido pelo ticket 06 — é a régua dos tickets 07 a 13.)*
 
 ### Holdout
 
 Um pedaço dos dados **separado antes do treino** e nunca mostrado ao modelo. Serve para medir
 desempenho em dados que ele não decorou. Medir no dado de treino é como corrigir a prova com o
 gabarito ao lado.
+
+Cuidado: a palavra tem dois usos neste mapa. Em cada **dobra**, o triênio previsto é um holdout
+*temporário* — ele volta a ser treino na dobra seguinte. O **holdout lacrado** é outra coisa.
+
+### Dobra (*fold*)
+
+Uma rodada da validação: um par *"treinei com estes triênios, prevejo aquele"*. Cinco dobras
+devolvem cinco números em vez de um — e é a diferença entre eles que mostra se o erro é estável
+entre anos ou se um ano específico foi um desastre. Com um número só você não tem como saber.
+
+### Validação deslizante (*rolling-origin*)
+
+Esquema em que a fronteira entre treino e teste **anda um triênio para a frente** a cada dobra,
+sempre treinando no passado e prevendo o futuro. Imita o que o produto faz de verdade: prever
+uma Etapa 3 que ainda não aconteceu, num ano que não está na base.
+
+```
+dobra 1 · treina 2016/2018, 2017/2019       → prevê 2018/2020
+dobra 2 · treina os anteriores + 2018/2020  → prevê 2019/2021
+dobra 3 · treina os anteriores + 2019/2021  → prevê 2020/2022
+dobra 4 · treina os anteriores + 2020/2022  → prevê 2021/2023
+dobra 5 · treina os anteriores + 2021/2023  → prevê 2022/2024
+──────────────────── LACRE ────────────────────
+        · treina tudo até 2022/2024         → prevê 2023/2025
+```
+
+O contrário é o **split aleatório**, que sorteia linhas sem olhar o ano e mistura triênios entre
+treino e teste — mede interpolação dentro de anos conhecidos, que é uma coisa que o produto
+nunca faz.
+
+### Holdout lacrado
+
+O triênio **2023/2025**, que não entra em treino nenhum e cujo resultado é olhado **uma única
+vez**, no ticket 13. "Lacrar" não é termo técnico, é a palavra da casa: fica guardado e ninguém
+abre.
+
+O motivo é aritmético, não disciplinar. Olhar o número, mexer no modelo, olhar de novo e mexer de
+novo transforma o triênio em mais uma dobra — você deixa de **medir** o modelo e passa a
+**ajustá-lo até o número ficar bonito**. Depois disso não sobra nenhum ano limpo, e o próximo só
+existe quando sair o Edital de 2027.
+
+Por isso a regra de uso é escrita **antes** de o número ser conhecido: abrir o lacre produz um
+número, não uma decisão. Ou promove com ele, ou desiste da rodada — mexer no modelo depois de
+ver o resultado queima o lacre.
+
+### Receita
+
+O conjunto de escolhas que define um modelo antes de ele encontrar dado: quais features, qual
+família, quais hiperparâmetros, como trata a Etapa 1 ausente. **O que as dobras medem é a
+receita, não o arquivo.**
+
+É o que permite embarcar em produção um modelo que nunca foi medido: mede-se a receita seis vezes
+em anos que ela não viu, e depois roda-se a mesma receita com todo o dado. Analogia: você não
+consegue medir o aluno que ainda não fez a prova — você mede o **método** nas turmas que já
+terminaram e diz o número do método para o aluno de hoje.
+
+### Modelo medido × modelo embarcado
+
+O **medido** é o treinado até 2022/2024, o único contra o qual existe um ano limpo para comparar.
+O **embarcado** é o treinado nos 8 triênios, que vai para produção porque usa também o triênio
+mais parecido com o Aluno vivo — e que, por construção, não tem contra o quê ser medido.
+
+Decisão do ticket 06: **embarca-se o dos 8**, e o manifesto escreve a frase inteira, sem esconder
+nada: *"erro X — medido sobre a mesma receita treinada até 2022/2024; o arquivo embarcado foi
+treinado até 2023/2025 e não foi medido"*.
 
 ### MAE (erro absoluto médio)
 

@@ -91,6 +91,14 @@ _Avoid_: crescimento, variação, tendência, volatilidade, delta de EB
 Aluno cuja Etapa 1 é uma Etapa Ausente: fez a Etapa 2, fará a Etapa 3, não fez a Etapa 1. É uma trajetória permitida pelo PAS e uma classe que o produto atende — não um cadastro incompleto. Para ele o Momentum é indefinido, e por isso a previsão do Argumento Final exige função própria; já o Quanto Falta é aritmética exata e vale sem alteração. Representa 8,7% do Resultado Final histórico.
 _Avoid_: aluno que só fez o PAS 2, aluno incompleto, aluno com nota zero, outlier
 
+**Aluno Repetente**:
+Aluno que cursa o PAS mais de uma vez, refazendo as três Etapas num Triênio posterior e
+concorrendo de novo — frequentemente ao mesmo curso. É uma trajetória permitida pelo programa e
+uma classe que o produto atende, **não uma duplicata de registro**: as duas passagens são pessoas
+iguais em provas diferentes, com notas próprias. Representa 0,46% do Resultado Final histórico
+(144 Alunos), concentrado nos Triênios recentes.
+_Avoid_: duplicata, aluno duplicado, linha repetida, inscrição repetida, outlier
+
 ### Produto
 
 **Feature Pública**:
