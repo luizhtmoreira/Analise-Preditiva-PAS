@@ -54,6 +54,40 @@ leitura. Investigação pesada vai para sub-agente com saída bruta em arquivo
 (quais linhas, qual split, qual semente). Comparação entre modelos só vale sobre o *mesmo*
 holdout.
 
+## Rota até produção
+
+Ordem de execução recomendada, uma sessão por ticket, limpando o contexto entre elas. **O
+número da rota não é o número do arquivo** — os arquivos são numerados por ordem de criação,
+esta lista é por ordem de execução. O status de cada ticket vive no próprio arquivo, nunca
+aqui: esta seção só ordena, não rastreia.
+
+| Rota | Ticket | Você na sala? |
+|---|---|---|
+| 1 | [Alunos com Etapa 1 ausente](issues/14-alunos-com-etapa-1-ausente.md) | **sim** — é pergunta de produto |
+| 2 | [Alvo canônico: Argumento ou 3 notas](issues/04-alvo-canonico-argumento-ou-tres-notas.md) | **sim** |
+| 3 | [Dataset de treino canônico](issues/05-dataset-de-treino-canonico.md) | não — delegável |
+| 4 | [Esquema de validação](issues/06-esquema-de-validacao.md) | **sim** — é a régua |
+| 5 | [Baseline honesto](issues/07-baseline-honesto.md) | não |
+| 6 | [Janela de dados: 2018 vale?](issues/08-janela-de-dados-2018-vale.md) | não |
+| 7 | [Conjunto de features](issues/09-conjunto-de-features.md) | em parte — confirmar disponibilidade com o produto |
+| 8 | [Família de modelo](issues/10-familia-de-modelo.md) | não |
+| 9 | [Incerteza calibrada](issues/11-incerteza-calibrada.md) | **sim** |
+| 10 | [Pipeline de treino reproduzível](issues/12-pipeline-de-treino-reproduzivel.md) | não |
+| 11 | [Treinar, avaliar e promover](issues/13-treinar-avaliar-e-promover.md) | **sim** — revisar antes de promover |
+
+**Duas ordenações que não são arbitrárias e não devem ser trocadas:**
+
+- **O alvo (2) vem antes da janela (6).** O ticket 02 mostrou que o EB da Etapa 3 varia ~35%
+  entre triênios enquanto o Argumento Final é estável. Logo "o padrão mudou desde 2018?" tem
+  resposta *diferente conforme o alvo* — medir a janela com o alvo em aberto produz um número
+  sem significado.
+- **A régua (4) vem antes de tudo que mede (5, 6, 7, 8).** Escolher o esquema de validação
+  depois de ver resultados é escolher a conclusão.
+
+**Espere a rota crescer.** Duas coisas em *Not yet specified* devem virar ticket quando o alvo
+canônico fechar: o encaixe no `target_calculator` reverso, e os limites chutados de P1/P2
+(`[-20,20]`, e o teto de 100 aplicado a P2 isolado quando provavelmente é do EB combinado).
+
 ## Decisions so far
 
 <!-- uma linha por ticket fechado: gist + link -->
