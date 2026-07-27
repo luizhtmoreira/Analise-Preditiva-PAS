@@ -61,19 +61,49 @@ número da rota não é o número do arquivo** — os arquivos são numerados po
 esta lista é por ordem de execução. O status de cada ticket vive no próprio arquivo, nunca
 aqui: esta seção só ordena, não rastreia.
 
-| Rota | Ticket | Você na sala? |
-|---|---|---|
-| 1 | [Alunos com Etapa 1 ausente](issues/14-alunos-com-etapa-1-ausente.md) | **sim** — é pergunta de produto |
-| 2 | [Alvo canônico: Argumento ou 3 notas](issues/04-alvo-canonico-argumento-ou-tres-notas.md) | **sim** |
-| 3 | [Dataset de treino canônico](issues/05-dataset-de-treino-canonico.md) | não — delegável |
-| 4 | [Esquema de validação](issues/06-esquema-de-validacao.md) | **sim** — é a régua |
-| 5 | [Baseline honesto](issues/07-baseline-honesto.md) | não |
-| 6 | [Janela de dados: 2018 vale?](issues/08-janela-de-dados-2018-vale.md) | não |
-| 7 | [Conjunto de features](issues/09-conjunto-de-features.md) | em parte — confirmar disponibilidade com o produto |
-| 8 | [Família de modelo](issues/10-familia-de-modelo.md) | não |
-| 9 | [Incerteza calibrada](issues/11-incerteza-calibrada.md) | **sim** |
-| 10 | [Pipeline de treino reproduzível](issues/12-pipeline-de-treino-reproduzivel.md) | não |
-| 11 | [Treinar, avaliar e promover](issues/13-treinar-avaliar-e-promover.md) | **sim** — revisar antes de promover |
+| Rota | Ticket | Você na sala? | Modelo / esforço |
+|---|---|---|---|
+| 1 | [Alunos com Etapa 1 ausente](issues/14-alunos-com-etapa-1-ausente.md) | **sim** — é pergunta de produto | Opus, alto |
+| 2 | [Alvo canônico: Argumento ou 3 notas](issues/04-alvo-canonico-argumento-ou-tres-notas.md) | **sim** | Opus, alto |
+| 3 | [Dataset de treino canônico](issues/05-dataset-de-treino-canonico.md) | não — delegável | Sonnet, médio |
+| 4 | [Esquema de validação](issues/06-esquema-de-validacao.md) | **sim** — é a régua | Opus, alto |
+| 5 | [Baseline honesto](issues/07-baseline-honesto.md) | não | Sonnet, alto |
+| 6 | [Janela de dados: 2018 vale?](issues/08-janela-de-dados-2018-vale.md) | não | Sonnet, médio |
+| 7 | [Conjunto de features](issues/09-conjunto-de-features.md) | em parte — confirmar disponibilidade com o produto | Sonnet, médio |
+| 8 | [Família de modelo](issues/10-familia-de-modelo.md) | não | Sonnet, alto |
+| 9 | [Incerteza calibrada](issues/11-incerteza-calibrada.md) | **sim** | Opus, alto |
+| 10 | [Pipeline de treino reproduzível](issues/12-pipeline-de-treino-reproduzivel.md) | não | Sonnet, médio |
+| 11 | [Treinar, avaliar e promover](issues/13-treinar-avaliar-e-promover.md) | **sim** — revisar antes de promover | Opus, alto |
+
+**Critério da coluna "Modelo / esforço":** **Você na sala = sim** (grilling/decisão de produto,
+sem métrica que resolva sozinha) → **Opus, alto**. **Não/delegável** → **Sonnet**, com esforço
+**médio** quando é engenharia mecânica de resultado previsível (filtrar linha, montar pipeline,
+comparar duas janelas) e **alto** quando é medição/comparação cujo resultado numérico vira a
+base de uma decisão maior a jusante (baseline que define "honesto", família de modelo).
+
+**Onde dá para paralelizar.** A rota é sequencial por dependência (`Blocked by` de cada issue),
+não por convenção — a maior parte dela é uma corrente de um elo só porque cada ticket consome o
+resultado do anterior. Só existem dois pontos onde dois tickets têm exatamente as mesmas
+dependências satisfeitas ao mesmo tempo e não dependem um do outro:
+
+```
+05 → 06 → 07 ─┬─→ 08 ─┐
+              └─→ 09 ─┴─→ 10 → 11 ─┐
+                                    ├─→ 13
+                              12 ───┘
+                    (12 também espera 08 e 09)
+```
+
+- **Depois que 07 fechar:** 08 (janela) e 09 (features) podem rodar em sessões paralelas — as
+  duas só pedem 06 e 07, nenhuma lê a saída da outra. Ambas são Sonnet médio, então é literalmente
+  abrir duas sessões.
+- **Depois que 10 fechar:** 11 (incerteza, Opus alto, você na sala) e 12 (pipeline, Sonnet médio,
+  delegável) também satisfazem as próprias dependências ao mesmo tempo — e aqui o paralelismo é
+  ainda mais natural, porque um é HITL e o outro não: você grilling o 11 numa sessão enquanto o
+  12 roda delegado noutra.
+
+Fora desses dois pontos, rodar em paralelo é gastar sessão sem ganhar tempo — o ticket seguinte
+vai ficar bloqueado esperando o anterior de qualquer forma.
 
 **Duas ordenações que não são arbitrárias e não devem ser trocadas:**
 
