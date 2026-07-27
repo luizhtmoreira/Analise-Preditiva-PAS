@@ -39,6 +39,15 @@ FIXTURE_AVULSO_MESMO_TRIENIO = FIXTURES_DIR / "medias_desvios_avulso_2016_2018.p
 CONTAGEM_SEM_CAUDA = 84
 FECHAM_SEM_CAUDA = 82
 
+# Ed_38_2024 (2022/2024) com a página 242 — a cauda onde este triênio publica a tabela de
+# médias e desvios, porque a partir de 2021/2023 o Cebraspe deixou de publicar o Edital
+# avulso. É a fixture do ticket 04 (checksum), reusada aqui pelo outro lado: não pelo que a
+# tabela confere, mas pelo fato de ela própria ser dado publicado que precisa sair no CSV.
+FIXTURE_COM_CAUDA = FIXTURES_DIR / "resultado_final_com_checksum.pdf"
+# 3 Etapas x 5 linhas (Parte I em 3 línguas, Parte II, Redação) — o mesmo formato de tabela
+# do Edital avulso.
+LINHAS_DE_UMA_TABELA = 15
+
 
 def _pular_se_ausente(*caminhos: Path) -> None:
     for caminho in caminhos:
@@ -119,6 +128,46 @@ class TestFallbackAutomaticoDeMediasEDesvios:
         rodada = rodar([FIXTURE_RESULTADO_FINAL, FIXTURE_AVULSO_MESMO_TRIENIO])
 
         assert all(r.checksum is None for r in rodada.resultado_final[0].registros)
+
+
+class TestTabelaDaCaudaSaiNoCSV:
+    """A tabela de Médias e Desvios publicada na cauda do Resultado Final é o mesmo dado do
+    Edital avulso, e precisa sair no mesmo CSV: dos 8 triênios do corpus, os 3 mais recentes
+    (2021/2023, 2022/2024, 2023/2025) só a publicam lá."""
+
+    def test_cauda_entra_na_lista_da_familia_medias_e_desvios(self):
+        _pular_se_ausente(FIXTURE_COM_CAUDA)
+
+        rodada = rodar([FIXTURE_COM_CAUDA])
+
+        # O PDF é um Resultado Final — conta na Família dele — mas a tabela que ele traz na
+        # cauda também sai, com a proveniência apontando para este mesmo arquivo.
+        assert len(rodada.resultado_final) == 1
+        assert len(rodada.medias_desvios) == 1
+        tabela = rodada.medias_desvios[0]
+        assert tabela.arquivo_origem == FIXTURE_COM_CAUDA.name
+        assert len(tabela.registros) == LINHAS_DE_UMA_TABELA
+        assert {r.etapa for r in tabela.registros} == {1, 2, 3}
+
+    def test_resultado_final_sem_tabela_nenhuma_nao_gera_linha(self):
+        _pular_se_ausente(FIXTURE_SEM_CAUDA)
+
+        rodada = rodar([FIXTURE_SEM_CAUDA])
+
+        assert rodada.medias_desvios == []
+
+    def test_tabela_vinda_de_avulso_nao_e_contada_duas_vezes(self):
+        """O avulso já entra na rodada como Edital próprio; anexá-lo *também* ao Resultado
+        Final que ele conferiu escreveria a mesma tabela duas vezes no CSV."""
+        _pular_se_ausente(FIXTURE_SEM_CAUDA, FIXTURE_AVULSO_MESMO_TRIENIO)
+
+        rodada = rodar([FIXTURE_SEM_CAUDA, FIXTURE_AVULSO_MESMO_TRIENIO])
+
+        # O checksum fechou (é o que o teste do fallback acima prova), mas a tabela usada
+        # veio do avulso — que responde sozinho pela única entrada da lista.
+        assert [t.arquivo_origem for t in rodada.medias_desvios] == [
+            FIXTURE_AVULSO_MESMO_TRIENIO.name,
+        ]
 
 
 class TestDeterminismo:
