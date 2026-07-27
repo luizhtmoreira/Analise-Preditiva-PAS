@@ -8,12 +8,16 @@ class StudentInput(BaseModel):
     curso_alvo: str = ""
     cota: str = "Sistema Universal"
     ano_trienio: str = "2024-2026"
+    # As seis notas são obrigatórias e não têm default. `red_pas1`/`red_pas2` já tiveram
+    # default 6.0 — uma Redação mediana inventada onde a nota não foi informada, que inflava
+    # o Argumento da Etapa em ~3,3 pontos na direção do otimismo, sem deixar rastro.
+    # Nota faltante agora é 422 nomeando o campo, nunca um número plausível. Ver ADR-0008.
     p1_pas1: float
     p2_pas1: float
-    red_pas1: float = 6.0
+    red_pas1: float
     p1_pas2: float
     p2_pas2: float
-    red_pas2: float = 6.0
+    red_pas2: float
 
 
 class StudentResult(BaseModel):

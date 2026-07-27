@@ -13,7 +13,10 @@ export async function fetchGestao(students: unknown[], trienio = "2024-2026", ce
   });
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
+    // O corpo carrega o motivo — um 422 do Pydantic nomeia o campo e a linha. Descartá-lo
+    // fazia qualquer rejeição de validação virar "API indisponível" na tela.
+    const detalhe = await res.text().catch(() => "");
+    throw new Error(`API error: ${res.status}${detalhe ? ` — ${detalhe}` : ""}`);
   }
 
   return res.json();
