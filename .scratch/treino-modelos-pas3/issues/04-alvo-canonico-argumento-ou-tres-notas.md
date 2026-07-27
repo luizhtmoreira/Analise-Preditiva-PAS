@@ -1,8 +1,13 @@
 # 04 — Alvo canônico: prever o Argumento Final direto ou as 3 notas e derivar?
 
 **Type:** grilling
-**Status:** open
+**Status:** concluído — 2026-07-27
 **Blocked by:** 02
+
+> **Resposta: nenhuma das duas. O alvo canônico é `A3`, o Argumento da Etapa 3.** O Argumento
+> Final, o EB e o escore necessário saem dele por aritmética, com `A1` e `A2` calculados exatos.
+> → [relatório](../relatorios/04-alvo-canonico-argumento-ou-tres-notas.md) ·
+> [ADR-0009](../../../docs/adr/0009-alvo-canonico-argumento-da-etapa-3.md)
 
 ## Question
 
@@ -52,9 +57,11 @@ Note que (2) empurra para "Argumento direto" e (1) remove a objeção contra "3 
 Não se anulam: a rota das 3 notas continua viável, mas herda o problema de dificuldade de prova
 que o Argumento não tem. Isso precisa ser encarado, não contornado.
 
-- [ ] Escolhido o alvo canônico, com o motivo
-- [ ] Definido como a outra rota é derivada da canônica sem poder divergir dela
-- [ ] Verificado, com número, o quanto as rotas divergem **hoje** nos modelos existentes — é o
-      tamanho do problema que se está resolvendo
-- [ ] Confirmado o que o `target_calculator.py` e a camada de probabilidade passam a consumir
-- [ ] Relatório em `relatorios/04-alvo-canonico-argumento-ou-tres-notas.md`
+- [x] Escolhido o alvo canônico, com o motivo — **`A3`**, terceira opção que o ticket não previa
+- [x] Definido como a outra rota é derivada da canônica sem poder divergir dela — P2 é
+      **resolvido** pela fórmula, não previsto; EB e Argumento Final são álgebra sobre o mesmo `A3`
+- [x] Verificado, com número, o quanto as rotas divergem **hoje** — mediana **15,29**, acima do
+      RMSE declarado em **57%** dos Alunos, e **11%** discordam sobre passar (n = 7.838)
+- [x] Confirmado o que o `target_calculator.py` e a camada de probabilidade passam a consumir —
+      §7 do relatório; `σ(Argumento Final) = 3 × σ(A3)`, exato
+- [x] Relatório em `relatorios/04-alvo-canonico-argumento-ou-tres-notas.md`

@@ -243,3 +243,86 @@ sinal; se sair, o defeito morre junto.
 **Severidade: média.** Não produz número errado por si só — os modelos roteados recebem `c_eb` e
 `c_red` e enxergam a direção. Mas a escolha de *qual* modelo confiar é feita com metade da
 informação, e o ticket 10 mede num arranjo que já está sob julgamento.
+
+---
+
+## 6. `TRIENNIUM_STATS` não bate com os Editais — a API calcula o Argumento com números que não são do Cebraspe
+
+**Onde foi encontrado:** ticket 04, ao verificar se `A1` e `A2` podem ser calculados exatos para o
+Aluno vivo. Ver `relatorios/04-alvo-canonico-argumento-ou-tres-notas.md`, §4 da conversa e §9.
+
+**O defeito:** `api/services/gestao_service.py:36-51` carrega médias e desvios num dicionário
+próprio, e eles divergem do `pas_constants.OFFICIAL_STATS`, que vem dos Editais:
+
+| triênio / etapa | `TRIENNIUM_STATS` (P2) | Edital | |
+|---|---|---|---|
+| 2023-2025 PAS1 | 25,3330 / 14,6860 | 25,333 / 14,686 | bate |
+| 2023-2025 PAS2 | 29,2750 / 14,2913 | 29,275 / 14,604 | média bate, **desvio não** |
+| 2022-2024 PAS1 | 20,7094 / 13,5819 | 20,406 / 13,533 | **não bate** |
+| 2022-2024 PAS2 | 30,3477 / 13,2532 | 29,980 / 13,213 | **não bate** |
+| 2022-2024 PAS3 | 32,0862 / 14,1289 | 31,740 / 14,063 | **não bate** |
+
+As de 2022-2024 têm quatro casas decimais e desvio sistematicamente maior que o oficial — cara de
+**calculadas de uma amostra de alunos**, não copiadas do Edital. Consequência: o Argumento que a
+API produz não bate com o do Edital, e a divergência é maior justamente no desvio, que é o
+denominador de todo z-score.
+
+**Estado da fonte (verificado em 2026-07-27):** os números certos **já existem** para todos os
+triênios que a API serve hoje. `pas_constants.OFFICIAL_STATS` tem as 24 chaves `(ano, etapa)` dos
+8 triênios, e a extração `saida-nova/medias_desvios.csv` (75 linhas) cobre os cinco triênios cuja
+tabela sai em Edital avulso — 2016/2018 a 2020/2022, ou seja 15 chaves já absorvidas pelo
+`OFFICIAL_STATS`. **Não é mais uma pergunta em aberto: é uma troca de dicionário.**
+
+O que o `medias_desvios.csv` **não** resolve são as chaves do triênio vivo: `(2024,1)` e
+`(2025,2)` não estão nele (ele para em 2020/2022) nem no `OFFICIAL_STATS`. Essas continuam
+dependendo da extração dos Editais por Etapa — item bloqueante no `map.md`.
+
+**O que falta fazer:** apagar `TRIENNIUM_STATS` e consumir `OFFICIAL_STATS` direto, chaveado por
+`(ano, etapa)` em vez de por string de triênio.
+
+**Severidade: alta.** Enquanto `A1` e `A2` eram só entrada de um modelo que previa o Argumento
+inteiro, um erro ali se diluía. Na rota canônica do ADR-0009 eles são a parte **exata** da conta —
+`Argumento Final = A1 + 2·A2 + 3·Â3` — e um desvio errado no denominador contamina ⅗ do peso, sem
+nada para compensar. Alta severidade com conserto barato: a fonte certa já está em disco.
+
+---
+
+## 7. ~~O override de P1/Redação é ignorado em silêncio se só um dos dois for preenchido~~ — **CORRIGIDO em 2026-07-27**
+
+**Onde foi encontrado:** ticket 04, ao definir o contrato do Estimador Auxiliar.
+
+**O defeito:** `src/pas_intelligence/target_calculator.py:262`
+
+```python
+if p1_override is not None and red_override is not None:
+```
+
+É **`and`**. O Aluno que mexe só na caixa da Redação e deixa a de P1 em branco tem **os dois**
+overrides descartados, e a conta volta a usar o Estimador Auxiliar sem nenhum aviso. Ele vê na
+tela o número que digitou e um P2 necessário que não corresponde a ele.
+
+O caso não é hipotético nem raro: a Redação é o estimador **mais sensível** — 1 ponto de erro nela
+move o P2 necessário em ~0,95 ponto, contra 0,60 do P1 — então é a caixa que o Aluno tem mais
+motivo para mexer sozinha.
+
+**Corrigido em 2026-07-27**, em `src/pas_intelligence/target_calculator.py`. Cada override passou
+a valer por si; o Estimador Auxiliar só é consultado para o componente que ficou em branco, e só é
+consultado quando algum ficou:
+
+```python
+if p1_override is None or red_override is None:
+    previsao = self.predict_stable_components(notas_existentes)
+
+p1_pred  = p1_override  if p1_override  is not None else previsao['p1_pred']
+red_pred = red_override if red_override is not None else previsao['red_pred']
+```
+
+Coberto por `tests/test_pas_intelligence.py::TestTargetCalculator::test_override_parcial_e_respeitado`,
+que verifica os quatro casos (nenhum, só P1, só Redação, ambos) e — o que importa de verdade — que
+o override sozinho **move o P2 necessário**, não só o texto exibido.
+
+`pytest tests/test_pas_intelligence.py`: 38 passam, 1 falha — a falha é o **defeito 1** desta mesma
+lista, pré-existente e não relacionada.
+
+**Severidade: era média, e bloqueante para o ADR-0009** — a decisão de restringir o override ao
+caminho reverso só faz sentido se o override **funcionar** no caminho reverso.

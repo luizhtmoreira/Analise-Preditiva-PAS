@@ -137,11 +137,44 @@ canônico fechar: o encaixe no `target_calculator` reverso, e os limites chutado
   → [relatório](relatorios/14-alunos-com-etapa-1-ausente.md) ·
   [ADR-0008](../../docs/adr/0008-aluno-sem-etapa-1-atendido-com-funcao-propria.md)
 
+- [04 — Alvo canônico: Argumento ou 3 notas?](issues/04-alvo-canonico-argumento-ou-tres-notas.md)
+  — **nenhuma das duas: o alvo é `A3`, o Argumento da Etapa 3.** Para quem já fez PAS 1 e 2,
+  `A1` e `A2` são aritmética exata; prever o Argumento Final inteiro aproxima ⅗ do peso de uma
+  conta que já se sabe. **Argumento Final, EB e escore necessário saem por álgebra do mesmo `A3`**
+  — a P2 é *resolvida*, não prevista. Tamanho do problema medido: as duas rotas que a tela mostra
+  hoje divergem **15,29** na mediana, acima do RMSE declarado em **57%** dos Alunos, com viés
+  oposto (`+9,25` e `−7,23`) — **11% discordam sobre passar** (n = 7.838, triênio 2023/2025).
+  Decidido junto: **nada de projetar a prova futura** (`STATS_PAS3_TREND` e
+  `project_historical_stats` saem) — entra o **Ano-Âncora**, 5 anos reais com o corte e a prova
+  daquele ano casados. **Momentum e Volatilidade passam para a escala de Argumento** (EB e
+  Argumento discordam sobre subir/cair em **17,2%** dos 60.013; **39,4%** em 2022/2024), e a
+  **Volatilidade deixa de ser CV** — a média do par é ~0 e negativa em 49,3% da base. P1 e Redação
+  viram **Estimadores Auxiliares** (média ponderada de z-scores), com **override só no caminho
+  reverso**. O Aluno passa a **informar a língua estrangeira**.
+  → [relatório](relatorios/04-alvo-canonico-argumento-ou-tres-notas.md) ·
+  [ADR-0009](../../docs/adr/0009-alvo-canonico-argumento-da-etapa-3.md)
+
+## Restrições que o ticket 04 deixou nos tickets seguintes
+
+- **05 (dataset):** o alvo a materializar é `A3`; guardar também `A1` e `A2`, que viram features
+  naturais. A língua por Etapa tem que entrar — sem ela não se calcula `A3`.
+- **06 (régua):** o erro é medido em `A3`. O erro do Argumento Final é exatamente `3×` esse
+  número, então não existe régua separada para ele.
+- **08 (janela):** destravado — a pergunta "o padrão mudou desde 2018?" agora tem alvo definido.
+- **09 (features):** Momentum **com sinal em Argumento**; Volatilidade como dispersão absoluta;
+  EB cru permanece candidato, nunca leitura única.
+- **10 (família):** o candidato prevê `A3`. O ensemble entra **sem o roteador** — o CV que o
+  ponderava não existe nesta escala. Mede também se um Estimador Auxiliar de ML bate a média
+  ponderada de z-scores.
+- **11 (incerteza):** medir em `A3` e multiplicar por 3. O `RMSE = 13,49` está no lugar errado.
+
 ## Restrições que o ticket 14 deixou nos tickets seguintes
 
-- **04 (alvo):** o alvo **decide o custo** desta classe — "Argumento direto" exige modelo separado;
-  "3 notas + fórmula" faz A1 e A2 saírem por aritmética. Conflita com a §8 do relatório 02, que
-  defende o Argumento Final por ser estável entre triênios. Decidir **sabendo** da troca.
+- ~~**04 (alvo):** o alvo **decide o custo** desta classe.~~ **RESOLVIDO** — a rota `A3` não
+  cobra o custo que este item temia: `A1` sai por aritmética também para esta classe (o z de zero,
+  exato de 2018/2020 em diante), e o conflito com a §8 do relatório 02 se dissolveu, porque `A3`
+  é padronizado como o Argumento Final. O que segue exigindo função própria é só o **Momentum**,
+  agora indefinido na escala de Argumento em vez de na de EB. ADR-0008 intacto.
 - **06 (régua):** holdout estratificado por `etapa_1_ausente`; todo candidato reporta **dois
   números**, um por classe.
 - **09 (features):** proibido dropar as features da Etapa 1 como simplificação — decisão de
@@ -155,10 +188,16 @@ canônico fechar: o encaixe no `target_calculator` reverso, e os limites chutado
 
 Névoa reconhecida, ainda sem nitidez para virar ticket:
 
-- **Encaixe do modelo novo em `api/services/`.** O `target_calculator.py` faz o caminho
-  reverso (dado um corte, qual P2 o aluno precisa) usando `p1_pas3_model.joblib` e
-  `red_pas3_model.joblib`. Se o ticket 04 escolher prever o Argumento Final direto, esse
-  reverso perde a base — mas a forma do conserto só fica clara depois do 04 e do 10.
+- ~~**Encaixe do modelo novo em `api/services/`.**~~ **RESOLVIDO pelo ticket 04** — o reverso não
+  perde base, fica **mais simples**: `A3_necessário = (corte − A1 − 2·A2)/3` já é
+  `target_calculator.py:259` e é exato. O módulo deixa de carregar `.joblib` (some
+  `_carregar_modelo`, some o `ModuleNotFoundError`, some a degradação silenciosa) e o
+  `stats_pas3` passa a vir do Ano-Âncora. Ver §7 do relatório 04.
+
+- **Ano-Âncora na interface.** Cinco anos reais por curso, o mais recente em destaque e os outros
+  atrás de um botão, no lugar da projeção por regressão. Toca Preditor, Painel Multi-Curso e
+  Gestão de Ativos. Decidido no ticket 04; é trabalho de produto, não de modelo, e por isso não
+  entrou na rota deste mapa. Vira ticket quando o modelo novo existir.
 - **Retreino periódico.** Um Edital de Resultado Final novo sai por ano. Com que gatilho e
   frequência o modelo é retreinado, e quem decide promover. **Destravado pelo ticket 03** — o
   mecanismo existe (promoção é commit de um ponteiro, portão bloqueante no build, quem decide é o
@@ -174,7 +213,14 @@ Névoa reconhecida, ainda sem nitidez para virar ticket:
   defeitos dos tickets 14 e 15 do mapa `pdf-extraction` (ex. `MEDICINA/Darcy/Universal/
   2020-2022 = 199.162,872`). Isso não afeta treinar, mas afeta medir "probabilidade de
   aprovação" ponta a ponta. Revisitar quando aqueles fecharem.
-- **Extração dos Editais por etapa (PAS 1 e PAS 2 isolados).** Levantada no ticket 14. Não é
+- **Extração dos Editais por etapa (PAS 1 e PAS 2 isolados). ⚠ PASSOU A SER BLOQUEANTE
+  (ticket 04).** Sem `(2024,1)` e `(2025,2)`, `A1` e `A2` do Aluno vivo não existem — e a rota
+  canônica inteira se apoia neles serem **exatos**, não aproximados. Duas coisas que o ticket 04
+  acrescenta ao escopo abaixo: (i) média e desvio não precisam ser publicados, são **calculáveis
+  sobre a população inteira** do Edital, que lista todos os candidatos; (ii) a Parte 1 é a
+  exceção — o Edital da Etapa não diz a língua, então vale a regra "por língua onde o spread é
+  estável, agrupado onde não", com o Aluno informando a própria língua.
+  Levantada no ticket 14. Não é
   treino — é a fonte das notas do **Aluno vivo**, que está no meio do triênio e cujo Resultado
   Final do PAS 3 ainda não existe. Precisa trazer **duas** coisas: as notas dos Alunos vivos *e* as
   médias/desvios das etapas vivas — `OFFICIAL_STATS` tem 24 chaves e faltam `(2024,1)`, `(2025,1)`,

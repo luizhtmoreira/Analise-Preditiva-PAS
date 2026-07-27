@@ -49,8 +49,12 @@ _Avoid_: nota zero, etapa zerada, aluno faltante, etapa em branco
 Nota bruta de uma etapa do PAS, calculada como soma das partes P1 e P2 da prova objetiva.
 _Avoid_: nota, pontuação, score
 
+**Argumento de Etapa (A1, A2, A3)**:
+Pontuação padronizada de **uma** Etapa: a soma dos z-scores das três partes multiplicados pelos pesos oficiais — `[(P1−média)/desvio]×0,72 + [(P2−média)/desvio]×8,28 + [(Redação−média)/desvio]×1,00`. Por ser feito de z-scores, **já nasce descontado da dificuldade da prova daquele ano** — ao contrário do EB. Para o Aluno que já fez PAS 1 e PAS 2, `A1` e `A2` são **aritmética exata**, nunca previsão; só `A3` é desconhecido.
+_Avoid_: argumento parcial, nota padronizada, score da etapa
+
 **Argumento Final**:
-Pontuação cumulativa ponderada das três etapas do PAS usada pelo UnB para classificação. Calculado com os pesos oficiais Cebraspe: P1 × 0,72 + P2 × 8,28 + Redação × 1,00.
+Pontuação cumulativa ponderada das três etapas do PAS usada pelo UnB para classificação. Vale `1×A1 + 2×A2 + 3×A3` sobre os Argumentos de Etapa. É **estável entre triênios** por construção (média ~3–5, desvio ~50 nos 8 triênios medidos), porque a padronização absorve a diferença de dificuldade das provas.
 _Avoid_: nota final, pontuação final, score final
 
 **Nota de Corte**:
@@ -59,17 +63,29 @@ _Avoid_: mínimo, cutoff, nota de corte do curso (sem o sistema)
 
 ### Risco e predição
 
+**Ano-Âncora**:
+Ano real e já publicado usado como cenário para responder "e se a minha Etapa 3 for como aquela?". Um Ano-Âncora amarra **junto** a Nota de Corte daquele ano (concorrência) e as estatísticas da prova daquele ano (dificuldade) — nunca uma combinação que não aconteceu. O produto mostra os cinco mais recentes, com o último em destaque. Substitui a projeção do ano futuro por regressão: a diferença entre os Anos-Âncora **é** a incerteza de dificuldade, mostrada em vez de estimada.
+_Avoid_: cenário, projeção, tendência, ano de referência
+
 **Semáforo de Risco**:
 Classificação visual do risco de reprovação de um Aluno em relação ao curso-alvo. Três estados: Baixo Risco (verde), Médio Risco (amarelo), Alto Risco (vermelho).
 _Avoid_: status, classificação, cor
 
-**Volatilidade (CV)**:
-Coeficiente de Variação calculado sobre os EBs das etapas anteriores do Aluno (`std/mean × 100`). Drive principal na escolha do modelo de predição pelo ensemble. Mede **magnitude** de dispersão e é cega à **direção**: subir de 30 para 35 e cair de 35 para 30 produzem o mesmo CV. Não é sinônimo de Momentum.
-_Avoid_: variação, instabilidade, desvio, momentum
+**Alvo Canônico**:
+A única grandeza que o modelo prevê e da qual **todo** número mostrado ao Aluno é derivado. É o `A3` — o Argumento da Etapa 3. Argumento Final, EB e escore necessário saem dele por aritmética, e por isso não podem se contradizer na tela.
+_Avoid_: target, variável-resposta, output do modelo
+
+**Estimador Auxiliar**:
+Regra ou modelo que estima P1 e Redação da Etapa 3 com o único fim de **repartir** o Alvo Canônico entre as três partes da prova, para que o resultado possa ser falado em escore em vez de em desvio-padrão. Não é fonte de verdade: trocá-lo não muda o Argumento previsto nem a probabilidade, só a apresentação. Pode ser sobrescrito pelo próprio Aluno.
+_Avoid_: modelo de P1, modelo de redação, submodelo, previsão de nota
+
+**Volatilidade**:
+Dispersão **absoluta** entre os Argumentos de Etapa já realizados do Aluno (`|A2 − A1|`), em pontos de Argumento. Mede **magnitude** e é cega à **direção**: subir 3 pontos e cair 3 pontos produzem a mesma Volatilidade. Não é sinônimo de Momentum. **Não é mais um Coeficiente de Variação**: dividir pela média — o que o CV fazia para comparar Alunos de níveis diferentes — é ao mesmo tempo impossível e desnecessário na escala de Argumento. Impossível porque a média do par é ~0 (mediana 0,12) e negativa em 49,3% da base, o que faz a divisão disparar e trocar de sinal; desnecessário porque o Argumento **já** é medido em desvios-padrão da turma, então a comparabilidade entre níveis que a divisão buscava já vem pronta.
+_Avoid_: CV, coeficiente de variação, variação, instabilidade, momentum
 
 **Momentum**:
-Direção e tamanho da evolução do Aluno de uma Etapa para a seguinte. Hipótese central do produto: quem sobe muito da Etapa 1 para a Etapa 2 tende a ir bem na Etapa 3. É grandeza **com sinal**, ao contrário da Volatilidade (CV). Indefinido — não zero — para o Aluno sem Etapa 1.
-_Avoid_: crescimento, variação, tendência, volatilidade
+Direção e tamanho da evolução do Aluno de uma Etapa para a seguinte, medido em **Argumento de Etapa** (`A2 − A1`), nunca em EB. Hipótese central do produto: quem sobe muito da Etapa 1 para a Etapa 2 tende a ir bem na Etapa 3. É grandeza **com sinal**, ao contrário da Volatilidade. Indefinido — não zero — para o Aluno sem Etapa 1. Medi-lo em EB confunde "o Aluno evoluiu" com "a prova ficou mais fácil": nos 60.013 Alunos da população limpa, EB e Argumento **discordam sobre o sinal em 17,2% dos casos**, chegando a 39,4% no triênio 2022/2024, cuja Etapa 2 foi muito mais fácil.
+_Avoid_: crescimento, variação, tendência, volatilidade, delta de EB
 
 **Aluno sem Etapa 1**:
 Aluno cuja Etapa 1 é uma Etapa Ausente: fez a Etapa 2, fará a Etapa 3, não fez a Etapa 1. É uma trajetória permitida pelo PAS e uma classe que o produto atende — não um cadastro incompleto. Para ele o Momentum é indefinido, e por isso a previsão do Argumento Final exige função própria; já o Quanto Falta é aritmética exata e vale sem alteração. Representa 8,7% do Resultado Final histórico.
