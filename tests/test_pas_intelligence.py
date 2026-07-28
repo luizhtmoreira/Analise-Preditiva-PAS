@@ -506,22 +506,47 @@ class TestTargetCalculator:
         assert res.status == 'impossivel'
         
     def test_guaranteed_scenario(self):
-        """Deve identificar meta garantida (<0)."""
-        from pas_intelligence.target_calculator import TargetCalculator  # type: ignore
+        """Meta garantida: a P2 necessária cai abaixo do piso da prova, e é truncada nele.
+
+        No PAS **nota de prova pode ser negativa** — o Escore Bruto desconta erro, então zero não
+        é o mínimo. "Garantido" não é `p2_necessario == 0`; é `p2_necessario` abaixo do piso da
+        faixa, ou seja, nem o pior desempenho possível derruba o Aluno.
+        """
+        from pas_intelligence.target_calculator import TargetCalculator, P2_MINIMO  # type: ignore
         from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
-        
+
         calc = TargetCalculator()
         calc.model_p1 = None
-        
+
         stats = HistoricalStats(mean_p1=5, std_p1=2, mean_p2=25, std_p2=10, mean_red=6, std_red=2)
-        
+
         notas = {'P1_PAS1': 10, 'P2_PAS1': 100, 'Red_PAS1': 10, 'P1_PAS2': 10, 'P2_PAS2': 100, 'Red_PAS2': 10}
-        
-        # Arg alvo baixo para quem gabaritou
-        res = calc.calculate_required_score(notas, arg_alvo=-100.0, stats_pas1=stats, stats_pas2=stats, stats_pas3=stats)
-        
+
+        res = calc.calculate_required_score(notas, arg_alvo=-500.0, stats_pas1=stats, stats_pas2=stats, stats_pas3=stats)
+
         assert res.status == 'garantido'
-        assert res.p2_necessario == 0.0
+        assert res.p2_necessario == P2_MINIMO
+
+    def test_alvo_baixo_mas_dentro_da_faixa_ainda_e_possivel_nao_garantido(self):
+        """A fronteira do 'garantido' — o caso que o teste anterior confundia com zero.
+
+        Com `arg_alvo=-100`, a P2 necessária dá ≈ −99,4: quase qualquer desempenho serve, mas
+        ainda existe um pior dentro da faixa, então não é garantido. É `'possivel'`, e a
+        distinção só faz sentido porque o piso da prova é negativo.
+        """
+        from pas_intelligence.target_calculator import TargetCalculator, P2_MINIMO  # type: ignore
+        from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
+
+        calc = TargetCalculator()
+        calc.model_p1 = None
+
+        stats = HistoricalStats(mean_p1=5, std_p1=2, mean_p2=25, std_p2=10, mean_red=6, std_red=2)
+        notas = {'P1_PAS1': 10, 'P2_PAS1': 100, 'Red_PAS1': 10, 'P1_PAS2': 10, 'P2_PAS2': 100, 'Red_PAS2': 10}
+
+        res = calc.calculate_required_score(notas, arg_alvo=-100.0, stats_pas1=stats, stats_pas2=stats, stats_pas3=stats)
+
+        assert res.status == 'possivel'
+        assert P2_MINIMO < res.p2_necessario < 0
 
 
 # =============================================================================

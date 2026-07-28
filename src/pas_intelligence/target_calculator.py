@@ -26,6 +26,21 @@ from .argument_calculator import (
 
 logger = logging.getLogger(__name__)
 
+# Faixa em que a Parte 2 é truncada, e que decide sozinha quando o produto diz "impossível" e
+# quando diz "garantido".
+#
+# ⚠ **A origem destes números não está documentada** — não vêm de Edital, e antes desta constante
+# eram dois literais soltos no meio do `if`. O piso é negativo porque no PAS nota de prova pode
+# ser negativa: o Escore Bruto desconta erro, então zero **não** é o mínimo. Mas o valor exato
+# provavelmente está errado: a P2 tem número finito de itens, e o piso real deve ser `−N` para
+# `N` itens, o que é bem mais raso que −100. Se for, o ramo `'garantido'` é código morto e nenhum
+# Aluno jamais o alcança.
+#
+# Ver o defeito 1 de `.scratch/treino-modelos-pas3/relatorios/defeitos-pendentes.md`. Nomeado
+# aqui para que a correção, quando o número real for conhecido, seja uma linha só.
+P2_MAXIMO = 100.0
+P2_MINIMO = -100.0
+
 
 class ModelLoadError(RuntimeError):
     """Um modelo esperado em disco não pôde ser carregado ou usado."""
@@ -289,13 +304,13 @@ class TargetCalculator:
         total_pas3 = p1_pred + p2_necessario
         
         # 8. Determina status
-        if p2_necessario > 100:
+        if p2_necessario > P2_MAXIMO:
             status = 'impossivel'
             mensagem = f"Nota necessária ({p2_necessario:.1f}) ultrapassa o máximo da prova (100 pts). Este curso pode ser estatisticamente inalcançável com seu histórico atual."
-        elif p2_necessario < -100:
+        elif p2_necessario < P2_MINIMO:
             status = 'garantido'
             mensagem = f":material/celebration: Seu histórico já é suficiente! Mesmo se você zerar ou tiver um desempenho extremamente baixo na P2, você provavelmente passará."
-            p2_necessario = -100.0
+            p2_necessario = P2_MINIMO
             total_pas3 = p1_pred + p2_necessario
         elif p2_necessario > 80:
             status = 'improvavel'
