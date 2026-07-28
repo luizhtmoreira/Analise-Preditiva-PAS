@@ -39,6 +39,11 @@ _Avoid_: fase, série, ano
 Conjunto das três etapas do PAS cursadas por um mesmo grupo de alunos (ex: triênio 2023–2025).
 _Avoid_: ciclo, turma
 
+**Semestre de Ingresso**:
+1º ou 2º semestre letivo em que a vaga é oferecida. **Não é uma escolha do Aluno e não é uma prova separada**: todos fazem a mesma prova e concorrem de uma vez, e existe um limite de vagas para o 1º semestre. Quem não se classifica dentro dele **continua vivo** disputando as vagas do 2º. Por isso a Nota de Corte do 2º semestre é sempre a mais baixa das duas — conferido em **1.317 de 1.317** chaves curso+sistema que oferecem os dois, com o corte do 1º acima do 2º por 31,5 pontos de Argumento Final na mediana.
+Consequência para qualquer cálculo de aprovação: o Aluno concorre em **tudo** ao mesmo tempo — Universal, o Sistema de Concorrência da cota dele, 1º e 2º semestre — e entra se limpar qualquer um. O limiar dele é o **menor corte entre todos eles**, nunca um corte escolhido.
+_Avoid_: semestre escolhido, opção de semestre, segunda chamada, turno
+
 **Etapa Ausente**:
 Etapa do PAS que o Aluno não realizou. O Edital de Resultado Final publica as três notas dessa Etapa como `0,000` — o que significa **ausência, não desempenho zero**. Só a Etapa 1 pode ser ausente em quem chega ao Resultado Final do PAS 3: faltar à Etapa 1 é permitido e o Aluno segue no programa, mas quem falta à Etapa 2 fica impedido de fazer a Etapa 3, e quem falta à Etapa 3 não aparece no Resultado Final.
 _Avoid_: nota zero, etapa zerada, aluno faltante, etapa em branco
@@ -58,8 +63,9 @@ Pontuação cumulativa ponderada das três etapas do PAS usada pelo UnB para cla
 _Avoid_: nota final, pontuação final, score final
 
 **Nota de Corte**:
-Argumento Final mínimo exigido para aprovação em um curso específico na última chamada do PAS. É um número **por curso e por Sistema de Concorrência**, não um por curso: quem concorre por cota disputa outro corte. "Última chamada" é a última em que aquele *sistema* teve convocado — um sistema pode parar na 1ª chamada enquanto o curso vai até a 3ª. Derivada em `src/pas_extraction/notas_corte.py` (ticket 10), cruzando o Resultado Final (nota) com a Convocação (quem foi chamado).
-_Avoid_: mínimo, cutoff, nota de corte do curso (sem o sistema)
+Argumento Final mínimo exigido para aprovação em um curso específico na última chamada do PAS. É um número **por curso, por Sistema de Concorrência e por Semestre de Ingresso** — nunca um por curso: quem concorre por cota disputa outro corte, e o 1º e o 2º semestre têm cortes diferentes. "Última chamada" é a última em que aquele *sistema* teve convocado — um sistema pode parar na 1ª chamada enquanto o curso vai até a 3ª. Derivada em `src/pas_extraction/notas_corte.py` (ticket 10), cruzando o Resultado Final (nota) com a Convocação (quem foi chamado).
+_Avoid_: mínimo, cutoff, nota de corte do curso (sem o sistema e sem o semestre)
+
 
 ### Risco e predição
 
