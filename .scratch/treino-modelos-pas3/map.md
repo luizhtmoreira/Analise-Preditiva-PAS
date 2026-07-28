@@ -288,6 +288,20 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
   legadas + `A1`/`A2` + as 3 derivadas, **RMSE 5,057** — bate as três pernas do Portão 1.
   → [relatório](relatorios/09-conjunto-de-features.md)
 
+- [10 — Família de modelo](issues/10-familia-de-modelo.md) — **LightGBM único** (
+  `n_estimators=400, learning_rate=0,01, num_leaves=15`), com **`NaN` nativo** nas colunas
+  derivadas da Etapa 1 do Aluno sem Etapa 1 em vez de zero literal. RMSE **5,014** em `A3`
+  (+2,97% sobre o baseline do ticket 07) — bate o Portão 1 nas três pernas, e é igual ou melhor
+  que Ridge em todo eixo medido, embora por margem pequena (0,85%, abaixo da barra de 1% de
+  "ganho material"). **O ensemble por volatilidade é aposentado**: reimplementado sobre `A3` e a
+  régua nova (mesma sigmoide, sem o meta-modelo roteador), ganha só 0,10% do melhor componente
+  sozinho — dentro do ruído entre dobras (±0,37). A **volatilidade morre também como feature**
+  (−0,01% de ganho). Restrição do ticket 14 (valor faltante "com peso, não desempate") aplicada:
+  **dois modelos por classe foi medido e perdeu** (RMSE minoritária 5,379 contra 5,158 do modelo
+  único com `NaN`) — a dobra 1 treina o submodelo da minoria com só 64 exemplos.
+  → [relatório](relatorios/10-familia-de-modelo.md) ·
+  [ADR-0011](../../docs/adr/0011-lightgbm-unico-com-faltante-nativo-substitui-o-ensemble.md)
+
 ## Restrições que o ticket 06 deixou nos tickets seguintes
 
 - ~~**07 (baseline):** a faixa de decisão é **congelada** no RMSE do melhor baseline trivial deste
@@ -297,7 +311,11 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
   majoritária**.~~ **FEITO** — usa 2018, janela expansiva, sem peso. Ver decisão acima.
 - ~~**09, 10:** timeboxados — ver acima.~~ **09 FEITO** — ver decisão acima; moveu 2,13%, dentro
   da faixa "afinação". Comparação sempre **pareada dentro da dobra**, com a janela segurada
-  igual; nunca modelo A na dobra 2 contra modelo B na dobra 4.
+  igual; nunca modelo A na dobra 2 contra modelo B na dobra 4. **10 FEITO** — trocar só a família,
+  segurando as features do 09 fixas, moveu mais 0,85% (5,057 → 5,014): dentro da faixa
+  "afinação" de novo, não "salto". Como o 09 tinha dado um ganho real (não um platô), a régua de
+  parada ("<1% relativo em dois tickets seguidos") ainda não dispara duas vezes seguidas, mas
+  está a um ticket de distância — exatamente como o §3 do relatório 07 previu.
 - **11 (incerteza):** o viés do baseline deu **+0,00** e a razão RMSE/MAE **1,26** (teórico 1,25)
   — a forma normal se sustenta no baseline, então o trabalho do 11 é largura **por Aluno**, não
   trocar a forma.
@@ -318,9 +336,11 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
 - **09 (features):** o teto **não** está declarado sobre `curso`/`campus`/`turno`/língua. A média
   do curso sozinha dá 8,464 — carrega pouca informação isolada, o que não é o mesmo que carregar
   pouca **a mais**.
-- **10 (família):** o veredito sobre arranjo de vários modelos já está dado — nem ensemble nem
+- ~~**10 (família):** o veredito sobre arranjo de vários modelos já está dado — nem ensemble nem
   roteador batem o melhor componente sozinho nas linhas limpas. O que resta ao 10 é a família
-  única.
+  única.~~ **FEITO** — confirmado sobre `A3`: o ensemble reimplementado (sem roteador) ganha só
+  0,10% do melhor componente sozinho. Família única escolhida: LightGBM com `NaN` nativo na
+  Etapa 1 ausente. Ver decisão acima.
 - **11 (incerteza):** a largura honesta de hoje é **16,26** em Argumento Final (5,420 × 3), não
   13,49. RMSE/MAE entre 1,25 e 1,27 em tudo que foi medido — a forma normal serve, o trabalho é
   largura por Aluno.
@@ -336,9 +356,11 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
 - **08 (janela):** destravado — a pergunta "o padrão mudou desde 2018?" agora tem alvo definido.
 - **09 (features):** Momentum **com sinal em Argumento**; Volatilidade como dispersão absoluta;
   EB cru permanece candidato, nunca leitura única.
-- **10 (família):** o candidato prevê `A3`. O ensemble entra **sem o roteador** — o CV que o
+- ~~**10 (família):** o candidato prevê `A3`. O ensemble entra **sem o roteador** — o CV que o
   ponderava não existe nesta escala. Mede também se um Estimador Auxiliar de ML bate a média
-  ponderada de z-scores.
+  ponderada de z-scores.~~ **FEITO** — ensemble testado sobre `A3`, sem roteador, aposentado
+  (0,10% de ganho sobre o melhor componente). O Estimador Auxiliar de ML não foi remedido aqui —
+  fora do escopo do ticket 10, que decide a família do Alvo Canônico, não dos Estimadores.
 - **11 (incerteza):** medir em `A3` e multiplicar por 3. O `RMSE = 13,49` está no lugar errado.
 
 ## Restrições que o ticket 14 deixou nos tickets seguintes
@@ -352,8 +374,11 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
   números**, um por classe.
 - **09 (features):** proibido dropar as features da Etapa 1 como simplificação — decisão de
   produto. O Momentum precisa estar representado **com sinal**.
-- **10 (família):** "aceita valor faltante nativamente" é critério **com peso**, não desempate
-  (linear/MLP fecham a porta da classe). Medir um-modelo-com-faltante vs. dois-modelos.
+- ~~**10 (família):** "aceita valor faltante nativamente" é critério **com peso**, não desempate
+  (linear/MLP fecham a porta da classe). Medir um-modelo-com-faltante vs. dois-modelos.~~
+  **FEITO** — `NaN` nativo ganha 0,56% na minoritária sobre zero literal; dois modelos por classe
+  perde (RMSE minoritária 5,379 contra 5,158), porque a dobra 1 treina o submodelo da minoria com
+  só 64 exemplos. Decisão: `NaN` nativo, não dois modelos.
 - **11 (incerteza):** incerteza **por classe**, no mínimo duas. RMSE emprestado da maioria produz
   probabilidade errada mesmo com previsão pontual certa.
 

@@ -29,6 +29,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "src"))
 
 from pas_intelligence.dataset_pas3 import FEATURES_LEGADAS  # noqa: E402
+from pas_intelligence.dataset_pas3 import adicionar_derivadas_trajetoria  # noqa: E402
 from pas_intelligence.dataset_pas3 import carregar_dataset as _carregar_dataset_base  # noqa: E402
 from pas_intelligence.validation import Erro, avaliar, gerar_dobras  # noqa: E402
 
@@ -52,9 +53,8 @@ def carregar_dataset() -> pd.DataFrame:
     df = _carregar_dataset_base()
 
     # Derivadas de trajetória — as mesmas razões que `meta_scaler` já usa (ticket 09, "grátis").
-    df["cresc_eb_pct"] = df["Cresc_EB"].abs() / (df["EB_PAS1"].abs() + 0.01)
-    df["cresc_red_pct"] = df["Cresc_Red"].abs() / (df["Red_PAS1"].abs() + 0.01)
-    df["sinal_cresc_eb"] = np.sign(df["Cresc_EB"])
+    # Extraído para `dataset_pas3.py` no ticket 10, que também precisa delas.
+    df = adicionar_derivadas_trajetoria(df)
 
     # `trienio` como efeito temporal contínuo, nunca categoria (armadilha do ticket 09).
     df["ano_inicio"] = df["trienio"].str.slice(0, 4).astype(int)

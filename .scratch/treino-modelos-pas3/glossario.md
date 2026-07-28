@@ -593,3 +593,39 @@ curso. Resultado: **correlação 0,126** — fraca. `curso` não é, na maior pa
 o pouco que ele acrescenta (medido em +0,43% de RMSE) é outra coisa. Não mudou a decisão de
 excluir `curso` do conjunto final — o motivo lá foi custo de produto (não é campo de entrada
 hoje), não vazamento — mas fechou a dúvida que o ticket levantou por hipótese.
+
+### Regularização (Ridge / L2) — ticket 10
+
+Em vez de achar os coeficientes que melhor encaixam o treino sem restrição, a regressão
+**penaliza** coeficientes grandes, encolhendo-os na direção de zero. O `alpha` controla a força:
+`alpha=0` é a regressão linear comum; `alpha` grande empurra todos os coeficientes para perto de
+zero. Serve para colunas correlacionadas entre si (aqui, `A1`/`A2` se sobrepõem parcialmente com
+as 6 legadas) — sem penalidade, a regressão pode distribuir o mesmo sinal de forma instável entre
+colunas parecidas. No ticket 10, a dobra de ajuste escolheu `alpha=0,01` — regularização quase
+nula, equivalente a uma regressão linear comum.
+
+### Dobra de ajuste (*tuning fold*) — ticket 10
+
+Uma dobra extra, escrita só para escolher hiperparâmetro, **disjunta** das dobras que produzem o
+número final. No ticket 10: treina em 2016/2018, valida em 2017/2019 — os dois únicos triênios
+que `gerar_dobras` nunca usa como teste (ela só testa a partir do terceiro triênio disponível em
+diante). Existe para que "escolher o hiperparâmetro" e "medir o modelo" nunca olhem para o mesmo
+número — senão a escolha vira sobreajuste ao próprio teste, e o número reportado deixa de ser uma
+medição.
+
+### Grade (*grid search*) — ticket 10
+
+Testar todas as combinações de uma lista pequena de valores por hiperparâmetro e ficar com a que
+vence na dobra de ajuste. No ticket 10: 3 valores de `n_estimators` × 3 de `learning_rate` × 2 de
+`num_leaves` = 18 combinações de LightGBM. Simples e exaustivo dentro da grade que se escreveu;
+não encontra nada fora dela.
+
+### Roteamento por classe — ticket 10
+
+A alternativa a valor faltante nativo que o ticket 14 pediu para medir: em vez de um modelo que
+vê `NaN` e decide sozinho para que lado mandar quem está faltando, treinar **dois** modelos, um
+por classe (`etapa_1_ausente`), e mandar cada linha pro seu. Medido no ticket 10 e **descartado**:
+perde para o modelo único com faltante nativo (RMSE minoritária 5,379 contra 5,158) porque a
+classe minoritária não tem dado suficiente cedo na série temporal — só 64 exemplos na primeira
+dobra — para um modelo dedicado aprender sozinho o que o modelo conjunto aprende de graça
+generalizando entre classes.
