@@ -192,6 +192,59 @@ def test_semente_e_registrada_no_resultado():
     assert resultado.semente == 1234
 
 
+# ─── Peso por idade do triênio (ticket 08) ─────────────────────────────────────────────────
+
+
+class _ModeloComPeso:
+    """Registra o `sample_weight` recebido, para conferir que a régua repassa o vetor certo."""
+
+    def __init__(self, semente: int | None = None):
+        self.semente = semente
+        self.pesos_recebidos: np.ndarray | None = None
+
+    def fit(self, X, y, sample_weight=None):
+        self.pesos_recebidos = sample_weight
+        return self
+
+    def predict(self, X):
+        return np.zeros(len(X))
+
+
+def test_pesos_none_por_padrao_nao_passa_sample_weight():
+    dataset = _dataset_sintetico()
+    modelos: list[_ModeloComPeso] = []
+
+    def fabrica(semente):
+        m = _ModeloComPeso(semente)
+        modelos.append(m)
+        return m
+
+    avaliar(dataset, fabrica, nome="c", features=["a1", "a2"], semente=1)
+    assert all(m.pesos_recebidos is None for m in modelos)
+
+
+def test_pesos_repassa_um_peso_por_linha_de_treino_calculado_a_partir_do_treino():
+    dataset = _dataset_sintetico()
+    modelos: list[_ModeloComPeso] = []
+
+    def fabrica(semente):
+        m = _ModeloComPeso(semente)
+        modelos.append(m)
+        return m
+
+    def pesos(treino: pd.DataFrame) -> np.ndarray:
+        mais_recente = max(treino["trienio"])
+        return np.where(treino["trienio"] == mais_recente, 1.0, 0.5)
+
+    avaliar(dataset, fabrica, nome="c", features=["a1", "a2"], semente=1, pesos=pesos)
+    for modelo, dobra in zip(modelos, gerar_dobras(TRIENIOS)):
+        assert modelo.pesos_recebidos is not None
+        assert len(modelo.pesos_recebidos) == sum(
+            (dataset["trienio"] == t).sum() for t in dobra.trienios_treino
+        )
+        assert set(np.unique(modelo.pesos_recebidos)) <= {0.5, 1.0}
+
+
 # ─── Vazamento pela feature ─────────────────────────────────────────────────────────────────
 
 

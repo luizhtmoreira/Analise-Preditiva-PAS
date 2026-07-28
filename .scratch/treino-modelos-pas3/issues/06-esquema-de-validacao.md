@@ -1,7 +1,7 @@
 # 06 — Esquema de validação: como medir sem enganar a si mesmo
 
 **Type:** grilling
-**Status:** decidido — implementação pendente
+**Status:** concluído — 2026-07-27
 **Blocked by:** 05
 **Decisão:** [relatório](../relatorios/06-esquema-de-validacao.md) ·
 [ADR-0010](../../../docs/adr/0010-validacao-deslizante-com-holdout-lacrado.md)
@@ -49,9 +49,9 @@ conclusão. O esquema fecha primeiro, e o 08 roda dentro dele.
       erro de decisão + faixa vetam conversando**; corte pelo menor sistema do Aluno (§4)
 - [x] Escrito o critério de aceite — **não-regressão + coerência + incerteza honesta + regra de
       parada**, porque a §6 mediu que não há acurácia a ganhar (§7)
-- [ ] O esquema está implementado como código reutilizável, não descrito em prosa — todos os
-      tickets seguintes chamam a mesma função → **`src/pas_intelligence/validation.py`,
-      especificado na §8. Sessão nova.**
+- [x] O esquema está implementado como código reutilizável, não descrito em prosa — todos os
+      tickets seguintes chamam a mesma função → **`src/pas_intelligence/validation.py`**
+      (`gerar_dobras`, `avaliar`, `holdout_final_use_uma_vez`, `faixa_de_decisao`, `erro_de_decisao`)
 - [x] Relatório em `relatorios/06-esquema-de-validacao.md`
 
 **Achado que atravessa o mapa (§6):** o teto de acurácia foi medido e um LightGBM de 400 árvores

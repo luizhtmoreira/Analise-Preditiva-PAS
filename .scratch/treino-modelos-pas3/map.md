@@ -259,13 +259,27 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
   definição literal da Nota de Corte e não ruído (cobertura 55,8% → **90,0%**).
   → [relatório](relatorios/07-baseline-honesto.md)
 
+- [08 — Janela de dados: 2018 vale?](issues/08-janela-de-dados-2018-vale.md) — **usa 2018**: a
+  curva de erro contra número de triênios de treino **cai monotonicamente até N=6** (todo o
+  histórico fora do lacre), sem mínimo em N=4 — não existe horizonte de validade. Cortar é sempre
+  igual ou pior: janela de 3 triênios custa **+0,65% de RMSE**, janela de 1 custa **+5,5%** (e
+  ainda perde 3 de 5 dobras para a trava 1). **Ponderar o dado velho por idade também não bate
+  treinar em tudo sem peso** — testado com decaimento geométrico em 3 bases, nenhuma venceu.
+  Nenhum dos três candidatos a quebra de regime (pandemia, fórmula, deriva gradual) aparece na
+  escala do Argumento: média, desvio e correlação `(A1+A2)/2`×`A3` ficam estáveis nos 8 triênios
+  — a normalização por ano (ticket 04) absorve o que existiria na escala de EB crua. **A régua
+  ganhou o parâmetro `pesos` em `avaliar()`** para essa comparação. Melhor RMSE obtido (5,053,
+  majoritária) fica **0,3% acima do Portão 1** (5,038) — a distância não mora na janela; a régua
+  de parada do mapa provavelmente dispara no ticket 10.
+  → [relatório](relatorios/08-janela-de-dados-2018-vale.md)
+
 ## Restrições que o ticket 06 deixou nos tickets seguintes
 
 - ~~**07 (baseline):** a faixa de decisão é **congelada** no RMSE do melhor baseline trivial deste
   ticket.~~ **FEITO** — largura **15,500**. O `13,49` não é "quase o baseline burro": é um **MAE**
   medido no próprio treino, e o RMSE real é **16,26**.
-- **08 (janela):** a curva de erro contra número de triênios é medida **só na classe
-  majoritária**. Para o Aluno sem Etapa 1 a pergunta é inrespondível com este dataset.
+- ~~**08 (janela):** a curva de erro contra número de triênios é medida **só na classe
+  majoritária**.~~ **FEITO** — usa 2018, janela expansiva, sem peso. Ver decisão acima.
 - **09, 10:** timeboxados — ver acima. Comparação sempre **pareada dentro da dobra**, com a
   janela segurada igual; nunca modelo A na dobra 2 contra modelo B na dobra 4.
 - **11 (incerteza):** o viés do baseline deu **+0,00** e a razão RMSE/MAE **1,26** (teórico 1,25)

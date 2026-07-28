@@ -1,7 +1,7 @@
 # 07 — Baseline honesto e medição do ensemble atual
 
 **Type:** task
-**Status:** open
+**Status:** concluído — 2026-07-28
 **Blocked by:** 05, 06
 
 ## Question

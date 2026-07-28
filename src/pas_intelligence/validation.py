@@ -341,6 +341,7 @@ def avaliar(
     semente: int,
     alvo: str = ALVO_CANONICO,
     janela: int | None = None,
+    pesos: Callable[[pd.DataFrame], np.ndarray] | None = None,
 ) -> ResultadoValidacao:
     """Roda a régua inteira sobre `dataset` e devolve o resultado tipado.
 
@@ -349,6 +350,12 @@ def avaliar(
     recorte que o produziu (quais linhas, qual dobra, qual semente).
 
     O lacre não é alcançável por aqui em hipótese nenhuma; ver `holdout_final_use_uma_vez`.
+
+    `pesos`, se dado, recebe o `DataFrame` de treino **daquela dobra** (já filtrado pela janela)
+    e devolve um vetor com um peso por linha, repassado como `sample_weight` ao `fit`. É como o
+    ticket 08 compara "cortar o triênio velho" com "ponderar por idade" sem escrever um segundo
+    laço — a alternativa de passar o peso já pronto no dataset foi descartada porque o peso certo
+    depende de qual triênio é o mais recente do treino *daquela dobra*, que muda a cada uma.
     """
     features = tuple(features)
     _conferir_features(dataset, features, alvo)
@@ -375,7 +382,10 @@ def avaliar(
             )
         ja_criados.append(modelo)
 
-        modelo.fit(treino[list(features)], treino[alvo])
+        if pesos is None:
+            modelo.fit(treino[list(features)], treino[alvo])
+        else:
+            modelo.fit(treino[list(features)], treino[alvo], sample_weight=pesos(treino))
         previsto = np.asarray(modelo.predict(teste[list(features)]), dtype=float)
 
         residuos = teste[[*colunas_de_identidade, "trienio", COLUNA_CLASSE]].copy()

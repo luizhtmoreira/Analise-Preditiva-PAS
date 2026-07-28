@@ -546,3 +546,26 @@ A técnica de XAI que reparte a previsão entre as features, dizendo quanto cada
 cima ou para baixo. Para árvores existe cálculo exato e barato — no LightGBM, é
 `predict(X, pred_contrib=True)`. É matéria-prima de produto para o Vetor PAS, e está anotada como
 névoa no `map.md`, não como escopo deste mapa.
+
+### Janela expansiva × janela fixa (ticket 08)
+
+Duas formas de decidir quanto treino a dobra `N` recebe:
+
+- **Janela fixa** — sempre os últimos `k` triênios, contados para trás a partir do teste. Se
+  `k=3`, a dobra que testa em 2022/2024 treina só em 2019/2021, 2020/2022, 2021/2023, mesmo que
+  existam triênios mais antigos disponíveis.
+- **Janela expansiva** (`janela=None` em `gerar_dobras`) — treina em **tudo** que existe antes do
+  teste. É o padrão da régua porque imita produção: o próximo treino real também vai usar tudo o
+  que tiver disponível até lá.
+
+O ticket 08 mediu as duas e não achou motivo para cortar — a expansiva ganhou de toda janela
+fixa testada.
+
+### Peso geométrico por idade (ticket 08)
+
+Alternativa a cortar o dado velho: mantê-lo no treino, mas com peso menor, decaindo
+geometricamente pela distância (em triênios) até o mais recente do treino daquela dobra —
+`peso = base^idade`, com `base < 1`. `base=1,0` equivale a não ponderar (todo mundo pesa igual);
+`base` menor pune mais o dado velho. Testado com `base ∈ {0,5; 0,7; 0,85}` no ticket 08: nenhum
+bateu treinar em tudo sem peso — sinal de que o dado velho não estava atrapalhando, então não
+havia nada para o peso corrigir.

@@ -1,7 +1,7 @@
 # 08 — Janela de dados: os alunos desde 2018 ainda ajudam?
 
 **Type:** task
-**Status:** open
+**Status:** concluído — 2026-07-28
 **Blocked by:** 02 (resolvido), 04, 06, 07
 
 ## Question
@@ -71,10 +71,14 @@ corte diferente:
 Medir a deriva de distribuição por triênio (média e dispersão de cada nota, e sobretudo a
 **relação** entre Etapas 1/2 e a Etapa 3) separa os três.
 
-- [ ] Curva de erro contra número de triênios de treino, dentro do esquema do ticket 06
-- [ ] Comparação entre corte por janela e ponderação por idade
-- [ ] Deriva de distribuição medida por triênio, com a pandemia isolada dos demais efeitos
-- [ ] Os três candidatos a quebra de regime distinguidos por evidência, não por hipótese
-- [ ] Resposta escrita e defendida: **usa 2018 ou não, e por quê** — com o custo em erro de
-      cada alternativa
-- [ ] Relatório em `relatorios/08-janela-de-dados-2018-vale.md`
+- [x] Curva de erro contra número de triênios de treino, dentro do esquema do ticket 06 — cai
+      monotonicamente até N=6 (todo o histórico), sem mínimo em N=4
+- [x] Comparação entre corte por janela e ponderação por idade — nenhuma ponderação testada bate
+      treinar em tudo sem peso; `avaliar()` ganhou o parâmetro `pesos` para isso
+- [x] Deriva de distribuição medida por triênio, com a pandemia isolada dos demais efeitos —
+      média, desvio e correlação (A1+A2)/2×A3 ficam estáveis nos 8 triênios
+- [x] Os três candidatos a quebra de regime distinguidos por evidência, não por hipótese —
+      nenhum aparece na escala do Argumento (alvo canônico)
+- [x] Resposta escrita e defendida: **usa 2018 ou não, e por quê** — com o custo em erro de
+      cada alternativa — usa tudo; cortar é sempre igual ou pior, sem exceção medida
+- [x] Relatório em `relatorios/08-janela-de-dados-2018-vale.md`
