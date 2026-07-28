@@ -28,17 +28,17 @@ import pandas as pd  # type: ignore
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "src"))
 
+from pas_intelligence.dataset_pas3 import FEATURES_LEGADAS  # noqa: E402
+from pas_intelligence.dataset_pas3 import carregar_dataset as _carregar_dataset_base  # noqa: E402
 from pas_intelligence.validation import Erro, avaliar, gerar_dobras  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
 SEMENTE = 20260728
 
-DATASET = RAIZ / "data" / "training" / "pas3_dataset.parquet"
 RESULTADO_FINAL = RAIZ / ".scratch" / "pdf-extraction" / "saida-nova" / "resultado_final.csv"
 CORTES = RAIZ / ".scratch" / "pdf-extraction" / "saida-nova" / "notas_corte.csv"
 
-FEATURES_LEGADAS = ["EB_PAS1", "Red_PAS1", "EB_PAS2", "Red_PAS2", "Cresc_EB", "Cresc_Red"]
 BASE = ["a1", "a2", *FEATURES_LEGADAS]
 
 COLUNAS_COTA = ["sistema_negros", "escola_publica", "renda_baixa", "ppi", "pcd"]
@@ -48,13 +48,8 @@ COLUNAS_COTA = ["sistema_negros", "escola_publica", "renda_baixa", "ppi", "pcd"]
 
 
 def carregar_dataset() -> pd.DataFrame:
-    df = pd.read_parquet(DATASET)
-    df["EB_PAS1"] = df["eb_pas1"]
-    df["Red_PAS1"] = df["red_e1"]
-    df["EB_PAS2"] = df["eb_pas2"]
-    df["Red_PAS2"] = df["red_e2"]
-    df["Cresc_EB"] = df["eb_pas2"] - df["eb_pas1"]
-    df["Cresc_Red"] = df["red_e2"] - df["red_e1"]
+    """As 6 features legadas (`dataset_pas3.carregar_dataset`) mais as candidatas do ticket 09."""
+    df = _carregar_dataset_base()
 
     # Derivadas de trajetória — as mesmas razões que `meta_scaler` já usa (ticket 09, "grátis").
     df["cresc_eb_pct"] = df["Cresc_EB"].abs() / (df["EB_PAS1"].abs() + 0.01)
