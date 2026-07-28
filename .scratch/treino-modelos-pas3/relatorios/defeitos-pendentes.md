@@ -10,7 +10,12 @@ defeito**, **O que falta fazer** e **Severidade** (impacto nos dados/produto, n�
 
 ---
 
-## 1. `test_guaranteed_scenario` codifica um contrato de domínio errado (e o piso da P2 não está documentado)
+## 1. ⏳ A faixa `[−100, 100]` da P2 não tem procedência — **aguardando o dono do produto**
+
+> **O que falta é uma resposta, não investigação.** Quantos itens tem a Parte 2, e como o desconto
+> por erro fecha o piso? Perguntado em 2026-07-28; o dono do produto vai olhar junto das outras
+> pendências. Enquanto isso o código roda com `P2_MAXIMO = 100.0` / `P2_MINIMO = -100.0`, que são
+> chute herdado. A parte do teste deste defeito **já está corrigida** (ver "O que falta fazer").
 
 **Onde foi encontrado:** `pytest tests/test_pas_intelligence.py` —
 `TestTargetCalculator::test_guaranteed_scenario` falha. Confirmado por `git stash` em
@@ -47,22 +52,25 @@ que zero é o mínimo da prova.
 
 **O que falta fazer:**
 
-1. **Corrigir o teste**, não o código: o cenário "garantido" precisa de um alvo baixo o
-   bastante para levar `p2_necessario` abaixo de `-100`, e a asserção passa a ser
-   `p2_necessario == -100.0`.
-2. **Verificar qual é o piso real da P2** — esta é a pergunta aberta de verdade. Os literais
-   `100` / `-100` aparecem **só** nessas duas linhas, sem constante nomeada, sem docstring e
-   sem fonte no Edital. Se a faixa real for mais estreita (a P2 tem número finito de itens, e
-   o piso é `−N` para `N` itens), o ramo `'garantido'` é **código morto** e nenhum aluno jamais
-   o alcança. Se for mais larga, o `'impossivel'` dispara cedo demais. Enquanto o número não
-   tiver origem documentada, os quatro status repousam sobre uma faixa chutada.
+1. ~~**Corrigir o teste**, não o código.~~ **FEITO em 2026-07-28.** `test_guaranteed_scenario`
+   agora usa `arg_alvo=-500` (baixo o bastante para levar `p2_necessario` abaixo do piso) e
+   afirma `p2_necessario == P2_MINIMO`. Entrou junto um
+   `test_alvo_baixo_mas_dentro_da_faixa_ainda_e_possivel_nao_garantido`, que fixa a fronteira
+   que o teste antigo confundia com zero: `arg_alvo=-100` dá ≈ −99,4 e é `'possivel'`, não
+   `'garantido'`. `pytest tests/`: **290 passam, 0 falham**.
+2. **Verificar qual é o piso real da P2** — segue aberta, e é a pergunta de verdade. Os literais
+   viraram as constantes nomeadas **`P2_MAXIMO` / `P2_MINIMO`** em `target_calculator.py`, com
+   docstring registrando que não têm fonte no Edital, para que a correção seja uma linha só
+   quando o número real aparecer. Se a faixa real for mais estreita (a P2 tem número finito de
+   itens, e o piso é `−N` para `N` itens), o ramo `'garantido'` é **código morto** e nenhum aluno
+   jamais o alcança. Se for mais larga, o `'impossivel'` dispara cedo demais.
 3. Ao mexer, checar o consumidor: `api/services/gestao_service.py:265` compõe
    `eb_nec = path.p1_estimado + path.p2_necessario`, e um `-100.0` ali empurra o EB necessário
    para muito abaixo de zero antes de ir para `calculate_cohort_evolution_probability`.
 
-**Severidade: baixa para o teste, média para o piso não documentado.** A falha do teste é uma
-asserção errada e não afeta o aluno. O que afeta é a faixa `[−100, 100]` sem procedência: ela
-decide, sozinha, quando o produto diz "impossível" e quando diz "garantido".
+**Severidade: era baixa para o teste (resolvida), segue média para o piso não documentado.** A
+faixa `[−100, 100]` sem procedência decide, sozinha, quando o produto diz "impossível" e quando
+diz "garantido".
 
 **Nota de comunicação (não é defeito de lógica):** mesmo correto, o texto
 *"Meta alcançável! Você precisa de -99.4 pts na Parte 2"* é ruim de ler. Um aluno nessa
@@ -95,13 +103,25 @@ porque recebeu um array NumPy — array não carrega nome de coluna, só posiç�
 Isso explica os números impossíveis do ADR: `R² = -83.4`, `MAPE = 1.25e+19`, `MaxErr = 31293`
 num alvo que vai de 0 a 92. Não é desempenho ruim; é modelo alimentado com lixo.
 
-**O que falta fazer:** ticket 07. Consertar `FEATURE_COLS_BASE`, rodar de novo, e emitir um
-ADR corrigido — o ADR-0007 se declara "somente leitura" e diz que qualquer modelo retreinado
-deve ser comparado contra ele, o que hoje é uma régua de borracha. Não presumir que a correção
-inverte o ranking: `mlp`, `arg_final` e `linear` podem ser ruins de verdade.
+**Situação em 2026-07-28 (ticket 07): resolvido, por substituição.**
 
-**Severidade: alta.** É a linha de base contra a qual o mapa inteiro prometeu se comparar.
-Enquanto estiver assim, qualquer modelo novo parece um triunfo contra ruído.
+- `FEATURE_COLS_BASE` **foi corrigido** para a ordem real, e o cabeçalho do script agora declara
+  que ele está **superado** — não para ressuscitá-lo, mas para o arquivo não seguir sendo uma
+  armadilha para quem o rodar sem ler.
+- O script **não foi rerodado**, porque o método dele caiu junto com o vetor: KFold aleatório
+  sobre `banco_alunos_pas_final.csv` mede interpolação dentro de anos conhecidos, sobre a base em
+  que os modelos foram treinados. Ambos os defeitos foram substituídos de uma vez por
+  `scripts/baseline_honesto.py`, que mede sobre a régua do ticket 06.
+- A linha de base válida agora existe: **RMSE 5,167 em `A3`** (§1 de
+  [`07-baseline-honesto.md`](07-baseline-honesto.md)). Ela é a régua que o ADR-0007 prometia ser.
+- A suspeita registrada aqui **se confirmou**: a correção não inverteu o ranking a favor dos
+  modelos. O `modelo_arg_final` perde para uma regressão linear de duas variáveis mesmo tendo
+  visto 95,2% do teste.
+
+**O que falta fazer:** superscrever o ADR-0007 apontando para o ticket 07 como a linha de base
+válida. Fica para o ticket 13, junto da promoção.
+
+**Severidade: era alta, agora baixa** — a régua de borracha foi substituída por uma medida.
 
 ---
 
@@ -326,3 +346,74 @@ lista, pré-existente e não relacionada.
 
 **Severidade: era média, e bloqueante para o ADR-0009** — a decisão de restringir o override ao
 caminho reverso só faz sentido se o override **funcionar** no caminho reverso.
+
+---
+
+## 8. ⚠ PII de Aluno real publicada no repositório remoto
+
+**Onde foi encontrado:** ticket 07, ao rastrear a proveniência do `13,49`.
+
+**O defeito:** o commit o commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15) cria `docs/notas/calibracao-modelo-arg-final.md`, que contém uma
+tabela com o **nome completo de 6 Alunos reais** e a chance de aprovação calculada para cada um.
+
+O commit **não é ancestral do `HEAD`** e o arquivo não existe na árvore de trabalho atual — mas
+ele é alcançável pela branch `feat/proof-section` **e por `origin/feat/proof-section`**, ou seja,
+está publicado. Sobreviveu às 4 rodadas de expurgo de 2026-07-25.
+
+Isso viola a restrição dura de privacidade do mapa: *"nenhum dado de aluno vai para arquivo
+commitado, relatório, teste ou exemplo"*.
+
+**O que falta fazer:** decisão do dono do produto. Reescrever uma branch já publicada é
+destrutivo e não foi feito nesta sessão. O conteúdo técnico da nota (a descoberta MAE-vs-RMSE) já
+está preservado sem PII no §6 de [`07-baseline-honesto.md`](07-baseline-honesto.md), então nada
+de valor se perde ao removê-la.
+
+**Severidade: alta.** É a única restrição do mapa marcada como dura.
+
+---
+
+## 9. A incerteza mostrada ao Aluno está 17% mais estreita do que deveria
+
+**Onde foi encontrado:** ticket 07, §6.
+
+**O defeito:** `ARG_FINAL_MAE = 13.49` é um **MAE**, calculado em `calculate.py:81` sobre o
+triênio 2023/2025 da base em que o próprio modelo foi treinado. Ele é passado como o parâmetro
+`rmse` de `calculate_approval_probability` em 6 lugares, e o docstring de `statistics.py` afirma
+que é RMSE.
+
+Medido na régua, o `modelo_arg_final` tem **MAE 12,93** (que confirma a origem do número) e
+**RMSE 16,26** em Argumento Final. Usar o MAE como desvio-padrão da normal estreita a
+distribuição e deixa **toda probabilidade confiante demais** — o Aluno que merece ouvir 70% ouve
+mais.
+
+Já havia sido descoberto em 2026-07-24 (commit o commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15), RMSE 18,01 medido em 2023/2025), com
+decisão explícita registrada de **não aplicar a correção**.
+
+**O que falta fazer:** ticket 11. Não é só trocar 13,49 por 16,26 — a largura precisa virar
+**por Aluno** e **por classe**, e a constante está duplicada em 6 arquivos.
+
+**Severidade: alta para o produto, e endereçada.** É o Portão 3 do critério de aceite.
+
+---
+
+## 10. `ensemble.py` é código morto, e a documentação o descreve como se rodasse
+
+**Onde foi encontrado:** ticket 07, §5.
+
+**O defeito:** `ensemble.predict_with_dynamic_ensemble` — o ensemble por Coeficiente de Variação
+da volatilidade — **não é chamado em lugar nenhum**: nem em `api/services/`, nem no
+`app/streamlit_app.py`. O arranjo que a tela usa de verdade é o **meta-modelo roteador**
+(`meta_model.joblib`), que escolhe um dos quatro modelos por Aluno.
+
+O `CLAUDE.md` e o mapa descrevem o ensemble dinâmico como o mecanismo de produção. A pergunta
+central do ticket 07 ("o ensemble por volatilidade se justifica?") foi feita sobre código que
+nunca rodou.
+
+Medido nas linhas limpas, nenhum dos dois arranjos bate o melhor componente sozinho, e o roteador
+manda **75% dos Alunos para o `modelo_rf`** — o único que memorizou.
+
+**O que falta fazer:** o ticket 10 decide a família e o arranjo. Se o ensemble sair, `ensemble.py`
+sai junto. O `CLAUDE.md` precisa ser corrigido de qualquer forma.
+
+**Severidade: média.** Não quebra nada em produção — mas fez o mapa inteiro raciocinar sobre o
+mecanismo errado.

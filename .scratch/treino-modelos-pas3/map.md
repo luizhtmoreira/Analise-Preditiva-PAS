@@ -136,6 +136,14 @@ vai ficar bloqueado esperando o anterior de qualquer forma.
 canônico fechar: o encaixe no `target_calculator` reverso, e os limites chutados de P1/P2
 (`[-20,20]`, e o teto de 100 aplicado a P2 isolado quando provavelmente é do EB combinado).
 
+**⏳ Uma pergunta esperando resposta do dono do produto** (2026-07-28): **quantos itens tem a
+Parte 2, e como o desconto por erro fecha o piso?** Os limites da P2 viraram constantes nomeadas
+(`P2_MAXIMO` / `P2_MINIMO` em `target_calculator.py`), mas o valor segue sendo chute herdado — e
+ele decide sozinho quando o produto diz "impossível" e quando diz "garantido". Se o piso real for
+`−N` para `N` itens, bem mais raso que −100, o status `'garantido'` é **código morto** e nenhum
+Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 1 de
+[`relatorios/defeitos-pendentes.md`](relatorios/defeitos-pendentes.md).
+
 ## Decisions so far
 
 <!-- uma linha por ticket fechado: gist + link -->
@@ -232,11 +240,30 @@ canônico fechar: o encaixe no `target_calculator` reverso, e os limites chutado
   acima.
   → [relatório](relatorios/06-esquema-de-validacao.md)
 
+- [07 — Baseline honesto](issues/07-baseline-honesto.md) — a régua existe
+  (`src/pas_intelligence/validation.py`, com teste) e produziu a **tabela de referência única**.
+  Melhor baseline trivial: **RMSE 5,167 em `A3`** (linear em `A1`,`A2` + as 6 legadas); a linear
+  de duas variáveis sozinha dá 5,185 e repetir a Etapa 2 dá 5,661 — **o teto do ticket 06 se
+  confirma sobre 37.844 linhas**. `modelo_arg_final` dá **5,420 e perde para a regressão linear**,
+  mesmo tendo visto 95,2% do teste. **O ensemble por volatilidade é código morto** — não é chamado
+  pela API nem pelo Streamlit; o arranjo real é o **meta-modelo roteador**, que manda 75% dos
+  Alunos para o `modelo_rf`, o único que **memorizou** (RMSE 5,198 no visto contra 8,422 no
+  limpo). Nas linhas limpas nenhum arranjo bate usar o MLP sozinho: **nem ensemble nem roteador
+  pagam**. Proveniência do `13,49` fechada: é um **MAE** de `calculate.py:81`, medido em 2023/2025
+  sobre a base de treino do próprio modelo — o RMSE real é **16,26**, **20,5% maior** que a
+  constante que o produto declara. Faixa de decisão **congelada em 15,500**; erro de
+  decisão do baseline **7,4%** (34,3% dentro da faixa, contra o piso matemático de 31,6%).
+  Duas premissas caíram: **não existe "em qual semestre o Aluno concorreu"** (todos concorrem de
+  uma vez e quem não entra no 1º disputa o 2º — corte do 1º maior em **1.317 de 1.317** chaves), e
+  a regra dos **3 convocados foi relaxada para 1**, porque `convocados_com_argumento = 1` é a
+  definição literal da Nota de Corte e não ruído (cobertura 55,8% → **90,0%**).
+  → [relatório](relatorios/07-baseline-honesto.md)
+
 ## Restrições que o ticket 06 deixou nos tickets seguintes
 
-- **07 (baseline):** a faixa de decisão é **congelada** no RMSE do melhor baseline trivial deste
-  ticket, e não se recalcula por modelo. O `13,49` não é "quase o baseline burro" — é um número
-  praticamente no teto, como todo o resto; o defeito dele é ser **o mesmo para todo Aluno**.
+- ~~**07 (baseline):** a faixa de decisão é **congelada** no RMSE do melhor baseline trivial deste
+  ticket.~~ **FEITO** — largura **15,500**. O `13,49` não é "quase o baseline burro": é um **MAE**
+  medido no próprio treino, e o RMSE real é **16,26**.
 - **08 (janela):** a curva de erro contra número de triênios é medida **só na classe
   majoritária**. Para o Aluno sem Etapa 1 a pergunta é inrespondível com este dataset.
 - **09, 10:** timeboxados — ver acima. Comparação sempre **pareada dentro da dobra**, com a
@@ -246,6 +273,29 @@ canônico fechar: o encaixe no `target_calculator` reverso, e os limites chutado
   trocar a forma.
 - **13 (promoção):** único lugar do repositório autorizado a chamar
   `holdout_final_use_uma_vez()`.
+
+## Restrições que o ticket 07 deixou nos tickets seguintes
+
+- **Todos:** medir é `avaliar()` de `src/pas_intelligence/validation.py`, com semente explícita.
+  Nada de laço próprio — as travas do ticket 06 só são travas porque existem num lugar só. A
+  fábrica devolve modelo **novo** por dobra, e a régua recusa quem devolver o mesmo objeto duas
+  vezes. Features da Etapa 3 são recusadas na entrada.
+- **08, 09, 10 — o que precisam bater (Portão 1):** RMSE `A3` agrupado **≤ 5,167** no geral,
+  **≤ 5,038** na majoritária, **≤ 6,028** na minoritária, com **|viés| ≤ 0,5**. Ruído entre dobras
+  do baseline: **±0,37**.
+- **08 (janela):** a janela é o parâmetro `janela` de `gerar_dobras`/`avaliar`; os triênios de
+  teste não mudam com ela, de propósito, para a comparação continuar pareada dentro da dobra.
+- **09 (features):** o teto **não** está declarado sobre `curso`/`campus`/`turno`/língua. A média
+  do curso sozinha dá 8,464 — carrega pouca informação isolada, o que não é o mesmo que carregar
+  pouca **a mais**.
+- **10 (família):** o veredito sobre arranjo de vários modelos já está dado — nem ensemble nem
+  roteador batem o melhor componente sozinho nas linhas limpas. O que resta ao 10 é a família
+  única.
+- **11 (incerteza):** a largura honesta de hoje é **16,26** em Argumento Final (5,420 × 3), não
+  13,49. RMSE/MAE entre 1,25 e 1,27 em tudo que foi medido — a forma normal serve, o trabalho é
+  largura por Aluno.
+- **Erro de decisão:** faixa **congelada em 15,500**, e o corte de um Aluno é o **menor entre os
+  sistemas e os semestres** em que ele concorre. Não recalcular a faixa por modelo.
 
 ## Restrições que o ticket 04 deixou nos tickets seguintes
 

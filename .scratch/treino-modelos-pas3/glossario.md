@@ -292,7 +292,69 @@ modelos com as features na ordem errada.
 ### Baseline
 
 A régua contra a qual o modelo novo é comparado. Sem baseline válido, "melhorou" não quer dizer
-nada. O ADR-0007 era o baseline deste mapa e está inválido (ticket 07).
+nada. O ADR-0007 era o baseline deste mapa e está inválido (ticket 07). O baseline válido é o do
+ticket 07: **RMSE 5,167 em `A3`**, uma regressão linear em `(A1, A2)` mais as 6 features legadas.
+
+*(Os termos abaixo entraram com o ticket 07.)*
+
+### Vazamento (*leakage*)
+
+Medir um modelo em linhas que ele **já viu no treino**. O número sai bom por memória, não por
+qualidade — e some no dia em que o modelo encontra alguém de verdade. É a diferença entre saber a
+matéria e ter decorado o gabarito.
+
+**Caso real deste projeto:** o `modelo_rf` dá RMSE 5,198 nas linhas que viu e **8,422** nas linhas
+limpas — 62% pior. Os 5,198 nunca foram qualidade.
+
+Assinatura de bolso: quando a razão **RMSE/MAE** foge do ~1,26 de todo o resto (o `rf` dá 1,41),
+desconfie de linhas reproduzidas de cor antes de comemorar.
+
+### Linha limpa
+
+Linha do recorte de teste que **não** está na base em que o modelo foi treinado. É a única sobre a
+qual o número de um modelo já pronto quer dizer alguma coisa. No ticket 07 sobraram 1.810 linhas
+limpas de 37.844 — os `.joblib` atuais já tinham visto 95,2% do teste.
+
+### Artefato congelado × receita
+
+Um `.joblib` que **já existe** não pode ser retreinado a cada dobra; ele é medido sobre as mesmas
+linhas de teste, mas o que se mede é *aquele arquivo*, não a [receita](#receita). Por isso ele não
+passa pela régua (`avaliar`) e carrega sempre a ressalva do vazamento.
+
+### Meta-modelo roteador
+
+Arranjo em que um modelo **escolhe qual dos outros responde** para cada Aluno — diferente do
+*ensemble*, que mistura as respostas com pesos. É o que a tela usa hoje.
+
+Medido no ticket 07: manda **75% dos Alunos para o `modelo_rf`**, justamente o que memorizou. Nas
+linhas que ele viu isso parece brilhante (RMSE 6,186); nas linhas limpas desaba para 8,296 — pior
+do que simplesmente usar o MLP sozinho (8,042).
+
+### Erro de decisão
+
+A fração de Alunos em que o sistema erra o **sim/não** sobre passar — mesmo quando erra pouco no
+número. *"Em 7,4% dos Alunos o sistema teria dito a coisa errada sobre passar."*
+
+Nunca viaja sozinho, porque a fração mente: um Aluno errado por 0,5 ponto e um errado por 30
+contam igual nela. Vai sempre acompanhado do **RMSE dentro da faixa de decisão**.
+
+### Faixa de decisão
+
+A janela em torno da Nota de Corte do Aluno onde o erro do modelo é **capaz de virar a resposta**:
+±1 RMSE de Argumento Final. **Congelada em 15,500** no ticket 07 e a mesma para todos os modelos
+comparados daqui em diante — se cada modelo usasse a própria faixa, a métrica seria
+auto-referente e não poderia melhorar por construção.
+
+Dentro dela, errar ~⅓ das vezes é o **piso matemático**, não incompetência: para um modelo sem
+viés e erro normal, o erro esperado numa faixa de ±1 RMSE é `∫₀¹Φ(−u)du ≈ 31,6%`. Tudo que o
+ticket 07 mediu caiu entre 32,9% e 36,4%.
+
+### Portão (do critério de aceite)
+
+Cada uma das quatro condições que o modelo novo precisa cumprir para ser promovido:
+**1 — não-regressão**, **2 — coerência**, **3 — incerteza honesta**, **4 — regra de parada**.
+Chamam-se portões porque são eliminatórios e independentes: passar em três não compensa reprovar
+no quarto.
 
 ---
 

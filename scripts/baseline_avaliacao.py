@@ -1,6 +1,14 @@
 """
 Avaliação Baseline — Vetor PAS
 ==============================
+
+⚠ SUPERADO pelo ticket 07. Use `scripts/baseline_honesto.py`, que mede sobre a régua do ticket
+06 (`src/pas_intelligence/validation.py`). **Os números do ADR-0007 são inválidos** por dois
+motivos independentes: o vetor de features estava na ordem errada (corrigido abaixo, para o
+script não ser uma armadilha), e o método — KFold aleatório sobre `banco_alunos_pas_final.csv` —
+mede interpolação dentro de anos conhecidos, coisa que o produto nunca faz, sobre uma base que
+os modelos já tinham visto no treino.
+
 Captura métricas densas de todos os modelos existentes para uso como
 linha de base na comparação com versões retreinadas.
 
@@ -51,8 +59,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # ─── Features padrão usadas nos modelos base ─────────────────────────────────
-# Conforme dossie_modelos.md: scaler espera 6 features
-FEATURE_COLS_BASE = ["EB_PAS1", "EB_PAS2", "Cresc_EB", "Media_EB", "Std_EB", "CV_EB"]
+# Ordem lida de `booster.feature_name()` dos próprios artefatos, não da documentação. A lista
+# anterior — ["EB_PAS1", "EB_PAS2", "Cresc_EB", "Media_EB", "Std_EB", "CV_EB"] — tinha 5 das 6
+# posições trocadas, e é a causa dos `R² = -83` e `MAPE = 1e+19` do ADR-0007: passar features
+# como array puro não confere nome nenhum, o modelo lê por posição.
+FEATURE_COLS_BASE = ["EB_PAS1", "Red_PAS1", "EB_PAS2", "Red_PAS2", "Cresc_EB", "Cresc_Red"]
 TARGET_COL = "EB_PAS3"
 
 

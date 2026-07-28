@@ -30,11 +30,18 @@ novo. Medi-los sobre esse holdout é medir dado que eles já viram — o número
 vazamento, não por qualidade. O ticket precisa quantificar a sobreposição entre as duas bases e
 reportar o número com essa ressalva explícita, ou construir um holdout limpo da sobreposição.
 
-- [ ] Medidos ao menos três baselines triviais sobre o holdout do ticket 06
-- [ ] Medidos os `.joblib` atuais sobre o mesmo holdout
-- [ ] Quantificada a sobreposição entre `banco_alunos_pas_final.csv` e o holdout; número dos
-      modelos atuais reportado com a ressalva de vazamento, ou medido sobre subconjunto limpo
-- [ ] Veredito preliminar: o ensemble por CV de volatilidade bate o baseline trivial?
-- [ ] Registrada a proveniência do `RMSE = 13.49` — de onde veio, e o quanto difere do medido
-- [ ] Uma tabela de referência única, citável por todos os tickets seguintes
-- [ ] Relatório em `relatorios/07-baseline-honesto.md`
+- [x] Medidos ao menos três baselines triviais sobre o holdout do ticket 06 — **sete**, o melhor
+      com RMSE **5,167** em `A3`
+- [x] Medidos os `.joblib` atuais sobre o mesmo holdout
+- [x] Quantificada a sobreposição entre `banco_alunos_pas_final.csv` e o holdout — **95,2%**
+      (36.034 de 37.844); tudo reportado nos dois recortes, com as **1.810 linhas limpas** ao lado
+- [x] Veredito preliminar: **não** — e o ensemble por volatilidade nem está em uso; o arranjo real
+      é o meta-modelo roteador, que manda 75% dos Alunos para o modelo que memorizou
+- [x] Registrada a proveniência do `RMSE = 13.49` — é um **MAE**, de `calculate.py:81`, medido no
+      triênio 2023/2025 sobre a base de treino do próprio modelo. O RMSE real é **16,26**
+- [x] Uma tabela de referência única, citável por todos os tickets seguintes — §1 do relatório
+- [x] Relatório em `relatorios/07-baseline-honesto.md`
+
+**Fechado junto:** a faixa de decisão foi congelada em **15,500**, e a limitação de cobertura que
+o §10 do ticket 06 deixou em aberto foi resolvida — os 34% eram artefato do filtro `sistema == 1`,
+não defeito de casamento de curso; a cobertura real é 90,0%.
