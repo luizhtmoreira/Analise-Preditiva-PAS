@@ -345,9 +345,64 @@ A janela em torno da Nota de Corte do Aluno onde o erro do modelo é **capaz de 
 comparados daqui em diante — se cada modelo usasse a própria faixa, a métrica seria
 auto-referente e não poderia melhorar por construção.
 
-Dentro dela, errar ~⅓ das vezes é o **piso matemático**, não incompetência: para um modelo sem
-viés e erro normal, o erro esperado numa faixa de ±1 RMSE é `∫₀¹Φ(−u)du ≈ 31,6%`. Tudo que o
-ticket 07 mediu caiu entre 32,9% e 36,4%.
+Dentro dela, errar ~⅓ das vezes é o **piso matemático**, não incompetência. Vale a pena ver de
+onde isso sai, porque a conta explica o mapa inteiro.
+
+**A montagem.** Seja `y` o Argumento Final verdadeiro do Aluno, `c` o corte do curso dele, e
+`d = y − c` a distância com sinal até o corte (`d > 0` = passou de verdade). O modelo prevê
+`ŷ = y + ε`, com o erro `ε ~ N(0, σ²)` e sem viés — duas hipóteses que o ticket 07 conferiu
+(viés +0,18 e razão RMSE/MAE 1,26 contra 1,25 do normal). O sistema diz "passa" quando `ŷ ≥ c`.
+
+**Quando o sistema erra.** Dois casos, e eles colapsam num só:
+
+```
+Aluno que passou (d > 0) — erra se disser que não passa:
+    ŷ < c  ⟺  y + ε < c  ⟺  ε < −d          P = Φ(−d/σ)
+
+Aluno que não passou (d < 0) — erra se disser que passa:
+    ŷ ≥ c  ⟺  ε ≥ −d = |d|                  P = 1 − Φ(|d|/σ) = Φ(−|d|/σ)
+
+                    P(erro | d) = Φ( −|d| / σ )
+```
+
+A simetria da normal faz o sinal sumir. **Só importa a que distância do corte o Aluno está,
+medida em erros do modelo** — não se ele está acima ou abaixo.
+
+Em cima da linha (`d = 0`) isso dá `Φ(0) = 50%`: cara ou coroa, e **nenhum modelo muda isso**. Se
+a verdade está exatamente na fronteira, qualquer erro, por menor que seja, cruza para o outro
+lado.
+
+**A média dentro da faixa.** Com `u = |d|/σ`, a faixa vira `u ∈ [0,1]`. Supondo `u` espalhado por
+igual e integrando por partes (`Φ'(−u) = −φ(u)`):
+
+```
+∫₀¹ Φ(−u) du = [u·Φ(−u)]₀¹ + ∫₀¹ u·φ(u) du = Φ(−1) + φ(0) − φ(1)
+             = 0,158655 + 0,398942 − 0,241971
+             = 0,315627                                  →  31,6%
+```
+
+**Confere com a realidade.** O ticket 07 mediu o erro por faixa de distância em 34.050 Alunos, e a
+fórmula acerta bucket a bucket — ver a tabela no §7 de
+[`07-baseline-honesto.md`](relatorios/07-baseline-honesto.md). Não é teoria bonita no papel.
+
+**Por que o medido dá 34,3% e não 31,6%.** A integral supôs os Alunos espalhados por igual dentro
+da faixa, e eles não estão: **2.573 caem no primeiro quarto** (o mais perto do corte, onde o erro
+é 46,9%) contra ~1.193 em cada um dos outros três. **31,6% é o piso; 34,3% é o piso mais o formato
+real da população.**
+
+**O que custaria melhorar.** Com a faixa congelada, o erro na faixa só cai se `σ` cair:
+
+| erro do modelo novo | erro na faixa | acerto |
+|---|---:|---:|
+| igual ao baseline | 31,6% | 68,4% |
+| −20% | 27,9% | 72,1% |
+| **−32%** | **25,0%** | **75,0%** |
+| −50% | 19,5% | 80,5% |
+
+Acertar "3 em 4" exige o RMSE cair **32%** — de 5,167 para 3,514 em `A3`. O espaço inteiro entre
+uma reta de duas variáveis (5,185) e o melhor modelo já testado (5,167) é **0,3%**. Pedir 32%
+quando o estado da arte compra 0,3% não é meta ambiciosa: é meta **fora da física do problema**.
+É essa conta que fez o critério de aceite deixar de ser "melhorar a acurácia".
 
 ### Portão (do critério de aceite)
 

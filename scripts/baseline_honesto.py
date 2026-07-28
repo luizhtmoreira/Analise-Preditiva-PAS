@@ -223,6 +223,61 @@ def menor_corte_por_aluno(df: pd.DataFrame) -> pd.DataFrame:
     return alunos[["id_pseudonimo", "trienio", "nota_corte"]]
 
 
+def detalhar_erro_de_decisao(
+    resultado: ResultadoValidacao, cortes: pd.DataFrame, largura: float
+) -> None:
+    """Onde os erros de decisão moram, e se a forma normal do erro se sustenta.
+
+    Duas coisas que a taxa agregada esconde:
+
+    1. **`7,4%` e `34,3%` são populações diferentes.** O segundo é o recorte dentro da faixa, e
+       é difícil de propósito — quem está longe do corte quase nunca troca de lado, porque o erro
+       do modelo não tem tamanho para virar o veredito.
+    2. **A probabilidade de erro depende só da distância até o corte**, medida em erros do
+       modelo. Para erro normal e sem viés, `P(erro | d) = Φ(−|d|/σ)`, com o sinal de `d`
+       sumindo pela simetria da normal. Comparar o observado com essa curva é uma verificação da
+       forma normal **independente** da razão RMSE/MAE — insumo do ticket 11.
+    """
+    from scipy.stats import norm  # type: ignore
+
+    p = resultado.previsoes.merge(cortes, on=["id_pseudonimo", "trienio"], how="left")
+    p = p[p["nota_corte"].notna()]
+
+    af_real = p["a1"] + 2 * p["a2"] + 3 * p["real"]
+    af_previsto = p["a1"] + 2 * p["a2"] + 3 * p["previsto"]
+    errou = (af_real >= p["nota_corte"]) != (af_previsto >= p["nota_corte"])
+    distancia = (af_real - p["nota_corte"]).abs()
+    dentro = distancia <= largura
+
+    print(f"\n— Onde moram os erros de decisão ({resultado.nome}) —")
+    for rotulo, mascara in (
+        ("todos os casados", pd.Series(True, index=p.index)),
+        (f"dentro da faixa (<={largura:.3f})", dentro),
+        ("fora da faixa", ~dentro),
+    ):
+        print(f"    {rotulo:<32} n={int(mascara.sum()):>6}  erros={int(errou[mascara].sum()):>5}"
+              f"  {errou[mascara].mean() * 100:>5.1f}%")
+    print(f"    → {errou[dentro].sum() / errou.sum() * 100:.0f}% dos erros vêm de dentro da "
+          f"faixa, que é {dentro.mean() * 100:.0f}% dos Alunos")
+
+    print("\n— Erro por distância do corte, contra Φ(−|d|/σ) —")
+    print(f"    {'|d|/σ':>12} {'n':>6} {'observado':>10} {'previsto':>9}")
+    for inicio, fim in ((0, .25), (.25, .5), (.5, .75), (.75, 1.), (1., 1.5), (1.5, 2.)):
+        faixa = (distancia / largura >= inicio) & (distancia / largura < fim)
+        if not faixa.any():
+            continue
+        previsto = norm.cdf(-(inicio + fim) / 2)
+        print(f"    {inicio:.2f}–{fim:.2f}{'':>3} {int(faixa.sum()):>6} "
+              f"{errou[faixa].mean() * 100:>9.1f}% {previsto * 100:>8.1f}%")
+
+    piso = norm.cdf(-1) + norm.pdf(0) - norm.pdf(1)  # ∫₀¹ Φ(−u) du, resolvida por partes
+    print(f"\n    piso teórico ∫₀¹Φ(−u)du = Φ(−1) + φ(0) − φ(1) = {piso:.4f} "
+          f"({piso * 100:.1f}%), supondo |d| uniforme na faixa")
+    primeiro_quarto = ((distancia / largura) < 0.25).sum()
+    print(f"    e |d| não é uniforme: {int(primeiro_quarto)} Alunos no primeiro quarto contra "
+          f"~{int(dentro.sum() - primeiro_quarto) // 3} em cada um dos outros três")
+
+
 # ─── Saída ──────────────────────────────────────────────────────────────────────────────────
 
 
@@ -406,6 +461,8 @@ def main() -> None:
           f"{d.n_na_faixa:>9} {d.taxa_erro_na_faixa * 100:>7.1f}% {d.erro_na_faixa.rmse:>11.3f}")
     print(f"\nsem corte casado: {d.n_sem_corte} de {d.n + d.n_sem_corte} "
           f"({d.n_sem_corte / (d.n + d.n_sem_corte) * 100:.1f}%)")
+
+    detalhar_erro_de_decisao(melhor, cortes, largura)
 
 
 if __name__ == "__main__":

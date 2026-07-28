@@ -270,11 +270,54 @@ falso ou `parcial`; Alunos com `cota_padrao_suspeito` (2 no recorte).
 Frase que se fala em reunião: **"em 7,4% dos Alunos o sistema teria dito a coisa errada sobre
 passar"** — e, entre os que estão perto do corte, em **34,3%**.
 
-**O 34,3% não é defeito do baseline.** O §7 do ticket 06 calculou que, para modelo sem viés e erro
-normal, o erro esperado numa faixa de ±1 RMSE em torno do corte é `∫₀¹Φ(−u)du ≈ 31,6%`. Todos os
-preditores medidos caem entre 32,9% e 36,4%. **Estão no limite matemático**, e a distância entre o
-melhor e o pior é de 3,5 pontos. Confirma a tabela do §7 e a decisão de não fazer disso um
-critério de aceite.
+### 7.1 Os dois números são populações diferentes
+
+`7,4%` e `34,3%` não se contradizem: o segundo é um recorte do primeiro, e é o recorte difícil de
+propósito. Decompondo o melhor baseline:
+
+| recorte | Alunos | erros | taxa |
+|---|---:|---:|---:|
+| todos os que casaram com um corte | 34.050 | 2.527 | **7,4%** |
+| **dentro** da faixa (`\|AF real − corte\| ≤ 15,5`) | 6.154 | 2.110 | **34,3%** |
+| **fora** da faixa | 27.896 | 417 | 1,5% |
+
+**83% de todos os erros de decisão vêm de dentro da faixa, que é 18% dos Alunos.** Faz sentido:
+para quem está 80 pontos acima do corte do curso, um erro de 15 pontos não tem tamanho para virar
+o veredito. Só perto da linha o erro do modelo decide alguma coisa.
+
+Os dois números têm uso distinto: **7,4% é o número do produto** ("de todo mundo que usar, o
+sistema erra o veredito para 7 em 100"); **34,3% é o número do caso difícil**, e serve para
+comparar modelos sem que a maioria trivial dilua a diferença.
+
+### 7.2 O 34,3% não é defeito do baseline — é o piso, conferido
+
+O §7 do ticket 06 calculou que, para modelo sem viés e erro normal, o erro esperado numa faixa de
+±1 RMSE em torno do corte é `∫₀¹Φ(−u)du ≈ 31,6%`. Todos os preditores medidos caem entre 32,9% e
+36,4% — a distância entre o melhor e o pior é de 3,5 pontos.
+
+**A conta previa, e os dados confirmam.** A probabilidade de erro depende só da distância até o
+corte medida em erros do modelo, `P(erro | d) = Φ(−|d|/σ)` (derivação completa no verbete *Faixa
+de decisão* do [`glossario.md`](../glossario.md)). Medido bucket a bucket nos 34.050 Alunos:
+
+| distância `\|d\|/σ` | n | erro observado | `Φ(−\|d\|/σ)` previsto |
+|---|---:|---:|---:|
+| 0 – 0,25 | 2.573 | **46,9%** | 45,0% |
+| 0,25 – 0,50 | 1.161 | 31,6% | 35,4% |
+| 0,50 – 0,75 | 1.185 | 27,3% | 26,6% |
+| 0,75 – 1,00 | 1.235 | 17,1% | 19,1% |
+| 1,00 – 1,50 | 2.531 | 10,2% | 10,6% |
+| 1,50 – 2,00 | 2.477 | 4,5% | 4,0% |
+
+Esta tabela é **evidência independente de que a forma normal do erro se sustenta**, e por um
+caminho que não é a razão RMSE/MAE — o que reforça o insumo entregue ao ticket 11.
+
+**Por que 34,3% e não 31,6%.** A integral supôs os Alunos espalhados por igual dentro da faixa, e
+a coluna `n` mostra que não estão: **2.573 no primeiro quarto** — o mais perto do corte, onde o
+erro é 46,9% — contra ~1.193 em cada um dos outros três. **31,6% é o piso; 34,3% é o piso mais o
+formato real da população.** A diferença é a distribuição, não o modelo.
+
+Isso confirma a tabela do §7 do ticket 06 e a decisão de não fazer do erro de decisão um critério
+de aceite.
 
 ---
 
