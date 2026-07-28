@@ -1,8 +1,8 @@
 # 09 — Conjunto de features: o que o modelo pode ver, e o que o aluno consegue informar
 
 **Type:** task
-**Status:** open
-**Blocked by:** 06, 07
+**Status:** concluído — 2026-07-28
+**Blocked by:** 06 (resolvido), 07 (resolvido)
 
 ## Question
 
@@ -36,15 +36,21 @@ como categoria.
 aproxima o modelo do alvo por um caminho que não é aprendizado sobre o aluno. Verificar antes
 de aceitar o ganho.
 
-- [ ] Ganho de cada bloco de feature medido isoladamente sobre o holdout do ticket 06, contra a
-      linha de base de 6 features do ticket 07
-- [ ] Disponibilidade de cada feature vencedora confirmada com o produto — o aluno consegue
-      informá-la hoje, ou o que precisa mudar
-- [ ] `lingua_e*` avaliada especificamente contra a normalização de P1 por língua do
-      `pas_constants.py`
-- [ ] `trienio` tratado como efeito temporal ou ponderação, nunca como categoria
-- [ ] Verificado se `curso` está atuando como proxy da Nota de Corte
-- [ ] Decisão sobre features de cota tomada explicitamente, incluindo a dimensão ética de pedir
-      esse dado ao aluno
-- [ ] Conjunto final de features declarado, com o ganho de cada uma
-- [ ] Relatório em `relatorios/09-conjunto-de-features.md`
+- [x] Ganho de cada bloco de feature medido isoladamente sobre o holdout do ticket 06, contra a
+      linha de base de 6 features do ticket 07 — só `curso` (+0,43%), `lingua_e*` (+0,35%) e as
+      **derivadas de trajetória** (+2,13%) ganham; o resto empata ou piora
+- [x] Disponibilidade de cada feature vencedora confirmada com o produto — a única vencedora que
+      paga o custo (derivadas de trajetória) é derivada de dado já coletado; nada exige mudar a
+      tela
+- [x] `lingua_e*` avaliada especificamente contra a normalização de P1 por língua do
+      `pas_constants.py` — a normalização já está embutida em `A1`/`A2`, por isso o ganho do
+      bruto é pequeno
+- [x] `trienio` tratado como efeito temporal ou ponderação, nunca como categoria — testado como
+      numérica contínua e descartado por piorar 1,43%
+- [x] Verificado se `curso` está atuando como proxy da Nota de Corte — correlação 0,126, fraca
+- [x] Decisão sobre features de cota tomada explicitamente, incluindo a dimensão ética de pedir
+      esse dado ao aluno — rejeitada por não ter ganho estatístico (−0,07%); a ética não precisou
+      decidir
+- [x] Conjunto final de features declarado, com o ganho de cada uma — as 6 legadas + `A1`/`A2` +
+      3 derivadas de trajetória, RMSE 5,057 (+2,13% sobre a base)
+- [x] Relatório em `relatorios/09-conjunto-de-features.md`

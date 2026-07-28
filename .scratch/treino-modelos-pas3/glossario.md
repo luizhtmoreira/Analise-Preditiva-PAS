@@ -569,3 +569,27 @@ geometricamente pela distância (em triênios) até o mais recente do treino daq
 `base` menor pune mais o dado velho. Testado com `base ∈ {0,5; 0,7; 0,85}` no ticket 08: nenhum
 bateu treinar em tudo sem peso — sinal de que o dado velho não estava atrapalhando, então não
 havia nada para o peso corrigir.
+
+### Derivadas de trajetória (ticket 09)
+
+Razões, não diferenças cruas, entre a Etapa 2 e a Etapa 1: `|Cresc_EB| / |EB_PAS1|`,
+`|Cresc_Red| / |Red_PAS1|`, `sign(Cresc_EB)`. Diferente de `Cresc_EB` (a diferença absoluta, que
+já é uma das 6 features legadas), a razão normaliza o tamanho do salto pelo ponto de partida —
+subir 5 pontos a partir de 10 não é o mesmo salto que subir 5 a partir de 40. São as mesmas três
+razões que `meta_scaler.joblib` já usa para rotear entre os quatro modelos de EB; o ticket 09
+testou a mesma ideia como feature de regressão direta, e foi o único bloco de feature candidato
+que pagou o próprio custo: **+2,13% de RMSE em `A3`**, contra ≤0,43% de tudo o mais testado
+(`curso`, `campus`/`turno`, língua, cota). Grátis — não pede nada novo do Aluno, é aritmética
+sobre as 6 features que a base já tem.
+
+### `curso` como proxy da Nota de Corte (ticket 09)
+
+A armadilha que o ticket 09 pediu para verificar antes de aceitar qualquer ganho de `curso`: será
+que ele ajuda porque carrega informação sobre o Aluno, ou porque, por vias tortas, está
+recodificando a própria Nota de Corte do curso (cursos concorridos atraem Alunos de trajetória
+mais alta, então "curso" e "corte" andam juntos por seleção, não por causa)? Teste: regredir `A3`
+em (`A1`,`A2`), tirar a média do resíduo por curso e correlacionar com a Nota de Corte média do
+curso. Resultado: **correlação 0,126** — fraca. `curso` não é, na maior parte, um proxy do corte;
+o pouco que ele acrescenta (medido em +0,43% de RMSE) é outra coisa. Não mudou a decisão de
+excluir `curso` do conjunto final — o motivo lá foi custo de produto (não é campo de entrada
+hoje), não vazamento — mas fechou a dúvida que o ticket levantou por hipótese.

@@ -273,6 +273,21 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
   de parada do mapa provavelmente dispara no ticket 10.
   → [relatório](relatorios/08-janela-de-dados-2018-vale.md)
 
+- [09 — Conjunto de features](issues/09-conjunto-de-features.md) — só um bloco paga o custo: as
+  **derivadas de trajetória** (`|Cresc_EB|/|EB_PAS1|`, `|Cresc_Red|/|Red_PAS1|`,
+  `sign(Cresc_EB)` — as mesmas razões que o `meta_scaler.joblib` de hoje já usa), **+2,13% de
+  RMSE, grátis** (derivadas das 6 legadas, nada novo do Aluno). `curso` (+0,43%) e `lingua_e*`
+  (+0,35%) ganham, mas pouco, e nenhum dos dois está disponível no schema de previsão hoje
+  (`curso` não é campo de entrada; `lingua_e*` seria fácil de coletar mas o ganho não justifica) —
+  **decisão fechada sem precisar consultar o produto**, porque nenhuma feature vencedora exige
+  mudar a tela. `perfil_cota` + as 5 booleanas de cota **pioram** (−0,07%): a dimensão ética do
+  checklist não precisou decidir, o número já rejeitou. `trienio` como numérica contínua (nunca
+  categoria) **piora 1,43%**, confirmando por medição a armadilha que o ticket previu por
+  argumento. Verificado que `curso` não é proxy da Nota de Corte (correlação do resíduo com o
+  corte médio: **0,126**, fraca) — descartado por custo, não por leak. Conjunto final: as 6
+  legadas + `A1`/`A2` + as 3 derivadas, **RMSE 5,057** — bate as três pernas do Portão 1.
+  → [relatório](relatorios/09-conjunto-de-features.md)
+
 ## Restrições que o ticket 06 deixou nos tickets seguintes
 
 - ~~**07 (baseline):** a faixa de decisão é **congelada** no RMSE do melhor baseline trivial deste
@@ -280,8 +295,9 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
   medido no próprio treino, e o RMSE real é **16,26**.
 - ~~**08 (janela):** a curva de erro contra número de triênios é medida **só na classe
   majoritária**.~~ **FEITO** — usa 2018, janela expansiva, sem peso. Ver decisão acima.
-- **09, 10:** timeboxados — ver acima. Comparação sempre **pareada dentro da dobra**, com a
-  janela segurada igual; nunca modelo A na dobra 2 contra modelo B na dobra 4.
+- ~~**09, 10:** timeboxados — ver acima.~~ **09 FEITO** — ver decisão acima; moveu 2,13%, dentro
+  da faixa "afinação". Comparação sempre **pareada dentro da dobra**, com a janela segurada
+  igual; nunca modelo A na dobra 2 contra modelo B na dobra 4.
 - **11 (incerteza):** o viés do baseline deu **+0,00** e a razão RMSE/MAE **1,26** (teórico 1,25)
   — a forma normal se sustenta no baseline, então o trabalho do 11 é largura **por Aluno**, não
   trocar a forma.
