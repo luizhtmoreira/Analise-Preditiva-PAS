@@ -26,6 +26,7 @@ import pandas as pd  # type: ignore
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "src"))
 
+from pas_intelligence.dataset_pas3 import FEATURES_LEGADAS, carregar_dataset  # noqa: E402
 from pas_intelligence.validation import (  # noqa: E402
     Erro,
     ResultadoValidacao,
@@ -38,30 +39,11 @@ warnings.filterwarnings("ignore")
 
 SEMENTE = 20260728
 
-DATASET = RAIZ / "data" / "training" / "pas3_dataset.parquet"
 BANCO_ANTIGO = RAIZ / "data" / "banco_alunos_pas_final.csv"
 MODELOS = RAIZ / "models"
 
-# A ordem real do vetor de features, lida de `booster.feature_name()` dos próprios artefatos —
-# não da documentação. `scripts/baseline_avaliacao.py:55` declara outra, e é a causa dos
-# `R² = -83` do ADR-0007.
-FEATURES_LEGADAS = ["EB_PAS1", "Red_PAS1", "EB_PAS2", "Red_PAS2", "Cresc_EB", "Cresc_Red"]
-
 
 # ─── Preparo ────────────────────────────────────────────────────────────────────────────────
-
-
-def carregar_dataset() -> pd.DataFrame:
-    df = pd.read_parquet(DATASET)
-    # As 6 features com que os `.joblib` atuais foram treinados, reconstruídas com os mesmos
-    # nomes que os artefatos carregam dentro de si.
-    df["EB_PAS1"] = df["eb_pas1"]
-    df["Red_PAS1"] = df["red_e1"]
-    df["EB_PAS2"] = df["eb_pas2"]
-    df["Red_PAS2"] = df["red_e2"]
-    df["Cresc_EB"] = df["eb_pas2"] - df["eb_pas1"]
-    df["Cresc_Red"] = df["red_e2"] - df["red_e1"]
-    return df
 
 
 def linhas_de_teste(df: pd.DataFrame) -> pd.DataFrame:

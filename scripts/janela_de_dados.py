@@ -25,18 +25,12 @@ import pandas as pd  # type: ignore
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "src"))
 
-from pas_intelligence.validation import (  # noqa: E402
-    Erro,
-    avaliar,
-    gerar_dobras,
-)
+from pas_intelligence.dataset_pas3 import FEATURES_LEGADAS, carregar_dataset  # noqa: E402
+from pas_intelligence.validation import avaliar  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
 SEMENTE = 20260728
-DATASET = RAIZ / "data" / "training" / "pas3_dataset.parquet"
-
-FEATURES_LEGADAS = ["EB_PAS1", "Red_PAS1", "EB_PAS2", "Red_PAS2", "Cresc_EB", "Cresc_Red"]
 FEATURES = ["a1", "a2", *FEATURES_LEGADAS]
 
 # Mapa de coortes pandêmicas do ticket 02 — quais Etapas de cada triênio caíram em ano
@@ -47,17 +41,6 @@ COORTES_PANDEMICAS = {
     "2020/2022": "E1 + E2",
     "2021/2023": "E1",
 }
-
-
-def carregar_dataset() -> pd.DataFrame:
-    df = pd.read_parquet(DATASET)
-    df["EB_PAS1"] = df["eb_pas1"]
-    df["Red_PAS1"] = df["red_e1"]
-    df["EB_PAS2"] = df["eb_pas2"]
-    df["Red_PAS2"] = df["red_e2"]
-    df["Cresc_EB"] = df["eb_pas2"] - df["eb_pas1"]
-    df["Cresc_Red"] = df["red_e2"] - df["red_e1"]
-    return df
 
 
 def regressao_linear(semente: int):

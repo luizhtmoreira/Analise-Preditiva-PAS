@@ -50,7 +50,13 @@ classes") barra essas dobras também na majoritária. O `5,332` sai de só **2 d
 mais fáceis da série — não é "janela 1 quase empata com janela 6", é "janela 1 não produz número
 suficiente para competir".
 
-**A curva cai monotonicamente até N=6 (todo o histórico fora do lacre). Não há mínimo em N=4** —
+**N=6, não N=8, é o teto possível.** A pergunta original do ticket fala em "cair monotonicamente
+até N=8" — mas N=8 nunca é alcançável dentro da régua do ticket 06: dos 8 triênios, um é o lacre
+(nunca entra em treino) e a primeira dobra exige 2 triênios de treino antes de testar o terceiro,
+o que deixa **6** como o maior treino que qualquer dobra chega a ter (a dobra que testa
+2022/2024, treinando em 2016/2018 até 2021/2023). "Expansiva" e "N=6" são a mesma coisa aqui.
+
+**A curva cai monotonicamente até N=6 (o teto). Não há mínimo em N=4** —
 a hipótese de "horizonte de validade" do ticket não se confirma. O ganho fica pequeno cedo:
 N=3→N=4 melhora 0,29%, N=4→N=5 melhora 0,20%, N=5→N=6 melhora 0,16% — sub-1% relativo em dois
 tickets seguidos é exatamente a regra de parada do mapa (§"Timebox"), e ela dispara aqui, não
@@ -117,11 +123,14 @@ correlação é entre `(A1+A2)/2` e `A3`, o proxy mais direto da relação que o
 
 - **Desvio de `A3`** fica entre 9,05 e 9,19 nos 8 triênios — variação de 1,5%, sem nenhum triênio
   destoando, pandêmico ou não.
-- **Correlação `(A1+A2)/2` × `A3`** fica entre 0,787 e 0,841. O ponto mais baixo é justamente
-  2018/2020 (0,787), o único triênio inteiramente pandêmico (E1, E2 **e** E3 marcados nos mapas
-  de coorte dos tickets 02/07/08 combinados) — mas 2020/2022 (E1+E2 pandêmico) tem 0,813, **acima**
-  da média da série, e 2022/2024 (nenhuma etapa pandêmica) tem 0,827. Não há um padrão "ano
-  pandêmico → correlação mais baixa" que se sustente fora do primeiro caso.
+- **Correlação `(A1+A2)/2` × `A3`** fica entre 0,787 e 0,841. O ponto mais baixo é 2018/2020
+  (0,787) — que tem só a **Etapa 3** em ano pandêmico (mapa de coortes do ticket 02, reproduzido
+  no §"Question" deste ticket). Se pandemia fosse o fator, o candidato a correlação mais baixa
+  seria 2020/2022 (**E1 + E2** pandêmicos, duas das três etapas), mas ele dá 0,813 — **acima** da
+  média da série. E 2019/2021 (E2 + E3 pandêmicos, também duas etapas) dá 0,808, também acima de
+  2018/2020. Não existe um padrão "mais etapas pandêmicas → correlação mais baixa": o triênio com
+  menos exposição pandêmica (só E3) é o que dá o número mais baixo, o oposto do que a hipótese
+  pandêmica previria.
 - **Não há tendência monotônica** em nenhuma coluna ao longo dos 8 triênios — descarta deriva
   gradual como aparece na correlação ou na dispersão.
 
