@@ -320,6 +320,28 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
   `resultado_final.csv` real (ausente neste ambiente) — próxima execução real é do ticket 13.
   → [relatório](relatorios/12-pipeline-de-treino-reproduzivel.md)
 
+- [11 — Incerteza calibrada](issues/11-incerteza-calibrada.md) — **decisões fechadas, código
+  pendente.** A Largura de Incerteza vira **dois números fixos por classe** de `etapa_1_ausente`
+  (`4,9884` / `5,2174` em `A3` = `14,965` / `15,652` em Argumento Final), no bloco `incerteza` do
+  manifesto, e a forma **normal** permanece. **A incerteza por Aluno — um dos dois valores que
+  este mapa prometia — foi medida e não paga o próprio custo:** a Volatilidade correlaciona
+  `+0,024` com o tamanho do erro (segunda morte dela, depois do ticket 10), e uma tabela de
+  larguras por decil desloca a probabilidade mostrada em `0,21 p.p.` na média e `3,07` no máximo.
+  A forma normal se sustenta sozinha — cobertura **80,41%** contra 80% prometido, assimetria
+  `−0,045`. **O viés por nível existe (`+1,57` de Argumento Final no decil mais fraco: falsa
+  esperança) e não vira erro de decisão** — corrigi-lo move `4,7637%` para `4,7700%` —, pelo
+  motivo de domínio que o dono do produto levantou antes da medição: os cursos de corte baixo têm
+  folga mediana de **148,9** pontos entre o primeiro colocado e o corte (contra 67,4 nos
+  concorridos), e o Aluno do decil mais fraco está a **82,4** pontos do corte dele. Os dois
+  números por classe ficam **não** por acurácia média (empate 80,41 vs 80,44) mas porque a
+  minoria sai de `77,83%` para `79,53%` de cobertura. O `σ` embarcado é o **agrupado das 5
+  dobras**, não a dobra mais recente, e **o lacre só reporta** — regra assimétrica escrita antes
+  de olhar: acima de `5,5` em `A3` vira ticket urgente, abaixo de `4,5` vira nota. O `±13,49` sai
+  da tela (acerta só 63%); **80%** vira o nível canônico dos derivados. *Conformal prediction*,
+  regressão quantílica e NGBoost descartados com número, não com opinião.
+  → [relatório](relatorios/11-incerteza-calibrada.md) ·
+  [ADR-0012](../../docs/adr/0012-largura-fixa-por-classe-em-vez-de-incerteza-por-aluno.md)
+
 ## Restrições que o ticket 06 deixou nos tickets seguintes
 
 - ~~**07 (baseline):** a faixa de decisão é **congelada** no RMSE do melhor baseline trivial deste
@@ -410,6 +432,20 @@ Névoa reconhecida, ainda sem nitidez para virar ticket:
   `_carregar_modelo`, some o `ModuleNotFoundError`, some a degradação silenciosa) e o
   `stats_pas3` passa a vir do Ano-Âncora. Ver §7 do relatório 04.
 
+- **A probabilidade satura para dois terços dos Alunos, e ninguém esperava isso.** Medido no
+  ticket 11 sobre 31.635 Alunos com corte casado: **63,6%** recebem probabilidade abaixo de 1% ou
+  acima de 99%, e só **19,5%** caem entre 5% e 95%. A saturação **piora com a concorrência do
+  curso** — 78,3% nos 5% mais disputados, onde apenas 9,7% recebem número informativo. Não é
+  defeito de cálculo nem de largura: a taxa real de aprovação nesse grupo é 7,2%, e o Aluno
+  mediano está a **3,9 larguras** do corte dele. O app está dizendo a verdade, e a verdade é
+  quase sempre óbvia. O produto que existe nesse número é pequeno e concentrado: entre os Alunos
+  a menos de duas larguras do corte de um curso concorrido — **9,5% do triênio** — 63% recebem
+  probabilidade informativa, e um veredito baseado só na previsão pontual erraria **14%** deles.
+  A névoa é de produto, não de modelo: **um app que responde "0%" ou "100%" para 2 em cada 3
+  Alunos está entregando informação ou obviedade?** Se o valor está no leque de cursos, no
+  "Quanto Falta" e nos cursos onde o Aluno está *perto* da linha, a tela do Preditor é que
+  precisa mudar — e isso é grande demais para caber num mapa de treino. Ver ADR-0012
+  (§ Consequences) e `relatorios/11-incerteza-calibrada.md`.
 - **Ano-Âncora na interface.** Cinco anos reais por curso, o mais recente em destaque e os outros
   atrás de um botão, no lugar da projeção por regressão. Toca Preditor, Painel Multi-Curso e
   Gestão de Ativos. Decidido no ticket 04; é trabalho de produto, não de modelo, e por isso não

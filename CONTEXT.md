@@ -85,6 +85,10 @@ _Avoid_: target, variável-resposta, output do modelo
 Regra ou modelo que estima P1 e Redação da Etapa 3 com o único fim de **repartir** o Alvo Canônico entre as três partes da prova, para que o resultado possa ser falado em escore em vez de em desvio-padrão. Não é fonte de verdade: trocá-lo não muda o Argumento previsto nem a probabilidade, só a apresentação. Pode ser sobrescrito pelo próprio Aluno.
 _Avoid_: modelo de P1, modelo de redação, submodelo, previsão de nota
 
+**Largura de Incerteza**:
+O quanto o modelo costuma errar, usado como a dispersão da conta de probabilidade de aprovação (`X ~ N(previsão, σ²)`). É **um número por classe de Aluno** — `14,965` para quem fez a Etapa 1 e `15,652` para o **Aluno sem Etapa 1**, em pontos de Argumento Final — e **não varia por Aluno**: a largura por Aluno foi medida e desloca a probabilidade em no máximo 3 pontos percentuais (ADR-0012). Vive no manifesto do pacote de modelo, nunca no código, e é medida em `A3`, valendo `3×` em Argumento Final. Não é o `RMSE = 13,49` de `statistics.py`, que era um MAE de um modelo aposentado.
+_Avoid_: RMSE, margem de erro, intervalo de confiança, desvio do modelo
+
 **Volatilidade**:
 Dispersão **absoluta** entre os Argumentos de Etapa já realizados do Aluno (`|A2 − A1|`), em pontos de Argumento. Mede **magnitude** e é cega à **direção**: subir 3 pontos e cair 3 pontos produzem a mesma Volatilidade. Não é sinônimo de Momentum. **Não é mais um Coeficiente de Variação**: dividir pela média — o que o CV fazia para comparar Alunos de níveis diferentes — é ao mesmo tempo impossível e desnecessário na escala de Argumento. Impossível porque a média do par é ~0 (mediana 0,12) e negativa em 49,3% da base, o que faz a divisão disparar e trocar de sinal; desnecessário porque o Argumento **já** é medido em desvios-padrão da turma, então a comparabilidade entre níveis que a divisão buscava já vem pronta.
 _Avoid_: CV, coeficiente de variação, variação, instabilidade, momentum
