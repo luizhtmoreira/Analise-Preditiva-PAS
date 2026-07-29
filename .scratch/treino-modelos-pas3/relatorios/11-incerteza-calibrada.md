@@ -1,7 +1,7 @@
 # Relatório — Ticket 11: Incerteza calibrada para a camada de probabilidade
 
 **Ticket:** `.scratch/treino-modelos-pas3/issues/11-incerteza-calibrada.md`
-**Status:** decisões fechadas; **código pendente** (duas mudanças pequenas, §7)
+**Status:** concluído
 **Tipo:** grilling (Opus, alto — HITL, dono do produto na sala)
 **ADR:** `docs/adr/0012-largura-fixa-por-classe-em-vez-de-incerteza-por-aluno.md`
 **Glossário do projeto:** `CONTEXT.md` ganhou o termo **Largura de Incerteza**

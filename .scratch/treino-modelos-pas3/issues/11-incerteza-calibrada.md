@@ -52,8 +52,8 @@ calibra contra ruído. Excluir os cursos afetados da avaliação, ou coordenar c
 - [x] Cobertura empírica verificada — 80% prometido → **80,41%** real, sobre as previsões
       fora-da-dobra. **Não no holdout**: como escrito, o item contradizia o lacre do ADR-0010; o
       ticket 13 reporta o número do lacre sob a regra assimétrica, sem poder alterá-lo
-- [ ] `statistics.py` deixa de ter constante cravada; a incerteza vem do artefato de modelo
-- [ ] Bloco `incerteza` gravado no `manifest.json` por `training_pipeline.py`
+- [x] `statistics.py` deixa de ter constante cravada; a incerteza vem do artefato de modelo
+- [x] Bloco `incerteza` gravado no `manifest.json` por `training_pipeline.py`
 - [x] ~~Cursos com Nota de Corte contaminada excluídos da calibração~~ — **sem objeto**: a largura
       é medida sobre resíduos e nunca encosta numa Nota de Corte. O corte entrou só nas
       evidências (folga por curso, erro de decisão), ali filtrado para `Universal` não-parcial

@@ -11,7 +11,9 @@ para o ticket que o decidiu:
   → ticket 10;
 - avaliação e critério de aceite (`PORTAO_1`) → esquema do ticket 06, números do ticket 07;
 - formato de artefato (texto nativo do LightGBM) → gatilho da Decisão 1 do ticket 03, acionado
-  porque o ticket 10 concluiu "um LightGBM só, sem scaler".
+  porque o ticket 10 concluiu "um LightGBM só, sem scaler";
+- largura da incerteza (duas larguras fixas por classe de `etapa_1_ausente`, escala `A3`) →
+  ticket 11, ADR-0012.
 
 **Nunca toca o triênio lacrado.** `TRIENIO_LACRADO` é excluído da avaliação (pela própria régua)
 e do treino do artefato final, explicitamente, antes de chamar `fit`. Decidir se o artefato de
@@ -37,6 +39,7 @@ from typing import Any
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+from scipy.stats import norm  # type: ignore
 
 from .dataset_pas3 import (
     FEATURES_CANONICAS,
@@ -45,7 +48,7 @@ from .dataset_pas3 import (
     com_faltante_nativo_etapa1,
 )
 from .training_dataset import load_and_build
-from .validation import ALVO_CANONICO, TRIENIO_LACRADO, ResultadoValidacao, avaliar
+from .validation import ALVO_CANONICO, COLUNA_CLASSE, TRIENIO_LACRADO, ResultadoValidacao, avaliar
 
 SEMENTE_PADRAO = 20260728
 """A mesma semente dos tickets 07-10 — trocá-la muda o número por acaso de dado aleatório, não
@@ -114,6 +117,47 @@ def _bate_portao(resultado: ResultadoValidacao, portao: dict[str, float]) -> tup
         falhas.append(f"|viés| {abs(geral.vies):.3f} > {portao['vies_abs']:.3f}")
 
     return (not falhas), "; ".join(falhas)
+
+
+NIVEIS_COBERTURA = (0.50, 0.80, 0.90, 0.95)
+"""Os níveis prometidos que o relatório 11 §3.2 verificou contra a cobertura empírica."""
+
+
+def _bloco_incerteza(resultado_validacao: ResultadoValidacao) -> dict[str, Any]:
+    """O bloco `incerteza` do manifesto — ADR-0012 e relatório 11 §7.1.
+
+    Duas larguras fixas por classe de `etapa_1_ausente`, tiradas do `ResultadoValidacao` que
+    `treinar()` já tem em mãos (RMSE agrupado das 5 dobras, nunca recalculado nem otimizado aqui
+    — o número é o que a régua do ticket 06 mede, não um parâmetro deste módulo). Escala `A3`,
+    nunca Argumento Final (relatório 11 §7.1).
+    """
+    sigma_com_etapa_1 = resultado_validacao.agrupado_majoritaria.rmse
+    minoritaria = resultado_validacao.agrupado_minoritaria
+    sigma_sem_etapa_1 = minoritaria.rmse if minoritaria is not None else sigma_com_etapa_1
+
+    previsoes = resultado_validacao.previsoes
+    residuo = (previsoes["previsto"] - previsoes["real"]).to_numpy()
+    sigma_por_linha = np.where(
+        previsoes[COLUNA_CLASSE].to_numpy(), sigma_sem_etapa_1, sigma_com_etapa_1
+    )
+
+    cobertura_verificada = {}
+    for nivel in NIVEIS_COBERTURA:
+        z = norm.ppf((1 + nivel) / 2)
+        dentro_do_intervalo = np.abs(residuo) <= z * sigma_por_linha
+        cobertura_verificada[f"{nivel:.2f}"] = float(np.mean(dentro_do_intervalo))
+
+    return {
+        "forma": "normal",
+        "escala": "a3",
+        "sigma_por_classe": {
+            "com_etapa_1": sigma_com_etapa_1,
+            "sem_etapa_1": sigma_sem_etapa_1,
+        },
+        "sigma_agrupado": resultado_validacao.agrupado.rmse,
+        "medido_em": "previsões fora-da-dobra das 5 dobras (ticket 06)",
+        "cobertura_verificada": cobertura_verificada,
+    }
 
 
 def _sha256_arquivo(caminho: Path) -> str:
@@ -273,6 +317,7 @@ def treinar(
                 ),
             },
         },
+        "incerteza": _bloco_incerteza(resultado_validacao),
     }
 
     caminho_manifesto = diretorio_saida / NOME_ARQUIVO_MANIFESTO

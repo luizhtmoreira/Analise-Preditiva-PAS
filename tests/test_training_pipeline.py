@@ -164,6 +164,29 @@ def test_pipeline_do_csv_ao_pacote(tmp_path, csv_sintetico):
     assert manifesto["ambiente"]["lightgbm"] != "desconhecida"
 
 
+def test_manifesto_ganha_bloco_incerteza_com_a_forma_do_relatorio_11(tmp_path, csv_sintetico):
+    resultado = treinar(
+        csv_sintetico, tmp_path / "pacote", semente=123, portao=PORTAO_PERMISSIVO
+    )
+
+    incerteza = resultado.manifesto["incerteza"]
+    validacao = resultado.resultado_validacao
+
+    assert incerteza["forma"] == "normal"
+    assert incerteza["escala"] == "a3"
+    assert incerteza["sigma_por_classe"] == {
+        "com_etapa_1": validacao.agrupado_majoritaria.rmse,
+        "sem_etapa_1": validacao.agrupado_minoritaria.rmse,
+    }
+    assert incerteza["sigma_agrupado"] == validacao.agrupado.rmse
+    assert set(incerteza["cobertura_verificada"]) == {"0.50", "0.80", "0.90", "0.95"}
+    # Cobertura empírica tem que estar perto do nível prometido, não é hardcoded — dado
+    # sintético e pequeno, então a folga é generosa (relatório 11 §3.2 mede ~0,4 p.p. no real).
+    for nivel_str, cobertura in incerteza["cobertura_verificada"].items():
+        nivel = float(nivel_str)
+        assert abs(cobertura - nivel) < 0.15
+
+
 def test_pipeline_nunca_toca_o_trienio_lacrado(tmp_path, csv_sintetico):
     resultado = treinar(
         csv_sintetico, tmp_path / "pacote", semente=123, portao=PORTAO_PERMISSIVO

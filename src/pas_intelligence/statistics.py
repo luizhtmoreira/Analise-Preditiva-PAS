@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-def calculate_approval_probability(predicted_arg: float, cutoff_score: float, rmse: float = 13.49) -> float:
+def calculate_approval_probability(predicted_arg: float, cutoff_score: float, rmse: float) -> float:
     """
     Calcula a probabilidade de aprovação baseada na distribuição normal dos erros do modelo.
     
@@ -12,7 +12,7 @@ def calculate_approval_probability(predicted_arg: float, cutoff_score: float, rm
     Args:
         predicted_arg: Argumento final previsto pelo modelo
         cutoff_score: Nota de corte do curso desejado
-        rmse: Root Mean Squared Error do modelo (padrão 13.49)
+        rmse: Root Mean Squared Error do modelo
         
     Returns:
         float: Probabilidade de aprovação (0.0 a 1.0)
