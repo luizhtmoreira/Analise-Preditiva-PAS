@@ -417,3 +417,88 @@ sai junto. O `CLAUDE.md` precisa ser corrigido de qualquer forma.
 
 **Severidade: média.** Não quebra nada em produção — mas fez o mapa inteiro raciocinar sobre o
 mecanismo errado.
+
+---
+
+## 11. O Aluno tem **uma** língua no produto e **uma por Etapa** no PAS — 13,9% trocam
+
+**Onde foi encontrado:** 2026-07-29, ao avaliar o pacote promovido contra o triênio 2023/2025.
+Achado ao montar as features pelo caminho do treino em vez de por `model_package.prever`, e notar
+que os dois caminhos não podem concordar para parte da base.
+
+**O defeito:** o `resultado_final.csv` grava `lingua_e1`, `lingua_e2` e `lingua_e3` — **uma por
+Etapa**, porque é assim que o Cebraspe registra. O treino respeita isso:
+`training_dataset.py:143-169` (`_calcular_argumentos_etapa`) lê `df[f"lingua_e{etapa}"]` e
+normaliza a Parte 1 de cada Etapa com a estatística da língua **daquela** Etapa.
+
+O runtime não. `EntradaDePrevisao` tem **um** campo `lingua` (`model_package.py:91`), e
+`_argumentos_exatos` o aplica às duas Etapas:
+
+```python
+stats_e1 = stats_da_prova(ano_e1, 1, entrada.lingua)   # model_package.py:180
+stats_e2 = stats_da_prova(ano_e2, 2, entrada.lingua)   # model_package.py:181
+```
+
+Os schemas fecham o contrato no mesmo formato: `api/schemas/predict.py:20` e
+`api/schemas/gestao.py:19` têm um `lingua` só. O produto inteiro — formulário, request, cálculo —
+presume que a língua é um atributo do Aluno. Ela é um atributo do **par (Aluno, Etapa)**.
+
+**Quantos trocam, medido sobre as 64.298 linhas com `checksum_fecha`:**
+
+| | linhas | % |
+|---|---|---|
+| `lingua_e1 ≠ lingua_e2` | **8.950** | **13,9%** |
+| idem, só no triênio 2023/2025 | 1.292 | 14,8% |
+
+A troca não é uniforme: **6.462 dos 8.950 (72%)** são `inglesa → espanhola`. Não é ruído de
+extração — é um movimento real e de mão única da coorte.
+
+**Quanto custa.** O Aluno declara uma língua; a Etapa que não casa sai com a estatística errada:
+
+| Ele declara | Quem erra | \|erro\| médio | p95 | máx | Peso no Arg. Final | Máx no Arg. Final |
+|---|---|---|---|---|---|---|
+| a língua da Etapa 2 | `A1` | 0,353 | 0,797 | 1,039 | ×1 | **1,04** |
+| a língua da Etapa 1 | `A2` | 0,499 | 1,116 | 1,896 | ×2 | **3,79** |
+
+**O que torna isto diferente do default de língua da Gestão de Ativos** (relatório 13 §6.2, dívida
+já declarada e aceita): aquele atinge quem **não informa** a língua, e a saída é uma coluna na
+planilha. Este atinge o Aluno que informa **corretamente**, no Preditor público, onde o campo é
+obrigatório e sem default justamente para não embutir viés de língua (ticket 04 §5.3). O produto
+pergunta a coisa certa e ainda assim não consegue registrar a resposta certa, porque o campo tem a
+cardinalidade errada. Os dois defeitos se somam para o Aluno de gestão que trocou de língua.
+
+**Por que nada pegou.** `tests/test_model_package.py:185`
+(`test_o_runtime_monta_as_mesmas_features_que_o_treino`) existe exatamente para prender
+*train/serve skew*, e o docstring dele diz que o desencontro "devolve previsão errada com cara de
+certa, para sempre". Ele passa mesmo assim: o fixture crava
+`"lingua_e1": "inglesa", "lingua_e2": "inglesa", "lingua_e3": "inglesa"` (linha 214) e chama
+`stats_da_prova(..., "inglesa")` nas três Etapas (linhas 202-204). Com a língua constante, as duas
+portas concordam por construção. **O teste não falhou; ele é cego a esta dimensão.**
+
+**O que falta fazer:**
+
+1. **`EntradaDePrevisao` passa a carregar a língua por Etapa** — dois campos, ou uma tupla. O
+   `_argumentos_exatos` consome cada um na sua Etapa. É a correção de verdade; o resto decorre.
+2. **Schemas e formulário.** `predict.py`: segundo campo obrigatório seria hostil para os 86%
+   que não trocaram — o caminho provável é um campo por Etapa com o segundo *prefilled* com o
+   primeiro, mas isso é decisão de interface e precisa do dono do produto. `gestao.py`: o default
+   vira por Etapa, sem mudar a natureza da dívida do relatório 13 §6.2.
+3. **Estender o teste de paridade** com um caso de língua trocada — é o item que impede a
+   regressão, e o único que tem que entrar junto da correção. Sem ele, item 1 volta na próxima
+   refatoração.
+4. **Verificar `lingua_e3`.** O alvo `A3` do treino usa `lingua_e3`, e o runtime nunca calcula
+   `A3` exato (ele é previsto), então não há desencontro hoje. Mas o `target_calculator` reverso
+   resolve `A3_necessário` e vai precisar da estatística da Etapa 3 — conferir antes que o
+   encaixe do ADR-0009 seja escrito, não depois.
+
+**Severidade: média.** O erro máximo é **3,79 pontos** de Argumento Final, contra uma Largura de
+Incerteza de **14,97** — está bem dentro do ruído do modelo e nunca vai inverter um veredito
+sozinho. O que sustenta "média" e não "baixa" são três coisas: (a) vive na parte que o ADR-0009
+declara **exata**, onde nenhum erro deveria existir e nada compensa; (b) é **silencioso**, da
+mesma família do defeito 6 desta lista (média/desvio errados no denominador do z-score); (c)
+atinge **13,9% da base**, concentrado numa direção só (`inglesa → espanhola`), o que faz dele
+viés e não ruído — exatamente o viés contra a minoria que o ticket 04 §5.3 se propôs a eliminar.
+
+**Nota de método:** a medição acima veio de recalcular `A1`/`A2` das 64.298 linhas com a língua
+trocada de propósito, comparando com o cálculo correto do treino. Nenhum dado de Aluno entra
+neste registro — só as distribuições agregadas.

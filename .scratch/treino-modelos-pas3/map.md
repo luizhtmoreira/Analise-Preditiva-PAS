@@ -60,6 +60,14 @@ relatório, teste ou exemplo. Datasets derivados e artefatos ficam fora do git, 
 `src/pas_intelligence/` e na avaliação de modelos:
 [`relatorios/defeitos-pendentes.md`](relatorios/defeitos-pendentes.md).
 
+**Achado depois do fechamento (2026-07-29):** a língua estrangeira é **uma por Etapa** no PAS e
+**uma por Aluno** no produto — `training_dataset.py` usa `lingua_e{etapa}`, `EntradaDePrevisao` e
+os dois schemas da API têm um campo só. **13,9% da base (8.950 linhas) troca de língua entre a
+Etapa 1 e a Etapa 2**, e para essas o `A1` ou o `A2` sai com a estatística errada — até 3,79
+pontos de Argumento Final, na parte que o ADR-0009 declara exata. O teste de paridade
+treino/runtime não pega porque o fixture crava `"inglesa"` nas três Etapas. Defeito 11 de
+[`relatorios/defeitos-pendentes.md`](relatorios/defeitos-pendentes.md).
+
 **Relatório por ticket.** Cada ticket resolvido gera um relatório em
 `.scratch/treino-modelos-pas3/relatorios/NN-<slug>.md` com as decisões e o *porquê* de cada uma,
 mais glossário dos termos novos ([[feedback_ticket_completion_reports]]).
