@@ -14,7 +14,7 @@ import logging
 
 from api.schemas.predict import PredictInput, PredictResponse, CourseResult
 from api.services import gestao_service          # referência ao módulo, não ao valor
-from api.services.gestao_service import _find_best_match, _build_cutoff_maps
+from api.services.gestao_service import SEM_PACOTE, _find_best_match, _build_cutoff_maps
 from pas_intelligence.model_package import (
     EntradaDePrevisao,
     EstatisticasIndisponiveisError,
@@ -26,11 +26,6 @@ logger = logging.getLogger(__name__)
 
 TOP_CURSOS_LIMIT = 8
 MIN_PROB_THRESHOLD = 0.30
-
-SEM_PACOTE = (
-    "Nenhum pacote de modelo carregado. Sem pacote não há previsão nem Largura de Incerteza — "
-    "o estado 'previsão sim, largura não' não é representável (ADR-0012)."
-)
 
 
 def entrada_de_previsao(inp: PredictInput) -> EntradaDePrevisao:
@@ -59,6 +54,12 @@ def predict_student(inp: PredictInput) -> PredictResponse:
             # conta, que é a fundação do ADR-0009. Recusar é a resposta certa, não um bug.
             motivo_indisponivel = str(erro)
             logger.info("Previsão recusada por Edital de Etapa ausente: %s", erro)
+        except ValueError as erro:
+            # Triênio malformado. O schema já barra língua fora das três (422), então o que chega
+            # aqui é `trienio`, que é texto livre por causa dos clientes antigos. Um endpoint
+            # público não pode responder 500 a entrada ruim.
+            motivo_indisponivel = str(erro)
+            logger.info("Previsão recusada por entrada malformada: %s", erro)
 
     if previsao is None:
         return PredictResponse(

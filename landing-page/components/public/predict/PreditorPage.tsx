@@ -428,7 +428,7 @@ const emptyScores = () => ({ p1: "0", p2: "0", red: "0" });
 export function PreditorPage() {
   const [pas1, setPas1] = useState(emptyScores());
   const [pas2, setPas2] = useState(emptyScores());
-  const [lingua, setLingua] = useState("inglesa");
+  const [lingua, setLingua] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
   const [cota, setCota] = useState("Sistema Universal");
   const [trienio, setTrienio] = useState("2024-2026");
   const [cursoAlvo, setCursoAlvo] = useState("");
@@ -560,7 +560,7 @@ export function PreditorPage() {
                   <div>
                     <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Língua Estrangeira</p>
                     <div style={{ position: "relative" }}>
-                      <select value={lingua} onChange={(e) => setLingua(e.target.value)} className="pred-select">
+                      <select value={lingua} onChange={(e) => setLingua(e.target.value as typeof lingua)} className="pred-select">
                         {LINGUAS.map((l) => <option key={l.valor} value={l.valor} style={{ background: "#00305F" }}>{l.rotulo}</option>)}
                       </select>
                       <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.dim, pointerEvents: "none", fontSize: 12 }}>▾</span>

@@ -2,7 +2,17 @@
 
 A camada de probabilidade calcula `P(X > Nota de Corte)` sobre `X ~ N(previsão, σ²)`, e o `σ` era o `13,49` cravado em `statistics.py:5` e replicado em `api/services/gestao_service.py:34` sob o nome `ARG_FINAL_MAE`. Aquele número é o resíduo de um modelo que o ADR-0011 aposentou, medido sobre dado que ninguém registrou, e — pelo próprio nome — um **MAE** ocupando o lugar de um desvio-padrão: ele descrevia um modelo que não roda mais e o descrevia estreito demais. O mapa deste retreino prometia substituí-lo por **incerteza por Aluno**, via *conformal prediction* normalizada, e listava isso como um dos dois valores centrais do mapa inteiro.
 
-**Decidido:** o `σ` passa a ser **dois números fixos**, um por classe de `etapa_1_ausente` — `4,9884` e `5,2174` em `A3`, ou `14,965` e `15,652` em Argumento Final —, medidos sobre as 37.844 previsões fora-da-dobra das 5 dobras do ADR-0010 (semente `20260728`), guardados no bloco `incerteza` do manifesto do pacote de modelo (ADR-0003) e lidos de lá em tempo de execução. A forma **normal** permanece. Não há largura por Aluno, não há conformal, não há correção de viés.
+**Decidido:** o `σ` passa a ser **dois números fixos**, um por classe de `etapa_1_ausente`, medidos sobre as previsões fora-da-dobra das 5 dobras do ADR-0010 (semente `20260728`), guardados no bloco `incerteza` do manifesto do pacote de modelo (ADR-0003) e lidos de lá em tempo de execução. A forma **normal** permanece. Não há largura por Aluno, não há conformal, não há correção de viés.
+
+> **Nota de 2026-07-28 (ticket 13).** Este ADR foi escrito citando `4,9884` e `5,2174` em `A3`
+> (`14,965` e `15,652` em Argumento Final). Quando o pipeline rodou de verdade, o pacote promovido
+> trouxe **`4,9884` e `5,1584`** (`14,965` e `15,475`). A classe majoritária bate no dígito; a
+> minoritária difere porque o `5,2174` foi calculado sobre **todas** as linhas da minoria (3.356),
+> e o `agrupado_minoritaria` da régua só soma as dobras em que a classe passa na **trava 1** —
+> treino da classe pelo menos tão rico quanto o teste — o que dá 2.936 linhas. **O número do
+> manifesto é o canônico**, sempre: ele é o que o código produz, viaja com o artefato e muda a
+> cada retreino. Os números citados em ADR e em `CONTEXT.md` são ilustração, não fonte. A
+> **decisão** deste ADR — duas larguras fixas, por classe, vindas do manifesto — não muda.
 
 A decisão é medição, não economia de esforço. **A forma normal se sustenta sozinha:** os resíduos têm assimetria `−0,045`, curtose em excesso `+0,22`, razão RMSE/MAE `1,260` contra `1,25` teórico, e o quantil empírico de 0,5% (`−13,20`) fica a meio ponto do quantil normal equivalente (`−12,72`). A cobertura de um intervalo com `σ` único já sai calibrada antes de qualquer refinamento: 50% → **50,4%**, 80% → **80,4%**, 90% → **90,2%**, 95% → **95,0%**.
 

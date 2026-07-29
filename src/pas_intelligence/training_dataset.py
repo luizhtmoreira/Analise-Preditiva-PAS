@@ -51,11 +51,20 @@ REQUIRED_SOURCE_COLUMNS = [
 _TOLERANCIA_RECOMPOSICAO = 0.01
 
 
-def _anos_do_trienio(trienio: str) -> tuple[int, int, int]:
-    inicio, fim = trienio.split("/")
-    ano_e1 = int(inicio)
-    ano_e3 = int(fim)
-    return ano_e1, ano_e1 + 1, ano_e3
+def anos_do_trienio(trienio: str) -> tuple[int, int, int]:
+    """`"2023/2025"` (ou `"2023-2025"`) → `(2023, 2024, 2025)`, um ano por Etapa.
+
+    Os dois separadores porque a API fala com hífen e o `resultado_final.csv` com barra, e o
+    triênio é o mesmo objeto de domínio nos dois lados — duas funções de parse seriam o começo
+    de dois formatos.
+    """
+    partes = trienio.replace("/", "-").split("-")
+    if len(partes) != 2 or not all(p.strip().isdigit() for p in partes):
+        raise ValueError(
+            f"Triênio {trienio!r} malformado — esperado 'AAAA-AAAA' ou 'AAAA/AAAA'."
+        )
+    ano_e1 = int(partes[0])
+    return ano_e1, ano_e1 + 1, int(partes[1])
 
 
 def etapa_1_ausente(nota_p1, nota_p2, nota_red):
@@ -168,7 +177,7 @@ def build_training_dataset(source: pd.DataFrame) -> pd.DataFrame:
     """
     df = source[source["checksum_fecha"] == True].copy()  # noqa: E712
 
-    anos = df["trienio"].map(_anos_do_trienio)
+    anos = df["trienio"].map(anos_do_trienio)
     df["_ano_e1"] = anos.map(lambda t: t[0])
     df["_ano_e2"] = anos.map(lambda t: t[1])
     df["_ano_e3"] = anos.map(lambda t: t[2])

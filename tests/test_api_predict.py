@@ -110,6 +110,23 @@ def test_sem_pacote_nao_ha_previsao_nem_largura(api_sem_pacote):
     assert resposta.motivo_indisponivel
 
 
+def test_trienio_malformado_nao_derruba_o_endpoint(api_com_pacote):
+    """O Preditor é público e `trienio` é texto livre (clientes antigos). Entrada ruim tem que
+    virar resposta, não 500."""
+    resposta = predict_service.predict_student(entrada_predict(trienio="2024"))
+
+    assert resposta.modelo_disponivel is False
+    assert "malformado" in (resposta.motivo_indisponivel or "")
+
+
+def test_lingua_fora_das_tres_e_recusada_pelo_schema():
+    """422 nomeando o campo, antes de chegar ao serviço — como as seis notas."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        entrada_predict(lingua="alema")
+
+
 def test_a_faixa_sem_rotulo_nao_esta_na_resposta():
     """ADR-0012 §7: `previsto ± 13,49` acertava 63% dos Alunos e respondia uma pergunta que
     ninguém fez. Se voltar, volta rotulada — este teste é o lembrete."""
@@ -150,7 +167,27 @@ def test_aluno_sem_previsao_nao_vira_alto_risco(api_com_pacote):
     assert resposta.results[0].status_label == "Sem previsão"
     assert resposta.results[0].chance_display == "—"
     assert resposta.kpis.n_sem_previsao == 1
+    assert "2024" in (resposta.motivo_sem_previsao or "")
+
+
+def test_modelo_disponivel_diz_so_que_o_pacote_carregou(api_com_pacote):
+    """Dois problemas diferentes, dois campos diferentes. "O modelo não carregou" é ação de quem
+    opera o sistema; "o Edital desta turma ainda não saiu" é espera. Um booleano só, cobrindo os
+    dois, mandaria a coordenação procurar o problema errado."""
+    resposta = gestao_service.analyze_students(
+        [aluno_gestao(ano_trienio=TRIENIO_DA_TURMA_VIVA)], TRIENIO_DA_TURMA_VIVA, "padrao"
+    )
+
+    assert resposta.modelo_disponivel is True  # o pacote está lá
+    assert resposta.kpis.n_sem_previsao == 1  # o Edital é que não está
+
+
+def test_sem_pacote_a_gestao_diz_que_o_modelo_nao_carregou(api_sem_pacote):
+    resposta = gestao_service.analyze_students([aluno_gestao()], TRIENIO_COM_EDITAL, "padrao")
+
     assert resposta.modelo_disponivel is False
+    assert resposta.kpis.n_sem_previsao == 1
+    assert "pacote" in (resposta.motivo_sem_previsao or "").lower()
 
 
 def test_gestao_preve_quando_o_trienio_tem_edital(api_com_pacote):

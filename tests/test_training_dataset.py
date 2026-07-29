@@ -10,7 +10,7 @@ from pas_intelligence.argument_calculator import calculate_argument_part
 from pas_intelligence.pas_constants import OFFICIAL_STATS
 from pas_intelligence.training_dataset import (
     REQUIRED_SOURCE_COLUMNS,
-    _anos_do_trienio,
+    anos_do_trienio,
     build_training_dataset,
 )
 
@@ -25,7 +25,7 @@ def _argumento_final_esperado(
     """Recompõe o Argumento Final do jeito que o Edital faz, para dar às fixtures um valor
     consistente sem precisar calcular à mão — mesma fórmula que `build_training_dataset` usa
     para validar, então serve para construir dado de teste válido, não para testar a fórmula."""
-    anos = _anos_do_trienio(trienio)
+    anos = anos_do_trienio(trienio)
     argumentos_etapa = []
     for etapa, ano, lingua, (p1, p2, red) in zip((1, 2, 3), anos, linguas, notas):
         stats = OFFICIAL_STATS[(ano, etapa)]
@@ -41,7 +41,7 @@ def _argumento_final_esperado(
 
 
 def _linha_base(inscricao: str, trienio: str = "2016/2018", **overrides) -> dict:
-    ano_e1, ano_e2, ano_e3 = _anos_do_trienio(trienio)
+    ano_e1, ano_e2, ano_e3 = anos_do_trienio(trienio)
     stats_e1 = OFFICIAL_STATS[(ano_e1, 1)]
     stats_e2 = OFFICIAL_STATS[(ano_e2, 2)]
     stats_e3 = OFFICIAL_STATS[(ano_e3, 3)]

@@ -3,7 +3,7 @@ import pandas as pd
 from scipy.stats import norm
 
 def calculate_approval_probability(
-    predicted_arg: float, cutoff_score: float, largura_incerteza: float
+    predicted_arg: float, nota_de_corte: float, largura_incerteza: float
 ) -> float:
     """
     Calcula a probabilidade de aprovação baseada na distribuição normal dos erros do modelo.
@@ -13,7 +13,7 @@ def calculate_approval_probability(
 
     Args:
         predicted_arg: Argumento Final previsto
-        cutoff_score: Nota de Corte do curso desejado
+        nota_de_corte: a Nota de Corte do curso desejado — o termo do `CONTEXT.md`, não `cutoff`
         largura_incerteza: a Largura de Incerteza em pontos de Argumento Final (`3 × σ(A3)`).
             Sem valor padrão de propósito: ela vive no manifesto do pacote de modelo e muda a
             cada rodada de treino. O `13.49` que morava aqui era resíduo de um modelo aposentado
@@ -25,9 +25,9 @@ def calculate_approval_probability(
         float: Probabilidade de aprovação (0.0 a 1.0)
     """
     # Z-score: quão longe a Nota de Corte está da nossa previsão, em unidades de largura.
-    # Queremos P(X > cutoff), que é 1 - CDF(cutoff), com X ~ N(predicted_arg, largura²)
+    # Queremos P(X > corte), que é 1 - CDF(corte), com X ~ N(predicted_arg, largura²)
 
-    probability = 1 - norm.cdf(cutoff_score, loc=predicted_arg, scale=largura_incerteza)
+    probability = 1 - norm.cdf(nota_de_corte, loc=predicted_arg, scale=largura_incerteza)
     return float(probability)
 
 

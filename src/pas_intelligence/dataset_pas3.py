@@ -92,3 +92,18 @@ def adicionar_derivadas_trajetoria(df: pd.DataFrame) -> pd.DataFrame:
     df["cresc_red_pct"] = df["Cresc_Red"].abs() / (df["Red_PAS1"].abs() + 0.01)
     df["sinal_cresc_eb"] = np.sign(df["Cresc_EB"])
     return df
+
+
+def montar_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Do dataset canônico do ticket 05 até o vetor de features do ticket 09, com o valor
+    faltante nativo do ticket 10.
+
+    A ordem é a que `scripts/familia_de_modelo_ticket10.py` mediu (legadas → derivadas de
+    trajetória → `NaN` nativo), e ela mora **aqui** — não no pipeline de treino — porque o
+    runtime (`model_package`) precisa exatamente da mesma montagem. Duas montagens é o
+    *train/serve skew*: não levanta exceção nenhuma, devolve número errado com cara de certo.
+    """
+    df = adicionar_features_legadas(df)
+    df = adicionar_derivadas_trajetoria(df)
+    df = com_faltante_nativo_etapa1(df)
+    return df

@@ -14,12 +14,12 @@ def test_largura_de_incerteza_e_obrigatoria():
     """Relatório 11 §7.2 / ADR-0012: sem valor padrão, esquecer a largura é erro imediato, não o
     `13.49` de um modelo aposentado voltando em silêncio."""
     with pytest.raises(TypeError):
-        calculate_approval_probability(predicted_arg=100.0, cutoff_score=90.0)
+        calculate_approval_probability(predicted_arg=100.0, nota_de_corte=90.0)
 
 
 def test_calculo_com_largura_explicita_continua_funcionando():
     probabilidade = calculate_approval_probability(
-        predicted_arg=100.0, cutoff_score=100.0, largura_incerteza=15.0
+        predicted_arg=100.0, nota_de_corte=100.0, largura_incerteza=15.0
     )
     assert probabilidade == pytest.approx(0.5)
 

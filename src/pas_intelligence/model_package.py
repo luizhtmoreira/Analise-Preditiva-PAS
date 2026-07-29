@@ -31,21 +31,25 @@ from typing import Any
 import pandas as pd  # type: ignore
 
 from .argument_calculator import calculate_argument_etapa
-from .dataset_pas3 import (
-    FEATURES_CANONICAS,
-    adicionar_derivadas_trajetoria,
-    adicionar_features_legadas,
-    com_faltante_nativo_etapa1,
-)
+from .dataset_pas3 import FEATURES_CANONICAS, montar_features
 from .training_dataset import (
     EstatisticaOficialAusenteError,
+    anos_do_trienio,
     etapa_1_ausente as _detectar_etapa_1_ausente,
     stats_da_prova,
 )
 
 DIRETORIO_PADRAO = Path(__file__).resolve().parent.parent.parent / "models" / "pas3"
-"""Onde a promoção deixa o pacote. `models/` fica fora do git (ticket 03) — o domicílio versionado
-é o repositório privado no Hugging Face, e isto aqui é a cópia que a imagem carrega."""
+"""Onde a promoção deixa o pacote. `models/` fica fora do git (ticket 03).
+
+⚠ **O domicílio do ticket 03 ainda não existe.** A Decisão 3 daquele ticket põe o pacote num
+repositório privado no Hugging Face, assado na imagem no build; hoje ele mora só neste diretório
+local, e reverter é copiar de volta à mão. Enquanto for assim, uma máquina nova sobe **sem
+pacote** até alguém copiar o diretório — ver relatório 13 §8."""
+
+ESCALA_DA_LARGURA = "a3"
+"""A Largura de Incerteza é medida em `A3` e vale `3×` em Argumento Final (ADR-0009). Conferida
+no carregamento, para que ninguém multiplique duas vezes."""
 
 LINGUAS_OFICIAIS = ("inglesa", "francesa", "espanhola")
 """As três que o Cebraspe normaliza separadamente. O Aluno declara a dele (ticket 04 §5.3):
@@ -63,22 +67,6 @@ class EstatisticasIndisponiveisError(RuntimeError):
     não forem extraídos, o Aluno de 2024-2026 não tem `A1` e `A2` exatos — e a decisão do ticket
     04 é recusar em vez de aproximar.
     """
-
-
-def anos_do_trienio(trienio: str) -> tuple[int, int, int]:
-    """`"2023-2025"` (ou `"2023/2025"`) → `(2023, 2024, 2025)`, um ano por Etapa.
-
-    Os dois separadores porque a API fala com hífen e o `resultado_final.csv` com barra, e o
-    triênio é o mesmo objeto de domínio nos dois lados.
-    """
-    texto = trienio.replace("/", "-")
-    partes = texto.split("-")
-    if len(partes) != 2 or not all(p.strip().isdigit() for p in partes):
-        raise ValueError(
-            f"Triênio {trienio!r} malformado — esperado 'AAAA-AAAA' ou 'AAAA/AAAA'."
-        )
-    ano_e1 = int(partes[0])
-    return ano_e1, ano_e1 + 1, int(partes[1])
 
 
 @dataclass(frozen=True)
@@ -162,6 +150,15 @@ class PacoteDeModelo:
                 "invalidou o ADR-0007."
             )
 
+        escala = manifesto["incerteza"]["escala"]
+        if escala != ESCALA_DA_LARGURA:
+            raise PacoteIndisponivelError(
+                f"A Largura de Incerteza do manifesto está em {escala!r}, não em "
+                f"{ESCALA_DA_LARGURA!r}. Este módulo multiplica por 3 para chegar ao Argumento "
+                "Final; com a largura já convertida ele multiplicaria duas vezes — o convite que "
+                "o relatório 11 §7.1 levantou ao guardar as duas unidades no mesmo arquivo."
+            )
+
         caminho_modelo = diretorio / descricao["arquivo"]
         if not caminho_modelo.exists():
             raise PacoteIndisponivelError(f"Manifesto aponta para {caminho_modelo}, que não existe.")
@@ -217,10 +214,7 @@ class PacoteDeModelo:
                 }
             ]
         )
-        linha = adicionar_features_legadas(linha)
-        linha = adicionar_derivadas_trajetoria(linha)
-        linha = com_faltante_nativo_etapa1(linha)
-        return linha[list(FEATURES_CANONICAS)]
+        return montar_features(linha)[list(FEATURES_CANONICAS)]
 
     def largura_de_incerteza(self, etapa_1_ausente: bool) -> float:
         """A Largura de Incerteza em `A3`, na classe do Aluno (ADR-0012).

@@ -40,9 +40,8 @@ from scipy.stats import norm  # type: ignore
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "src"))
 
-from pas_intelligence.dataset_pas3 import FEATURES_CANONICAS  # noqa: E402
+from pas_intelligence.dataset_pas3 import FEATURES_CANONICAS, montar_features  # noqa: E402
 from pas_intelligence.training_dataset import load_and_build  # noqa: E402
-from pas_intelligence.training_pipeline import montar_features  # noqa: E402
 from pas_intelligence.validation import (  # noqa: E402
     COLUNA_CLASSE,
     TRIENIO_LACRADO,

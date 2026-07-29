@@ -42,6 +42,11 @@ from api.schemas.gestao import StudentInput, StudentResult, GestaoKpis, GestaoRe
 # de Incerteza agora viaja dentro do pacote (`PacoteDeModelo.largura_de_incerteza`) e vem por
 # classe de Aluno — ADR-0012.
 
+SEM_PACOTE = (
+    "Nenhum pacote de modelo carregado. Sem pacote não há previsão nem Largura de Incerteza — "
+    "o estado 'previsão sim, largura não' não é representável (ADR-0012)."
+)
+
 # TODO(ticket 04 §9, defeito 1): estes números não são os do Cebraspe. Em 2022-2024 o P2 da
 # Etapa 1 aqui é 20,7094 contra 20,406 do Edital — têm cara de calculados de uma amostra. Hoje
 # eles só alimentam o Reality Check (abaixo), que é opcional; o Argumento previsto não passa
@@ -207,14 +212,18 @@ def _classify_risk(prob_1: float, prob_2: float):
     return "red", "Alto Risco"
 
 
-def _prever(s: StudentInput, trienio_padrao: str):
-    """A previsão de um Aluno, ou `None` quando ela não é possível para o triênio dele.
+def _prever(s: StudentInput, trienio_padrao: str) -> tuple[object | None, str | None]:
+    """A previsão de um Aluno, ou `(None, motivo)` quando ela não é possível para o triênio dele.
 
     `None` e não zero: um Aluno sem previsão que aparece com Argumento `0,0` e probabilidade
     `0,0%` vira "Alto Risco" na tela da coordenação — uma afirmação sobre ele que ninguém mediu.
+
+    O motivo sobe junto porque a coordenação precisa saber **qual** dos dois problemas ela tem:
+    "o modelo não carregou" e "o Edital da Etapa desta turma ainda não saiu" pedem ações
+    diferentes, de pessoas diferentes.
     """
     if _pacote is None:
-        return None
+        return None, SEM_PACOTE
     try:
         return _pacote.prever(
             EntradaDePrevisao(
@@ -223,10 +232,10 @@ def _prever(s: StudentInput, trienio_padrao: str):
                 lingua=s.lingua,
                 trienio=s.ano_trienio or trienio_padrao,
             )
-        )
+        ), None
     except (EstatisticasIndisponiveisError, ValueError) as erro:
         logger.info("Sem previsão para um Aluno do triênio %s: %s", s.ano_trienio, erro)
-        return None
+        return None, str(erro)
 
 
 # ---------------------------------------------------------------------------
@@ -241,6 +250,7 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
     )
 
     results: list[StudentResult] = []
+    motivo_sem_previsao: Optional[str] = None
 
     for s in students:
         eb_p1 = s.p1_pas1 + s.p2_pas1
@@ -264,7 +274,9 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
         nota_corte_2sem: Optional[float] = m2.get(curso_matched)
 
         # Predição — o Argumento Final sai de `A1 + 2·A2 + 3·Â3`, com A1 e A2 exatos (ADR-0009)
-        previsao = _prever(s, trienio)
+        previsao, motivo = _prever(s, trienio)
+        if motivo and motivo_sem_previsao is None:
+            motivo_sem_previsao = motivo
         arg_pred = previsao.argumento_final if previsao else 0.0
         largura = previsao.largura_argumento_final if previsao else 0.0
 
@@ -361,6 +373,6 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
         results=results,
         kpis=kpis,
         trienio_ref=trienio_ref,
-        modelo_disponivel=_pacote is not None
-        and (not results or any(r.status != "grey" for r in results)),
+        modelo_disponivel=_pacote is not None,
+        motivo_sem_previsao=motivo_sem_previsao,
     )

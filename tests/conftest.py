@@ -20,8 +20,12 @@ import pytest  # type: ignore
 
 from pas_intelligence.dataset_pas3 import FEATURES_CANONICAS
 
-SIGMA_COM_ETAPA_1 = 4.9884
-SIGMA_SEM_ETAPA_1 = 5.2174
+# Valores **arbitrários**, escolhidos só por serem distinguíveis um do outro: os testes provam que
+# cada classe recebe a sua largura, não que a largura vale isto. As larguras reais vivem no
+# `manifest.json` do pacote promovido e mudam a cada retreino — fixá-las aqui faria um teste
+# quebrar de mentira no próximo treino.
+SIGMA_COM_ETAPA_1 = 4.0
+SIGMA_SEM_ETAPA_1 = 6.0
 
 
 @pytest.fixture

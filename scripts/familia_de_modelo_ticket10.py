@@ -58,8 +58,6 @@ from pas_intelligence.validation import (  # noqa: E402
 
 from baseline_honesto import menor_corte_por_aluno, peso_sigmoide_da_volatilidade  # noqa: E402
 
-_sigmoid_weight = peso_sigmoide_da_volatilidade
-
 warnings.filterwarnings("ignore")
 
 SEMENTE = 20260728
@@ -177,7 +175,7 @@ class EnsemblePorVolatilidade:
         eb2 = X["EB_PAS2"].to_numpy(dtype=float)
         media = (eb1 + eb2) / 2
         cv = np.where(media != 0, np.abs(eb2 - eb1) / 2 / media * 100, np.nan)
-        peso = np.array([_sigmoid_weight(v) if np.isfinite(v) else 0.5 for v in cv])
+        peso = np.array([peso_sigmoide_da_volatilidade(v) if np.isfinite(v) else 0.5 for v in cv])
         pred_linear = np.asarray(self.linear.predict(X), dtype=float)
         pred_lgbm = np.asarray(self.lgbm.predict(X), dtype=float)
         return (1 - peso) * pred_linear + peso * pred_lgbm

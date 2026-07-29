@@ -56,7 +56,9 @@ export interface GestaoResponse {
   results: StudentResult[];
   kpis: GestaoKpis;
   trienio_ref: string;
+  /** Só "o pacote de modelo carregou". Aluno sem previsão é `kpis.n_sem_previsao`. */
   modelo_disponivel: boolean;
+  motivo_sem_previsao: string | null;
 }
 
 /* ── Análise Temporal (pública) ───────────────────────────────── */

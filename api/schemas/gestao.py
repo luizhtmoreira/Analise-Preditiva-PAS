@@ -1,3 +1,5 @@
+from typing import Literal, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -9,10 +11,12 @@ class StudentInput(BaseModel):
     cota: str = "Sistema Universal"
     ano_trienio: str = "2024-2026"
     # A Parte 1 é normalizada por língua estrangeira e o Aluno declara a dele (ticket 04 §5.3).
-    # Aqui o default sobrevive porque a planilha da escola raramente traz a coluna; no Preditor
-    # público o campo é perguntado. Quando a coluna faltar, a Parte 1 do Aluno de espanhol ou
-    # francês sai calculada com a estatística de inglês — 7,2% do peso do Argumento de Etapa.
-    lingua: str = "inglesa"
+    # Aqui — e **só** aqui — o default sobrevive: a planilha que a escola envia não tem a coluna,
+    # e exigi-la deixaria o lote inteiro sem resposta. O custo está medido e é conhecido: o Aluno
+    # de espanhol ou francês tem a Parte 1 calculada com a estatística de inglês, o que move 7,2%
+    # do peso do Argumento de Etapa sempre na mesma direção. Dívida declarada no relatório 13 §6,
+    # não descuido; some quando a planilha ganhar a coluna.
+    lingua: Literal["inglesa", "francesa", "espanhola"] = "inglesa"
     # As seis notas são obrigatórias e não têm default. `red_pas1`/`red_pas2` já tiveram
     # default 6.0 — uma Redação mediana inventada onde a nota não foi informada, que inflava
     # o Argumento da Etapa em ~3,3 pontos na direção do otimismo, sem deixar rastro.
@@ -62,4 +66,8 @@ class GestaoResponse(BaseModel):
     results: list[StudentResult]
     kpis: GestaoKpis
     trienio_ref: str
+    # "O pacote de modelo carregou" — nada além disso. Aluno sem previsão é `kpis.n_sem_previsao`
+    # mais o `motivo_sem_previsao` abaixo; juntar os dois num só booleano esconderia qual dos dois
+    # problemas a coordenação está vendo.
     modelo_disponivel: bool
+    motivo_sem_previsao: Optional[str] = None

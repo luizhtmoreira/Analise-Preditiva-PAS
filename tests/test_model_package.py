@@ -189,9 +189,14 @@ def test_o_runtime_monta_as_mesmas_features_que_o_treino(pacote, notas_etapa_1):
     notas do request no runtime — tem que produzir o **mesmo vetor**. O desencontro entre as duas
     montagens (*train/serve skew*) não levanta exceção nenhuma: ele devolve previsão errada com
     cara de certa, para sempre.
+
+    Desde que `montar_features` virou fonte única, os dois lados chamam a mesma função — então o
+    que este teste ainda prova, e é o que sobrou de arriscado, é que a **linha de entrada** que
+    `model_package` monta a partir das seis notas é idêntica à que `build_training_dataset`
+    produz a partir do CSV: mesmos nomes de coluna, mesmo `A1`/`A2`, mesma classe.
     """
+    from pas_intelligence.dataset_pas3 import montar_features as montar_features_do_treino
     from pas_intelligence.training_dataset import build_training_dataset
-    from pas_intelligence.training_pipeline import montar_features as montar_features_do_treino
 
     p1_e1, p2_e1, red_e1 = notas_etapa_1
     a1 = calculate_argument_etapa(p1_e1, p2_e1, red_e1, stats_da_prova(2023, 1, "inglesa"))

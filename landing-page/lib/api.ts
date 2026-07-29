@@ -69,7 +69,10 @@ export async function compareGroups(body: {
 export async function fetchPredict(body: {
   p1_pas1: number; p2_pas1: number; red_pas1: number;
   p1_pas2: number; p2_pas2: number; red_pas2: number;
-  lingua?: string; cota?: string; trienio?: string; curso_alvo?: string;
+  // Obrigatória: o backend a exige (422 se faltar), porque um default silencioso calcularia a
+  // Parte 1 de quem fez espanhol ou francês com a estatística de inglês.
+  lingua: "inglesa" | "francesa" | "espanhola";
+  cota?: string; trienio?: string; curso_alvo?: string;
 }) {
   const res = await fetch(`${API_URL}/api/predict`, {
     method: "POST",

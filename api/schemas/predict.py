@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel
 
 
@@ -13,8 +13,11 @@ class PredictInput(BaseModel):
     # cada candidato fez. Agrupar as três embute viés sistemático contra quem fez espanhol ou
     # francês — em (2024, Etapa 2) a diferença entre a maior e a menor média foi de 3,86 pontos,
     # mais de um desvio-padrão inteiro. Por isso o formulário pergunta (ticket 04 §5.3).
-    # O default existe só para não quebrar cliente antigo; o Preditor sempre envia.
-    lingua: str = "inglesa"
+    #
+    # **Obrigatória, sem default.** Um default silencioso é exatamente o viés que o ticket 04
+    # mediu: o Aluno de espanhol receberia um número plausível e errado, sempre na mesma direção.
+    # Cliente que não enviar recebe 422 nomeando o campo — o mesmo tratamento que as seis notas.
+    lingua: Literal["inglesa", "francesa", "espanhola"]
     cota: str = "Sistema Universal"
     trienio: str = "2024-2026"
     curso_alvo: Optional[str] = None

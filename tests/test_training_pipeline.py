@@ -13,7 +13,7 @@ import pytest  # type: ignore
 
 from pas_intelligence.argument_calculator import calculate_argument_part
 from pas_intelligence.pas_constants import OFFICIAL_STATS
-from pas_intelligence.training_dataset import REQUIRED_SOURCE_COLUMNS, _anos_do_trienio
+from pas_intelligence.training_dataset import REQUIRED_SOURCE_COLUMNS, anos_do_trienio
 from pas_intelligence.training_pipeline import (
     NOME_ARQUIVO_MANIFESTO,
     NOME_ARQUIVO_MODELO,
@@ -45,7 +45,7 @@ PORTAO_IMPOSSIVEL = dict(geral=1e-9, majoritaria=1e-9, minoritaria=1e-9, vies_ab
 def _argumento_final(trienio: str, linguas, notas) -> float:
     """Recompõe o Argumento Final do jeito que o Edital faz (mesma fórmula de
     `build_training_dataset`), só para as fixtures nascerem com um valor consistente."""
-    anos = _anos_do_trienio(trienio)
+    anos = anos_do_trienio(trienio)
     argumentos_etapa = []
     for etapa, ano, lingua, (p1, p2, red) in zip((1, 2, 3), anos, linguas, notas):
         stats = OFFICIAL_STATS[(ano, etapa)]
@@ -61,7 +61,7 @@ def _argumento_final(trienio: str, linguas, notas) -> float:
 
 
 def _linha(inscricao: str, trienio: str, rng: np.random.Generator, *, etapa_1_ausente: bool) -> dict:
-    ano_e1, ano_e2, ano_e3 = _anos_do_trienio(trienio)
+    ano_e1, ano_e2, ano_e3 = anos_do_trienio(trienio)
     stats_e1 = OFFICIAL_STATS[(ano_e1, 1)]
     stats_e2 = OFFICIAL_STATS[(ano_e2, 2)]
     stats_e3 = OFFICIAL_STATS[(ano_e3, 3)]

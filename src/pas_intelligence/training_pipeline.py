@@ -41,12 +41,7 @@ import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 from scipy.stats import norm  # type: ignore
 
-from .dataset_pas3 import (
-    FEATURES_CANONICAS,
-    adicionar_derivadas_trajetoria,
-    adicionar_features_legadas,
-    com_faltante_nativo_etapa1,
-)
+from .dataset_pas3 import FEATURES_CANONICAS, montar_features
 from .training_dataset import load_and_build
 from .validation import ALVO_CANONICO, COLUNA_CLASSE, TRIENIO_LACRADO, ResultadoValidacao, avaliar
 
@@ -89,16 +84,6 @@ def _fabrica_lgbm(hiperparametros: dict[str, Any]):
         )
 
     return construir
-
-
-def montar_features(df_canonico: pd.DataFrame) -> pd.DataFrame:
-    """Do dataset canônico do ticket 05 até o vetor de features do ticket 09, com o valor
-    faltante nativo do ticket 10 — a mesma ordem que `scripts/familia_de_modelo_ticket10.py`
-    mediu (legadas → derivadas de trajetória → `NaN` nativo)."""
-    df = adicionar_features_legadas(df_canonico)
-    df = adicionar_derivadas_trajetoria(df)
-    df = com_faltante_nativo_etapa1(df)
-    return df
 
 
 def _bate_portao(resultado: ResultadoValidacao, portao: dict[str, float]) -> tuple[bool, str]:

@@ -136,7 +136,24 @@ antigo dizia 66–86% com o mesmo dado. O dono do produto revisou e autorizou a 
   `p1_pas3_model.joblib` e `red_pas3_model.joblib` **ficaram onde estavam**, porque
   `target_calculator.py` ainda os procura (e ainda falha em carregá-los — defeito 3 de
   `defeitos-pendentes.md`, intocado aqui).
-- Reverter é copiar de volta e reverter o commit. Sem reversão automática (ticket 03, Decisão 7).
+
+### ⚠ O que a promoção **não** fez: o domicílio
+
+A checklist pedia `models/` atualizado *"no formato **e no domicílio** decididos pelo ticket 03"*.
+**Formato sim, domicílio não.** A Decisão 3 do ticket 03 põe o pacote num repositório privado no
+Hugging Face, com a Decisão 4 assando-o na imagem no build; nada disso existe — não há upload, não
+há Dockerfile, e `grep -ri huggingface` no repositório só encontra o próprio relatório 03.
+
+Consequências práticas, que valem mais que a pendência em si:
+
+- **Reverter não é `git revert`.** `models/` é gitignored: reverter o commit devolve o código
+  antigo e deixa o pacote novo no disco. Reverter de verdade é copiar
+  `models/aposentados-2026-07-28/` de volta **à mão**, e só depois reverter o commit.
+- **Máquina nova sobe sem pacote.** Um clone limpo não tem `models/pas3/`, e a API responde
+  `modelo_disponivel: False` até alguém copiar o diretório. Hoje isso é aceitável porque o
+  deploy ainda não existe; deixa de ser no dia em que existir.
+
+Item para o mapa de deploy, não para este. Registrado também na §8.
 
 ### O que saiu do código
 
@@ -151,9 +168,12 @@ antigo dizia 66–86% com o mesmo dado. O dono do produto revisou e autorizou a 
 
 ---
 
-## 6. A única decisão que este ticket precisou tomar, e por quê
+## 6. As decisões que este ticket precisou tomar, e por quê
 
-**O `eb_pas3_previsto` saiu da resposta da API e da tela.**
+O ticket abre com *"Nada se decide aqui"*. Duas coisas foram decididas assim mesmo. As duas estão
+aqui porque decisão não declarada é decisão escondida.
+
+### 6.1 O `eb_pas3_previsto` saiu da resposta da API e da tela
 
 Ele era produzido por `modelo_lgbm.joblib`, que o ADR-0009 tirou do caminho de produção. As
 opções eram três: ressuscitar o modelo aposentado (traz de volta a contradição de 11% entre as
@@ -167,6 +187,20 @@ No lugar dele, o card passa a mostrar a **decomposição** `A1 ×1 · A2 ×2 · 
 informação que o Aluno não tinha e que deixa visível o que é conta fechada e o que é previsão.
 
 **Isto é dívida declarada, não escopo cumprido.** Ver §8.
+
+### 6.2 A língua estrangeira tem default na Gestão de Ativos, e não no Preditor
+
+O ticket 04 §5.3 decidiu **perguntar** a língua, porque agrupar as três embute viés contra a
+minoria. No Preditor público isso é literal: o campo é obrigatório, sem default, e cliente que
+não enviar recebe `422` nomeando o campo — mesmo tratamento das seis notas.
+
+Na Gestão de Ativos o campo tem default `"inglesa"`. A planilha que a escola envia não tem a
+coluna, e exigi-la deixaria o lote **inteiro** sem resposta. O custo é conhecido e não é zero: o
+Aluno de espanhol ou francês daquela planilha tem a Parte 1 calculada com a estatística de inglês
+— 7,2% do peso do Argumento de Etapa, sempre na mesma direção, sempre sobre a minoria.
+
+Escolhi o lado que responde. Mas é o viés que o ticket 04 mediu, vivo num canto do produto, e a
+saída é uma coluna na planilha — não uma decisão de modelagem. Está no código, com o porquê.
 
 ---
 
@@ -221,8 +255,8 @@ ação de quem opera o sistema, não do Aluno) e é contado em `kpis.n_sem_previ
 | `api/services/gestao_service.py` | reescrito; `ARG_FINAL_MAE` removido |
 | `api/services/analytics_service.py` | não toca em modelo — intocado |
 | `src/pas_intelligence/statistics.py` | parâmetro renomeado para `largura_incerteza`, sem padrão |
-| `src/pas_intelligence/target_calculator.py` | **intocado e funcionando** — o ticket 04 §7.1 desenha a simplificação dele, mas ela depende do Estimador Auxiliar (§8) |
-| `app/streamlit_app.py` (gitignored) | importa `pas_intelligence`; o app legado quebra se alguém o rodar — está descontinuado e fora do git desde antes deste mapa |
+| `src/pas_intelligence/target_calculator.py` | **intocado — e não é "funcionando"**: ele continua com o defeito 3 de `defeitos-pendentes.md` (os dois `.joblib` não carregam sob o sklearn atual e ele responde por média ponderada sem avisar). Este ticket não melhorou nem piorou isso. A cura é a simplificação do ticket 04 §7.1, que depende do Estimador Auxiliar (§8) |
+| `app/streamlit_app.py` (gitignored) | **quebrado por este ticket**, e sem verificação prévia com o dono do produto — a checklist pedia *"verificar se ainda é usado localmente antes de quebrá-lo em silêncio"*, e o que houve foi presunção de que está descontinuado, não uma pergunta. Ele importava `ensemble.py` (removido) e chama `calculate_approval_probability(rmse=...)` (renomeado). Consertá-lo é meia hora; a decisão de consertar ou aposentar de vez é do dono do produto |
 | `tests/` | 327 passando (eram 336; 9 eram do `ensemble.py` removido, 19 são novos) |
 
 ---
@@ -243,6 +277,14 @@ de requisição, então a turma viva volta a responder **sem nenhuma mudança de
 O dono do produto tem os PDFs e vai adicioná-los a `data/pdfs/`. Duas coisas a conferir quando
 isso acontecer: o parser do mapa `pdf-extraction` nunca viu Edital de Etapa 1 ou 2 (família de
 documento diferente), e `OFFICIAL_STATS` precisa da substituição do ticket 12 daquele mapa.
+
+**Aberto por este ticket, e declarado:**
+
+- **O domicílio do ticket 03** (§5) — o pacote mora só em disco local. Reverter é manual e uma
+  máquina nova sobe sem modelo. Item do mapa de deploy.
+- **`app/streamlit_app.py` quebrado sem verificação prévia** (§7.4) — a checklist pedia perguntar
+  antes; não perguntei. Conserto de meia hora, decisão do dono do produto.
+- **O default de língua na Gestão de Ativos** (§6.2) — some quando a planilha ganhar a coluna.
 
 **Dívidas herdadas, nenhuma nova:**
 
