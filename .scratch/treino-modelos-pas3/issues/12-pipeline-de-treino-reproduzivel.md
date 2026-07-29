@@ -1,7 +1,7 @@
 # 12 — Pipeline de treino reproduzível
 
 **Type:** task
-**Status:** open
+**Status:** concluído
 **Blocked by:** 03, 08, 09, 10
 
 ## Question
@@ -35,11 +35,11 @@ retreino recomeça do zero e o mapa inteiro terá sido consumo, não investiment
 - **Privacidade.** Nenhum dado de aluno vaza para log, métrica ou artefato commitado
   ([[project_parser_privacy]]).
 
-- [ ] Um comando único treina do CSV ao artefato, com as decisões dos tickets 03, 05, 06, 08,
+- [x] Um comando único treina do CSV ao artefato, com as decisões dos tickets 03, 05, 06, 08,
       09 e 10 codificadas
-- [ ] Duas execuções com a mesma entrada produzem artefatos equivalentes
-- [ ] Metadados de proveniência gravados automaticamente a cada execução
-- [ ] Critério de aceite verificado pelo próprio pipeline; falha impede publicação
-- [ ] Testes cobrem o pipeline sem depender de `data/pdfs` nem de dado de aluno real
-- [ ] O script está no repositório, e o caminho para regerar os modelos está documentado
-- [ ] Relatório em `relatorios/12-pipeline-de-treino-reproduzivel.md`
+- [x] Duas execuções com a mesma entrada produzem artefatos equivalentes
+- [x] Metadados de proveniência gravados automaticamente a cada execução
+- [x] Critério de aceite verificado pelo próprio pipeline; falha impede publicação
+- [x] Testes cobrem o pipeline sem depender de `data/pdfs` nem de dado de aluno real
+- [x] O script está no repositório, e o caminho para regerar os modelos está documentado
+- [x] Relatório em `relatorios/12-pipeline-de-treino-reproduzivel.md`

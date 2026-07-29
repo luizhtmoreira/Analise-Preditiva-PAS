@@ -208,3 +208,19 @@ streamlit run app/streamlit_app.py
 ```bash
 pytest tests/
 ```
+
+### 5. Regerar os modelos do PAS 3 (ticket 12 — pipeline reprodutível)
+
+`scripts/treinar_pipeline.py` é o único comando que vai do `resultado_final.csv` ao pacote do
+modelo (`.scratch/treino-modelos-pas3/` documenta as decisões que ele codifica):
+
+```bash
+.venv/bin/python scripts/treinar_pipeline.py data/saida-nova/resultado_final.csv \
+    --saida .scratch/treino-modelos-pas3/pacotes/pas3-$(date +%Y-%m-%d)
+```
+
+Falha (código de saída ≠ 0) se o modelo treinado não bater o Portão 1 do ticket 07 — nesse caso
+não escreve nada em `--saida`. `--forcar "motivo"` publica mesmo assim, gravando o motivo no
+`manifest.json`. Ainda **não** promove: ligar o pacote produzido à API em produção é escopo do
+ticket 13, ainda não fechado neste repositório — o `models/` atual (ensemble `.joblib`) continua
+sendo o que a API carrega até lá.

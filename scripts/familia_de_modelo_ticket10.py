@@ -47,6 +47,7 @@ from pas_intelligence.dataset_pas3 import (  # noqa: E402
     FEATURES_CANONICAS,
     adicionar_derivadas_trajetoria,
     carregar_dataset as _carregar_dataset_base,
+    com_faltante_nativo_etapa1 as com_faltante_nativo,
 )
 from pas_intelligence.ensemble import _sigmoid_weight  # noqa: E402
 from pas_intelligence.validation import (  # noqa: E402
@@ -214,31 +215,6 @@ class DoisModelosPorClasse:
         if classe.any():
             previsto[classe] = self.minoria.predict(Xf[classe])
         return previsto
-
-
-def com_faltante_nativo(df: pd.DataFrame) -> pd.DataFrame:
-    """Troca o zero estrutural do Aluno sem Etapa 1 por `NaN` nas colunas derivadas da Etapa 1.
-
-    `EB_PAS1=0` não é desempenho, é ausência — mas um modelo que só vê o número não distingue os
-    dois (glossário, "Fora de distribuição"). Marcar como faltante deixa o LightGBM aprender, em
-    cada nó, para que lado mandar quem está faltando — em vez de tratar 0 como o pior desempenho
-    já visto.
-    """
-    df = df.copy()
-    ausente = df["etapa_1_ausente"]
-    colunas_e1 = [
-        "a1",
-        "EB_PAS1",
-        "Red_PAS1",
-        "Cresc_EB",
-        "Cresc_Red",
-        "cresc_eb_pct",
-        "cresc_red_pct",
-        "sinal_cresc_eb",
-    ]
-    for c in colunas_e1:
-        df.loc[ausente, c] = np.nan
-    return df
 
 
 # ─── Saída ──────────────────────────────────────────────────────────────────────────────────

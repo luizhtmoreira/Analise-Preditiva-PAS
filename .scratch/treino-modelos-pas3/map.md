@@ -302,6 +302,24 @@ Aluno o alcança. Ele vai olhar junto das outras pendências; até lá, defeito 
   → [relatório](relatorios/10-familia-de-modelo.md) ·
   [ADR-0011](../../docs/adr/0011-lightgbm-unico-com-faltante-nativo-substitui-o-ensemble.md)
 
+- [12 — Pipeline de treino reproduzível](issues/12-pipeline-de-treino-reproduzivel.md) — um
+  comando (`scripts/treinar_pipeline.py` → `src/pas_intelligence/training_pipeline.py`) que vai
+  do `resultado_final.csv` ao pacote do modelo, com as decisões dos tickets 03, 05, 06, 08, 09 e
+  10 codificadas em código, não em relatório. LightGBM com os hiperparâmetros fechados no ticket
+  10, salvo em **texto nativo** (gatilho da Decisão 1 do ticket 03, acionado). Confere o Portão 1
+  automaticamente e **recusa escrever qualquer coisa em disco** se não bater — só publica mesmo
+  assim com `forcar=True` + motivo, gravado no manifesto. **Determinismo bit-a-bit** testado
+  (mesmo CSV + mesma semente → mesmo arquivo de modelo). `manifest.json` com os 5 blocos do
+  ticket 03, preenchidos automaticamente (hash do CSV, commit+árvore limpa via `git`, versões via
+  `importlib.metadata`, nomes das features, métricas com o recorte). **Nunca toca o triênio
+  lacrado** — treina excluindo-o explicitamente, além da régua já garantir isso; abrir o lacre e
+  decidir se o artefato de produção embarca os 8 triênios fica só para o ticket 13, via
+  `holdout_final_use_uma_vez`. Refatoração de bônus: `com_faltante_nativo` do ticket 10 saiu de
+  `scripts/familia_de_modelo_ticket10.py` para `dataset_pas3.com_faltante_nativo_etapa1`, fonte
+  única. 6 testes sintéticos + os 304 da suíte inteira passam. Não executado contra o
+  `resultado_final.csv` real (ausente neste ambiente) — próxima execução real é do ticket 13.
+  → [relatório](relatorios/12-pipeline-de-treino-reproduzivel.md)
+
 ## Restrições que o ticket 06 deixou nos tickets seguintes
 
 - ~~**07 (baseline):** a faixa de decisão é **congelada** no RMSE do melhor baseline trivial deste

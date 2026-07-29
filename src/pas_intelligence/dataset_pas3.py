@@ -30,16 +30,54 @@ FEATURES_TRAJETORIA = ["cresc_eb_pct", "cresc_red_pct", "sinal_cresc_eb"]
 FEATURES_CANONICAS = ["a1", "a2", *FEATURES_LEGADAS, *FEATURES_TRAJETORIA]
 
 
-def carregar_dataset(caminho: Path = DATASET_PAS3) -> pd.DataFrame:
-    """`pas3_dataset.parquet` com as 6 features legadas reconstruídas, nos nomes que os
-    artefatos `.joblib` atuais carregam dentro de si."""
-    df = pd.read_parquet(caminho)
+def adicionar_features_legadas(df: pd.DataFrame) -> pd.DataFrame:
+    """As 6 features legadas, nos nomes que os artefatos `.joblib` atuais carregam dentro de si.
+
+    Extraída de `carregar_dataset` (ticket 12) porque o pipeline de treino monta essas colunas
+    em cima do dataset canônico já em memória (saído de `training_dataset.build_training_dataset`),
+    sem passar por `pas3_dataset.parquet`.
+    """
+    df = df.copy()
     df["EB_PAS1"] = df["eb_pas1"]
     df["Red_PAS1"] = df["red_e1"]
     df["EB_PAS2"] = df["eb_pas2"]
     df["Red_PAS2"] = df["red_e2"]
     df["Cresc_EB"] = df["eb_pas2"] - df["eb_pas1"]
     df["Cresc_Red"] = df["red_e2"] - df["red_e1"]
+    return df
+
+
+def carregar_dataset(caminho: Path = DATASET_PAS3) -> pd.DataFrame:
+    """`pas3_dataset.parquet` com as 6 features legadas reconstruídas."""
+    return adicionar_features_legadas(pd.read_parquet(caminho))
+
+
+# Colunas derivadas da Etapa 1 do Aluno — as que ficam sem sentido, e não zero real, quando ele
+# não tem Etapa 1 (ticket 14). `FEATURES_ETAPA1` porque o pipeline (ticket 12) precisa da mesma
+# lista que `scripts/familia_de_modelo_ticket10.py` mediu para decidir a família de modelo.
+FEATURES_ETAPA1 = [
+    "a1",
+    "EB_PAS1",
+    "Red_PAS1",
+    "Cresc_EB",
+    "Cresc_Red",
+    "cresc_eb_pct",
+    "cresc_red_pct",
+    "sinal_cresc_eb",
+]
+
+
+def com_faltante_nativo_etapa1(df: pd.DataFrame) -> pd.DataFrame:
+    """Troca o zero estrutural do Aluno sem Etapa 1 por `NaN` nas colunas de `FEATURES_ETAPA1`.
+
+    Decisão do ticket 10: `NaN` nativo (deixa o LightGBM rotear pelo padrão de falta em cada nó)
+    ganha do zero literal e de um segundo modelo dedicado à classe minoritária. Requer que
+    `adicionar_derivadas_trajetoria` já tenha rodado — precisa de `cresc_eb_pct` etc.
+    """
+    df = df.copy()
+    ausente = df["etapa_1_ausente"]
+    for coluna in FEATURES_ETAPA1:
+        df.loc[ausente, coluna] = np.nan
     return df
 
 
