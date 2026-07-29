@@ -140,7 +140,24 @@ seriam notas de um Aluno real, não estatística agregada pública). A fixture s
 problema na raiz: os "candidatos" nos testes são gerados por um laço (`Fulano de Tal`, notas
 sintéticas), nunca lidos de um PDF real.
 
-### 3.5 `parse_registros` separado de `extrair_edital_etapa`
+### 3.5 `RegistroEtapa` não carrega `Proveniencia` por registro
+
+**Decisão:** diferente de `RegistroMediasDesvios` (que anexa `Proveniencia` — arquivo, edital,
+triênio, página — a cada linha), `RegistroEtapa` só guarda `inscricao` + as 4 notas; a
+proveniência do documento (`arquivo_origem`, `trienio`, `ano`, `etapa`) vive uma vez em
+`ResultadoExtracaoEtapa`, não repetida por candidato.
+
+**Porquê:** em `medias_desvios.py`, a página importa porque a mesma tabela pode aparecer em
+posições diferentes dentro do mesmo Edital (avulso vs. cauda de um Resultado Final) e o
+checksum do ticket 04 precisa rastrear cada valor de volta à página exata onde foi lido. Aqui,
+todo candidato de um Edital isolado de Etapa vem do mesmo documento e alimenta só o agregado
+(`LinhaMediasDesviosEtapa`) — nenhum registro individual sai deste módulo para outro lugar que
+precise saber a página de um candidato específico. Guardar `Proveniencia` por registro seria
+campo sem consumidor (o próprio "não adicionar generalidade que o ticket não pediu"). Se um
+ticket futuro precisar auditar um candidato individual de volta ao PDF/página de origem, o
+padrão de `medias_desvios.py` é o lugar certo para replicar.
+
+### 3.6 `parse_registros` separado de `extrair_edital_etapa`
 
 **Decisão:** a lógica de parsing de texto (`parse_registros`) é uma função pura que recebe uma
 string e não sabe de PDF; `extrair_edital_etapa` é a única que abre arquivo.
@@ -174,9 +191,19 @@ valor de produção (5.000) sem precisar gerar 5.000 candidatos de verdade.
   inválida, documento parcial recusado (com a mensagem citando a contagem — mesmo mecanismo
   que teria recusado o Edital 8/2023 real), documento completo aceito, cálculo de média/desvio,
   escrita do CSV, e a costura `processar_editais_etapa` de ponta a ponta.
-- **Validado contra os 6 Editais isolados reais de `data/pdfs`** (as duas retificações de
-  2022/2023, o Edital 7 original de 2023, o Edital 8 de 2024, e os dois de Etapa 2 de
-  2024/2025):
+- **Validado contra os 6 Editais isolados reais de `data/pdfs`** — nomeados aqui explicitamente
+  porque dois deles têm nome de arquivo em hash (sem "Ed_" nem ano no nome), o que já confundiu
+  uma leitura automatizada deste relatório:
+
+  | Arquivo | `etapa` passada | `ano`/`etapa` devolvidos |
+  |---|---|---|
+  | `ED_8_PAS_1_2022-2024_Retificação_Res_Final_tipo_D_redação.pdf` | 1 | 2022 / 1 |
+  | `Ed_7_PAS_1_2023_2025_Res_final_tipo_D_redação.pdf` | 1 | 2023 / 1 |
+  | `Ed_8_PAS_1_2023_2025_Ret_Res_final_tipo_D_redação.pdf` | 1 | **recusado** (`EditalParcialError`) |
+  | `Ed_8_2024_PAS_UnB_1_2024-2026_Res_final_tipo_D_redação.pdf` | 1 | 2024 / 1 |
+  | `Ed_15_PAS_2_2023-2025_Res_final_tipo_D_redacao.pdf` | 2 | 2024 / 2 |
+  | `8BF9D771C58F383321E81D054B720A9E75CF911E7A921DF6E017670779B74EEF.pdf` | 2 | 2025 / 2 |
+
   - as 5 combinações completas são aceitas, zero falhas de checksum (`checksum_falhou=0` em
     todas), com `campos_invalidos` de 1–2 por documento (ruído residual de extração, não
     checksum);
@@ -184,8 +211,11 @@ valor de produção (5.000) sem precisar gerar 5.000 candidatos de verdade.
     original + 1, ver §3.1);
   - os números agregados batem com a tabela do Passo 1 registrada em
     `.scratch/publicar-site/map.md` (Passo 2, item 1) dentro do arredondamento: `(2024, Etapa
-    1)` → `m_p2=23,906 / dp_p2=11,398 / m_red=6,471 / dp_red=2,292`; `(2025, Etapa 2)` →
-    `m_p2=27,643 / dp_p2=14,752 / m_red=6,316 / dp_red=2,251` — idênticos aos do mapa.
+    1)` → `m_p2=23,906 / dp_p2=11,398 / m_red=6,471 / dp_red=2,292`; `(2025, Etapa 2)`, extraído
+    do arquivo hash acima (**não** de `Ed_15`, que é `(2024, Etapa 2)` — os dois arquivos de
+    Etapa 2 em `data/pdfs` são triênios diferentes, não o mesmo dado duplicado) →
+    `m_p2=27,643 / dp_p2=14,752 / m_red=6,316 / dp_red=2,251` — idênticos aos do mapa. Os dois
+    resultados de Etapa 2 (2024 e 2025) foram conferidos rodando o módulo, não copiados do mapa.
 - **Suíte inteira do projeto** (`pytest tests/`): 348 passam (329 pré-existentes + 19 novos), 2
   pulados (pré-existentes, não relacionados a este ticket).
 
