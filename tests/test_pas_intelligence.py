@@ -8,10 +8,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import pytest # type: ignore
 import numpy as np # type: ignore
 
-from pas_intelligence.ensemble import ( # type: ignore
-    calculate_volatility,
-    _sigmoid_weight,
-)
 from pas_intelligence.argument_calculator import ( # type: ignore
     project_historical_stats,
     calculate_argument_part,
@@ -24,68 +20,12 @@ from pas_intelligence.argument_calculator import ( # type: ignore
 from pas_intelligence.ab_testing import compare_groups # type: ignore
 
 
-# =============================================================================
-# TESTES: ensemble.py
-# =============================================================================
-
-class TestVolatility:
-    """Testes para cálculo de volatilidade (Coeficiente de Variação)."""
-    
-    def test_volatility_basic(self):
-        """CV de valores iguais deve ser 0."""
-        scores = np.array([30.0, 30.0])
-        cv = calculate_volatility(scores)
-        assert cv == 0.0
-    
-    def test_volatility_typical(self):
-        """CV de valores típicos deve estar na faixa esperada."""
-        scores = np.array([30.0, 35.0])
-        cv = calculate_volatility(scores)
-        # CV = std / mean * 100
-        # mean = 32.5, std = 2.5, CV = 7.69%
-        assert 7 < cv < 8
-    
-    def test_volatility_high(self):
-        """CV de valores muito diferentes deve ser alto."""
-        scores = np.array([20.0, 40.0])
-        cv = calculate_volatility(scores)
-        assert cv > 20  # Alta volatilidade
-    
-    def test_volatility_minimum_points(self):
-        """Deve exigir pelo menos 2 pontos."""
-        with pytest.raises(ValueError):
-            calculate_volatility(np.array([30.0]))
-    
-    def test_volatility_zero_mean(self):
-        """Deve rejeitar média zero."""
-        with pytest.raises(ValueError):
-            calculate_volatility(np.array([5.0, -5.0]))
-
-
-class TestSigmoidWeight:
-    """Testes para função de peso sigmoide."""
-    
-    def test_low_cv_conservative(self):
-        """CV baixo deve dar peso baixo para modelo arrojado."""
-        weight = _sigmoid_weight(cv=5.0)
-        assert weight < 0.3  # Próximo de 0.2 (conservador)
-    
-    def test_high_cv_aggressive(self):
-        """CV alto deve dar peso alto para modelo arrojado."""
-        weight = _sigmoid_weight(cv=25.0)
-        assert weight > 0.7  # Próximo de 0.8 (arrojado)
-    
-    def test_midpoint_balanced(self):
-        """CV no meio deve dar peso ~0.5."""
-        weight = _sigmoid_weight(cv=15.0)  # Meio entre 10 e 20
-        assert 0.4 < weight < 0.6
-    
-    def test_weight_bounds(self):
-        """Peso deve estar sempre entre 0.2 e 0.8."""
-        for cv in [0, 5, 10, 15, 20, 25, 30, 50, 100]:
-            weight = _sigmoid_weight(cv)
-            assert 0.2 <= weight <= 0.8
-
+# `ensemble.py` foi removido no ticket 13: o ADR-0011 aposentou o ensemble por Volatilidade
+# (ganho de 0,10% sobre o melhor componente sozinho, dentro do ruído entre dobras) e o ADR-0009
+# tirou o Coeficiente de Variação de circulação junto. Os testes de `calculate_volatility` e
+# `_sigmoid_weight` saíram com ele; o mecanismo continua reproduzível em
+# `scripts/familia_de_modelo_ticket10.py`, que é a medição que o aposentou, com testes próprios
+# em `tests/test_familia_de_modelo_ticket10.py`.
 
 # =============================================================================
 # TESTES: argument_calculator.py

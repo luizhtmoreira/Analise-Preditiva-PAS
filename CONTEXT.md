@@ -86,7 +86,7 @@ Regra ou modelo que estima P1 e Redação da Etapa 3 com o único fim de **repar
 _Avoid_: modelo de P1, modelo de redação, submodelo, previsão de nota
 
 **Largura de Incerteza**:
-O quanto o modelo costuma errar, usado como a dispersão da conta de probabilidade de aprovação (`X ~ N(previsão, σ²)`). É **um número por classe de Aluno** — `14,965` para quem fez a Etapa 1 e `15,652` para o **Aluno sem Etapa 1**, em pontos de Argumento Final — e **não varia por Aluno**: a largura por Aluno foi medida e desloca a probabilidade em no máximo 3 pontos percentuais (ADR-0012). Vive no manifesto do pacote de modelo, nunca no código, e é medida em `A3`, valendo `3×` em Argumento Final. Não é o `RMSE = 13,49` de `statistics.py`, que era um MAE de um modelo aposentado.
+O quanto o modelo costuma errar, usado como a dispersão da conta de probabilidade de aprovação (`X ~ N(previsão, σ²)`). É **um número por classe de Aluno** — `14,965` para quem fez a Etapa 1 e `15,475` para o **Aluno sem Etapa 1**, em pontos de Argumento Final — e **não varia por Aluno**: a largura por Aluno foi medida e desloca a probabilidade em no máximo 3 pontos percentuais (ADR-0012). Vive no manifesto do pacote de modelo, nunca no código, e é medida em `A3`, valendo `3×` em Argumento Final. Não é o `RMSE = 13,49` de `statistics.py`, que era um MAE de um modelo aposentado. Os valores acima são os do pacote promovido em 2026-07-28 e **mudam a cada retreino** — leia sempre o manifesto, nunca este parágrafo, se o número importa para uma conta.
 _Avoid_: RMSE, margem de erro, intervalo de confiança, desvio do modelo
 
 **Volatilidade**:

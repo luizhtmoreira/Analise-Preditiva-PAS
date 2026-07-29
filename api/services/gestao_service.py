@@ -9,7 +9,6 @@ import unicodedata
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -24,6 +23,13 @@ from pas_intelligence.statistics import (
     calculate_cohort_evolution_probability,
 )
 from pas_intelligence.argument_calculator import HistoricalStats
+from pas_intelligence.model_package import (
+    EntradaDePrevisao,
+    EstatisticasIndisponiveisError,
+    NotasDeEtapa,
+    PacoteDeModelo,
+    PacoteIndisponivelError,
+)
 
 from api.schemas.gestao import StudentInput, StudentResult, GestaoKpis, GestaoResponse
 
@@ -31,8 +37,15 @@ from api.schemas.gestao import StudentInput, StudentResult, GestaoKpis, GestaoRe
 # Constantes
 # ---------------------------------------------------------------------------
 
-ARG_FINAL_MAE = 13.49
+# `ARG_FINAL_MAE = 13.49` morava aqui. Era o resíduo de um modelo aposentado, igual para todo
+# Aluno, e ficava errado por construção a cada troca de modelo sem que nada avisasse. A Largura
+# de Incerteza agora viaja dentro do pacote (`PacoteDeModelo.largura_de_incerteza`) e vem por
+# classe de Aluno — ADR-0012.
 
+# TODO(ticket 04 §9, defeito 1): estes números não são os do Cebraspe. Em 2022-2024 o P2 da
+# Etapa 1 aqui é 20,7094 contra 20,406 do Edital — têm cara de calculados de uma amostra. Hoje
+# eles só alimentam o Reality Check (abaixo), que é opcional; o Argumento previsto não passa
+# mais por aqui. Os valores certos já estão em `pas_constants.OFFICIAL_STATS`.
 TRIENNIUM_STATS = {
     "2024-2026": {
         "PAS1": HistoricalStats(mean_p1=2.9552, std_p1=2.4909, mean_p2=25.4272, std_p2=11.3914, mean_red=6.9051, std_red=1.8409),
@@ -61,35 +74,28 @@ STATS_PAS3_TREND = HistoricalStats(
 # Singleton: recursos carregados uma vez no startup
 # ---------------------------------------------------------------------------
 
-_arg_model = None
-_eb_model = None   # LightGBM → prediz EB PAS 3
-_eb_scaler = None  # StandardScaler para modelos lineares/MLP
+_pacote: Optional[PacoteDeModelo] = None
+"""O pacote de modelo promovido — um único modelo (`A3`) mais aritmética, no lugar dos oito
+`.joblib` do ensemble aposentado (ADR-0011). `None` quando não há pacote em disco: aí a API
+responde `modelo_disponivel: False` em vez de inventar zeros."""
+
 _df_corte: Optional[pd.DataFrame] = None
 _df_cohort: Optional[pd.DataFrame] = None
 
 
 def load_resources() -> None:
-    global _arg_model, _eb_model, _eb_scaler, _df_corte, _df_cohort
+    global _pacote, _df_corte, _df_cohort
 
-    models_dir = _ROOT / "models"
     data_dir = _ROOT / "data"
 
-    import joblib
-
-    # Modelo de predição do Argumento Final
-    model_path = models_dir / "modelo_arg_final.joblib"
-    if model_path.exists():
-        _arg_model = joblib.load(model_path)
-
-    # Modelo de predição do EB PAS 3 (LightGBM)
-    eb_path = models_dir / "modelo_lgbm.joblib"
-    if eb_path.exists():
-        _eb_model = joblib.load(eb_path)
-
-    # Scaler para feature vector normalizado
-    scaler_path = models_dir / "scaler.joblib"
-    if scaler_path.exists():
-        _eb_scaler = joblib.load(scaler_path)
+    try:
+        _pacote = PacoteDeModelo.carregar()
+    except PacoteIndisponivelError:
+        # Falha no startup vira log e `modelo_disponivel: False`, nunca previsão degradada em
+        # silêncio — que é o defeito de `target_calculator.py:66`, o `print` que escondeu por
+        # meses que dois modelos nem carregavam.
+        logger.exception("Nenhum pacote de modelo carregado; a API responderá sem previsão.")
+        _pacote = None
 
     # Banco de notas de corte
     corte_path = data_dir / "notas_corte_pas.csv"
@@ -201,6 +207,28 @@ def _classify_risk(prob_1: float, prob_2: float):
     return "red", "Alto Risco"
 
 
+def _prever(s: StudentInput, trienio_padrao: str):
+    """A previsão de um Aluno, ou `None` quando ela não é possível para o triênio dele.
+
+    `None` e não zero: um Aluno sem previsão que aparece com Argumento `0,0` e probabilidade
+    `0,0%` vira "Alto Risco" na tela da coordenação — uma afirmação sobre ele que ninguém mediu.
+    """
+    if _pacote is None:
+        return None
+    try:
+        return _pacote.prever(
+            EntradaDePrevisao(
+                etapa_1=NotasDeEtapa(p1=s.p1_pas1, p2=s.p2_pas1, redacao=s.red_pas1),
+                etapa_2=NotasDeEtapa(p1=s.p1_pas2, p2=s.p2_pas2, redacao=s.red_pas2),
+                lingua=s.lingua,
+                trienio=s.ano_trienio or trienio_padrao,
+            )
+        )
+    except (EstatisticasIndisponiveisError, ValueError) as erro:
+        logger.info("Sem previsão para um Aluno do triênio %s: %s", s.ano_trienio, erro)
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Main analysis
 # ---------------------------------------------------------------------------
@@ -217,8 +245,6 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
     for s in students:
         eb_p1 = s.p1_pas1 + s.p2_pas1
         eb_p2 = s.p1_pas2 + s.p2_pas2
-        c_eb = eb_p2 - eb_p1
-        c_red = s.red_pas2 - s.red_pas1
 
         # Normaliza sistema de concorrência via fuzzy match
         available_systems = list(set(c1_map.keys()) | set(c2_map.keys()))
@@ -237,23 +263,25 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
         nota_corte_1sem: float = m1.get(curso_matched) or 0.0
         nota_corte_2sem: Optional[float] = m2.get(curso_matched)
 
-        # Predição
-        arg_pred = 0.0
-        if _arg_model is not None:
-            try:
-                features = np.array([[eb_p1, s.red_pas1, eb_p2, s.red_pas2, c_eb, c_red]])
-                arg_pred = float(_arg_model.predict(features)[0])
-            except Exception:
-                pass
+        # Predição — o Argumento Final sai de `A1 + 2·A2 + 3·Â3`, com A1 e A2 exatos (ADR-0009)
+        previsao = _prever(s, trienio)
+        arg_pred = previsao.argumento_final if previsao else 0.0
+        largura = previsao.largura_argumento_final if previsao else 0.0
 
-        gap = round(arg_pred - nota_corte_1sem, 1) if nota_corte_1sem else 0.0
+        gap = round(arg_pred - nota_corte_1sem, 1) if (previsao and nota_corte_1sem) else 0.0
 
-        prob_1 = calculate_approval_probability(arg_pred, nota_corte_1sem, rmse=ARG_FINAL_MAE) * 100 if nota_corte_1sem else 0.0
-        prob_2 = calculate_approval_probability(arg_pred, nota_corte_2sem, rmse=ARG_FINAL_MAE) * 100 if nota_corte_2sem else 0.0
+        prob_1 = (
+            calculate_approval_probability(arg_pred, nota_corte_1sem, largura_incerteza=largura) * 100
+            if (previsao and nota_corte_1sem) else 0.0
+        )
+        prob_2 = (
+            calculate_approval_probability(arg_pred, nota_corte_2sem, largura_incerteza=largura) * 100
+            if (previsao and nota_corte_2sem) else 0.0
+        )
 
         # Reality Check (cohort)
         historico_pct = 0.0
-        if _df_cohort is not None and nota_corte_1sem:
+        if previsao and _df_cohort is not None and nota_corte_1sem:
             try:
                 from pas_intelligence.target_calculator import TargetCalculator
                 stats_ciclo = TRIENNIUM_STATS.get(s.ano_trienio or trienio)
@@ -274,24 +302,30 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
                 # os modelos de P1/Redação nem carregavam.
                 logger.exception("Reality check (cohort) falhou para o aluno; seguindo sem ele.")
 
-        # Risco
-        status, status_label = _classify_risk(prob_1, prob_2)
+        # Risco. Sem previsão não há risco a classificar — `grey` diz "não sei", que é diferente
+        # de "Alto Risco", e é o que zerar o Argumento faria a tela afirmar.
+        if previsao is None:
+            status, status_label = "grey", "Sem previsão"
+        else:
+            status, status_label = _classify_risk(prob_1, prob_2)
 
         # Sugestão (apenas para não-verdes)
         sugestao = ""
-        if status != "green" and _arg_model is not None:
+        if previsao and status not in ("green", "grey"):
             for curso_alt, corte_alt in sorted(m1.items(), key=lambda x: x[1], reverse=True):
                 if curso_alt == curso_matched:
                     continue
-                try:
-                    p = calculate_approval_probability(arg_pred, corte_alt, rmse=ARG_FINAL_MAE)
-                    if p >= 0.8:
-                        sugestao = curso_alt.split(" (")[0]
-                        break
-                except Exception:
-                    pass
+                p = calculate_approval_probability(arg_pred, corte_alt, largura_incerteza=largura)
+                if p >= 0.8:
+                    sugestao = curso_alt.split(" (")[0]
+                    break
 
-        chance_display = f"1º: {prob_1:.1f}% | 2º: {prob_2:.1f}%" if nota_corte_2sem else f"{prob_1:.1f}%"
+        if previsao is None:
+            chance_display = "—"
+        elif nota_corte_2sem:
+            chance_display = f"1º: {prob_1:.1f}% | 2º: {prob_2:.1f}%"
+        else:
+            chance_display = f"{prob_1:.1f}%"
 
         results.append(StudentResult(
             nome=s.nome,
@@ -310,8 +344,9 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
             prob_2_sem=round(prob_2, 1),
         ))
 
-    # Ordena: red → yellow → green
-    order = {"red": 0, "yellow": 1, "green": 2}
+    # Ordena: sem previsão → red → yellow → green. O `grey` vem primeiro porque é o único que
+    # pede uma ação de quem opera o sistema, e não do Aluno.
+    order = {"grey": -1, "red": 0, "yellow": 1, "green": 2}
     results.sort(key=lambda r: order[r.status])
 
     kpis = GestaoKpis(
@@ -319,11 +354,13 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
         n_red=sum(1 for r in results if r.status == "red"),
         n_yellow=sum(1 for r in results if r.status == "yellow"),
         n_green=sum(1 for r in results if r.status == "green"),
+        n_sem_previsao=sum(1 for r in results if r.status == "grey"),
     )
 
     return GestaoResponse(
         results=results,
         kpis=kpis,
         trienio_ref=trienio_ref,
-        modelo_disponivel=_arg_model is not None,
+        modelo_disponivel=_pacote is not None
+        and (not results or any(r.status != "grey" for r in results)),
     )

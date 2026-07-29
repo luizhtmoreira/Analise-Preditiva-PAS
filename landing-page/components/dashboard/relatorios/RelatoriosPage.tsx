@@ -3,7 +3,11 @@ import { useState, useMemo } from "react";
 import type { GestaoResponse, StudentResult, RiscoStatus } from "@/lib/types";
 import { RiscoBadge } from "@/components/dashboard/gestao/RiscoBadge";
 
-const ARG_MARGEM = 13.49;
+// `const ARG_MARGEM = 13.49` morava aqui, e a folha imprimia `previsto ± 13,49` sem rótulo.
+// A faixa acertava 63% dos Alunos — 1 em cada 3 terminava fora do intervalo que o relatório
+// lhe mostrou — e respondia uma pergunta que ninguém fez: o Aluno quer saber em que curso
+// entra, não entre que valores a nota dele cai. A Largura de Incerteza continua viva onde
+// serve para algo, alimentando as probabilidades por semestre logo abaixo (ADR-0012 §7).
 
 function ProbBar({ label, value }: { label: string; value: number }) {
   const color = value >= 50 ? "#00843D" : value >= 30 ? "#F57F17" : "#C62828";
@@ -78,9 +82,6 @@ function ReportSheet({ aluno, tenantLabel, trienioRef }: {
               </span>
               <span className="text-sm text-[#6E6E73]">pts</span>
             </div>
-            <p className="font-mono text-[0.7rem] text-[#9CA1A8] mt-2">
-              intervalo {(aluno.arg_previsto - ARG_MARGEM).toFixed(1)} — {(aluno.arg_previsto + ARG_MARGEM).toFixed(1)} (±{ARG_MARGEM})
-            </p>
           </div>
           <div className="text-right">
             <p className="font-mono text-[0.62rem] tracking-[0.18em] uppercase text-[#6E6E73] mb-1">

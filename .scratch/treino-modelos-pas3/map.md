@@ -21,6 +21,24 @@ continua funcionando com eles.
 
 ## Notes
 
+**✅ MAPA FECHADO em 2026-07-28, pelo ticket 13.** Os 13 tickets estão resolvidos. O pacote de
+modelo vive em `models/pas3/` (LightGBM único prevendo `A3`, `RMSE 5,009` fora-da-dobra), a API o
+consome por `src/pas_intelligence/model_package.py`, e o triênio lacrado foi aberto uma única vez:
+`σ = 4,624` em `A3`, dentro da banda que a regra assimétrica do ticket 11 definiu antes de o
+número existir. Contra o modelo antigo, no lacre: RMSE de Argumento Final `17,942 → 13,871`, viés
+`+8,658 → +0,517`, erro de decisão `7,81% → 5,41%`.
+
+**Uma coisa continua aberta e não é deste mapa:** a turma viva (2024-2026) não recebe previsão
+enquanto `(2024, Etapa 1)` e `(2025, Etapa 2)` não forem extraídos dos Editais de Etapa — o
+`A1`/`A2` dela não é calculável, e aproximá-los destruiria a parte exata da conta (ADR-0009).
+Nenhuma mudança de código será necessária quando as chaves existirem. Ver
+`relatorios/13-treinar-avaliar-e-promover.md` §8, e o mapa `pdf-extraction`.
+
+**O lacre foi gasto.** 2023/2025 é agora um triênio como qualquer outro. Uma rodada futura que
+queira a frase *"avaliado num ano que nenhuma decisão tocou"* precisa lacrar 2024/2026 **antes**
+de olhar para ele — não existe outro ano limpo até o Edital de 2027.
+
+
 **Este mapa carrega execução.** Override explícito do "plan, don't do" do wayfinder, pedido pelo
 dono do produto: há tickets de decisão *e* tickets que produzem dataset, medição e modelo
 treinado. Um ticket de execução só existe depois que a decisão que ele materializa está fechada.

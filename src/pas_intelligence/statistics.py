@@ -2,26 +2,32 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-def calculate_approval_probability(predicted_arg: float, cutoff_score: float, rmse: float) -> float:
+def calculate_approval_probability(
+    predicted_arg: float, cutoff_score: float, largura_incerteza: float
+) -> float:
     """
     Calcula a probabilidade de aprovação baseada na distribuição normal dos erros do modelo.
-    
-    A incerteza do modelo é modelada como uma distribuição normal centrada no argumento previsto
-    com desvio padrão igual ao RMSE do modelo.
-    
+
+    A incerteza do modelo é modelada como uma distribuição normal centrada no Argumento Final
+    previsto, com desvio padrão igual à **Largura de Incerteza** da classe do Aluno.
+
     Args:
-        predicted_arg: Argumento final previsto pelo modelo
-        cutoff_score: Nota de corte do curso desejado
-        rmse: Root Mean Squared Error do modelo
-        
+        predicted_arg: Argumento Final previsto
+        cutoff_score: Nota de Corte do curso desejado
+        largura_incerteza: a Largura de Incerteza em pontos de Argumento Final (`3 × σ(A3)`).
+            Sem valor padrão de propósito: ela vive no manifesto do pacote de modelo e muda a
+            cada rodada de treino. O `13.49` que morava aqui era resíduo de um modelo aposentado
+            e ficava errado por construção a cada troca de modelo, sem que nada avisasse
+            (ADR-0012). O parâmetro não é `rmse` porque o número não é um RMSE de qualquer coisa
+            — é a largura medida fora-da-dobra, no vocabulário do `CONTEXT.md`.
+
     Returns:
         float: Probabilidade de aprovação (0.0 a 1.0)
     """
-    # Z-score: quão longe a nota de corte está da nossa previsão, em unidades de desvio padrão
-    # Queremos P(X > cutoff), que é 1 - CDF(cutoff)
-    # X ~ N(predicted_arg, rmse^2)
-    
-    probability = 1 - norm.cdf(cutoff_score, loc=predicted_arg, scale=rmse)
+    # Z-score: quão longe a Nota de Corte está da nossa previsão, em unidades de largura.
+    # Queremos P(X > cutoff), que é 1 - CDF(cutoff), com X ~ N(predicted_arg, largura²)
+
+    probability = 1 - norm.cdf(cutoff_score, loc=predicted_arg, scale=largura_incerteza)
     return float(probability)
 
 

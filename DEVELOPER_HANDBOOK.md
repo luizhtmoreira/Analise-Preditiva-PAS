@@ -104,7 +104,7 @@ A raiz do monorepo é estruturada da seguinte forma:
 │   ├── components/         # Componentes React (UI, brand, dashboard)
 │   ├── lib/                # Utilitários, chamadas Supabase e tipos
 │   └── README.md           # Guia de setup do frontend
-├── models/                 # Modelos de Machine Learning (.joblib) - Gitignored
+├── models/                 # Pacote de modelo do PAS 3 (pas3/) e artefatos aposentados - Gitignored
 ├── scripts/                # Scripts utilitários de importação de dados e mocks
 ├── src/                    # Código core do backend em Python
 │   ├── pas_intelligence/   # O "cérebro" de Inteligência Artificial do sistema
@@ -141,22 +141,57 @@ As notas no PAS/UnB não são somas simples. O Cebraspe calcula a nota em relaç
 
 ## 6. O Motor de IA (`src/pas_intelligence/`)
 
-O coração preditivo do Vetor PAS é implementado através de um **Ensemble Dinâmico** que orquestra 4 algoritmos de Machine Learning:
+O coração preditivo do Vetor PAS é **um modelo só, mais aritmética**. Até o ticket 13 eram oito
+artefatos `.joblib` orquestrados por um ensemble dinâmico; a medição que os aposentou está no
+ADR-0011 e no ADR-0009.
 
-### O Ensemble Dinâmico (`ensemble.py`)
-Em vez de usar o mesmo modelo para todos, o sistema decide o peso de cada algoritmo baseado na **Volatilidade (Coeficiente de Variação - CV)** do histórico de Escores Brutos do aluno nas Etapas 1 e 2:
-*   **Baixa Volatilidade (Aluno Estável)**: Se as notas do aluno são lineares e previsíveis, o modelo de **Regressão Linear** assume o maior peso.
-*   **Alta Volatilidade (Aluno Errático)**: Se o histórico do aluno oscila bruscamente, os modelos baseados em árvores (**LightGBM** e **Random Forest**) e redes neurais (**MLP**) ganham pesos maiores devido à capacidade de capturar padrões não-lineares.
-*   Essa ponderação dinâmica é ajustada via curva sigmoide.
+### A cadeia (ADR-0009 — Alvo Canônico)
 
-### Modelos Serializados (`models/`)
-Os modelos foram treinados com base em uma amostra real de **48.758 alunos** de 7 triênios históricos (2016 - 2024):
-*   `modelo_lgbm.joblib` / `modelo_arg_final.joblib` — Modelos LightGBM campeões em acurácia para dados tabulares erráticos.
-*   `modelo_rf.joblib` — Regressor de Floresta Aleatória.
-*   `modelo_linear.joblib` — Regressor Linear simples e estável.
-*   `modelo_mlp.joblib` — Rede neural Multi-Layer Perceptron (100, 50).
-*   `meta_model.joblib` — Classificador RandomForest que ajuda a ponderar/escolher a melhor combinação de modelos base por aluno.
-*   `scaler.joblib` / `meta_scaler.joblib` — Scalers StandardScaler para normalização de features.
+```
+Â3                     ← a ÚNICA previsão do modelo (Argumento da Etapa 3)
+A1, A2                 ← aritmética exata sobre as notas que o Aluno já tem na mão
+Argumento Final        = A1 + 2·A2 + 3·Â3
+σ(Argumento Final)     = 3 × σ(A3)          — exato: A1 e A2 têm variância zero
+```
+
+Para quem já fez PAS 1 e PAS 2, `A1` e `A2` **não são previsão**: as notas estão na mão e as
+médias/desvios oficiais daqueles anos são públicos. Prever o Argumento Final inteiro gastava
+capacidade estatística reaprendendo, de forma aproximada, ⅗ do peso de uma conta já exata — e
+produzia um número que podia contradizer as notas que o próprio Aluno digitou.
+
+### O pacote de modelo (`models/pas3/`, servido por `model_package.py`)
+
+| Arquivo | O que é |
+|---|---|
+| `modelo_pas3.txt` | LightGBM em texto nativo (`n_estimators=400, learning_rate=0,01, num_leaves=15`) |
+| `manifest.json` | Proveniência (hash do CSV, commit, versões), features, métricas e a Largura de Incerteza |
+
+**Vetor de features canônico (11), na ordem — a ordem é contrato:**
+`[a1, a2, EB_PAS1, Red_PAS1, EB_PAS2, Red_PAS2, Cresc_EB, Cresc_Red, cresc_eb_pct,
+cresc_red_pct, sinal_cresc_eb]`. Sem scaler. Passar o vetor trocado não levanta erro — devolve
+número errado, que foi o que invalidou o ADR-0007. `PacoteDeModelo.carregar` recusa um pacote
+cuja ordem não bata com a canônica.
+
+**Aluno sem Etapa 1** (as três notas da Etapa 1 iguais a zero): as oito colunas derivadas da
+Etapa 1 viram **`NaN` nativo**, não zero literal, e a Largura de Incerteza é a da classe dele.
+A detecção acontece em runtime, e o formulário tem um botão *"Não fiz o PAS 1"* — sem ela o
+modelo leria "fez a prova e tirou zero" e erraria a **previsão**, não só a largura.
+
+### A Largura de Incerteza
+
+`P(X > Nota de Corte)` com `X ~ N(Argumento previsto, largura²)`. A largura vem do
+`manifest.json`, **um número por classe de Aluno**, medido fora-da-dobra. Antes era a constante
+`13,49` em `statistics.py` e `gestao_service.py` — resíduo de um modelo aposentado, que ficava
+errado por construção a cada troca de modelo sem que nada avisasse (ADR-0012). Hoje
+`calculate_approval_probability` **exige** o parâmetro: não há valor padrão para esquecer.
+
+### Quando a API não responde
+
+`A1` e `A2` dependem da média e do desvio que o Cebraspe publica no Edital de cada Etapa. Para o
+triênio vivo (2024-2026) faltam `(2024, Etapa 1)` e `(2025, Etapa 2)`, e enquanto faltarem a API
+devolve `modelo_disponivel: False` com o motivo — nunca uma aproximação silenciosa, porque `A1` e
+`A2` são a parte *exata* da conta. Na Gestão de Ativos o Aluno aparece como `grey` / *Sem
+previsão*, que é diferente de *Alto Risco*.
 
 ---
 
@@ -221,6 +256,9 @@ modelo (`.scratch/treino-modelos-pas3/` documenta as decisões que ele codifica)
 
 Falha (código de saída ≠ 0) se o modelo treinado não bater o Portão 1 do ticket 07 — nesse caso
 não escreve nada em `--saida`. `--forcar "motivo"` publica mesmo assim, gravando o motivo no
-`manifest.json`. Ainda **não** promove: ligar o pacote produzido à API em produção é escopo do
-ticket 13, ainda não fechado neste repositório — o `models/` atual (ensemble `.joblib`) continua
-sendo o que a API carrega até lá.
+`manifest.json`.
+
+O comando **não** promove. Promover é copiar `modelo_pas3.txt` e `manifest.json` do pacote para
+`models/pas3/`, preservando o anterior ao lado para poder reverter — é o que o ticket 13 fez em
+2026-07-28, com o pacote que a API carrega hoje. O triênio lacrado (2023/2025) nunca entra no
+treino do artefato; ele foi lido uma única vez, por `scripts/lacre_ticket13.py`.

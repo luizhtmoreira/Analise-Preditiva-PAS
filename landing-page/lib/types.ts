@@ -1,4 +1,6 @@
-export type RiscoStatus = "green" | "yellow" | "red";
+// `grey` = sem previsão: o Edital de média e desvio de uma das Etapas já feitas pelo Aluno
+// ainda não foi extraído, então A1/A2 não são exatos e a API recusa em vez de aproximar.
+export type RiscoStatus = "green" | "yellow" | "red" | "grey";
 
 export interface CourseResult {
   curso: string;
@@ -10,14 +12,19 @@ export interface CourseResult {
 }
 
 export interface PredictResponse {
-  eb_pas3_previsto: number;
   arg_previsto: number;
-  arg_min: number;
-  arg_max: number;
+  /** Aritmética exata sobre as notas digitadas, não previsão: Argumento Final = a1 + 2·a2 + 3·a3. */
+  a1: number;
+  a2: number;
+  a3_previsto: number;
+  /** Largura de Incerteza em pontos de Argumento Final. Alimenta a probabilidade; não vira `±` na tela. */
+  largura_incerteza: number;
+  etapa_1_ausente: boolean;
   curso_alvo_result: CourseResult | null;
   top_cursos: CourseResult[];
   trienio_ref: string;
   modelo_disponivel: boolean;
+  motivo_indisponivel: string | null;
 }
 
 export interface StudentResult {
@@ -42,6 +49,7 @@ export interface GestaoKpis {
   n_red: number;
   n_yellow: number;
   n_green: number;
+  n_sem_previsao: number;
 }
 
 export interface GestaoResponse {

@@ -1,8 +1,8 @@
 # 13 — Treinar, avaliar e promover
 
 **Type:** task
-**Status:** open
-**Blocked by:** 11, 12
+**Status:** resolvido em 2026-07-28
+**Relatório:** `relatorios/13-treinar-avaliar-e-promover.md`
 
 ## Question
 
@@ -30,13 +30,35 @@ anterior ficou incompleto — volta para lá, não se resolve aqui.
 antigo contra modelo novo, previsão e probabilidade de aprovação de cada. É a última chance de
 ver que o número melhorou mas a saída ficou absurda — e o número agregado não mostra isso.
 
-- [ ] Pipeline do ticket 12 executado; artefatos definitivos produzidos
-- [ ] Critério de aceite do ticket 06 batido e registrado
-- [ ] Comparação lado a lado antigo vs. novo revisada pelo dono do produto antes da promoção
-- [ ] `models/` atualizado no formato e no domicílio decididos pelo ticket 03, com o anterior
+- [x] Pipeline do ticket 12 executado; artefatos definitivos produzidos
+- [x] Critério de aceite do ticket 06 batido e registrado
+- [x] Comparação lado a lado antigo vs. novo revisada pelo dono do produto antes da promoção
+- [x] `models/` atualizado no formato e no domicílio decididos pelo ticket 03, com o anterior
       preservado para reverter
-- [ ] Todos os consumidores listados acima verificados; `tests/` passando
-- [ ] `statistics.py` sem constante de RMSE cravada
-- [ ] `CLAUDE.md` e `DEVELOPER_HANDBOOK.md` atualizados: a tabela de modelos, o feature vector e
+- [x] Todos os consumidores listados acima verificados; `tests/` passando
+- [x] `statistics.py` sem constante de RMSE cravada
+- [x] `CLAUDE.md` e `DEVELOPER_HANDBOOK.md` atualizados: a tabela de modelos, o feature vector e
       o caminho de retreino refletem a realidade nova
-- [ ] Relatório em `relatorios/13-treinar-avaliar-e-promover.md`
+- [x] Relatório em `relatorios/13-treinar-avaliar-e-promover.md`
+
+---
+
+## Resolução
+
+Ver `relatorios/13-treinar-avaliar-e-promover.md`. Em uma linha por item:
+
+- Pipeline rodou de primeira sobre o CSV real: RMSE `5,009` em `A3`, Portão 1 batido nas quatro
+  pernas. Pacote em `models/pas3/`, anterior em `models/aposentados-2026-07-28/`.
+- Lacre aberto uma vez: `σ = 4,624` em `A3` — dentro da banda `[4,5; 5,5]` da regra assimétrica,
+  **nenhuma ação**. Cobertura a 80% saiu 83,6%: a largura promovida é conservadora.
+- Lado a lado no lacre: RMSE de Argumento Final `17,942 → 13,871`, viés `+8,658 → +0,517`, erro de
+  decisão `7,81% → 5,41%`, Brier `0,0564 → 0,0391`. Revisado e autorizado pelo dono do produto.
+- `ensemble.py`, `calculate.py`, `baseline_avaliacao.py`, `ARG_FINAL_MAE` e `ARG_MARGEM` removidos.
+- `model_package.py` é a porta única entre `api/` e o artefato, montando features pelas funções do
+  treino (teste de paridade incluído). Formulário ganhou língua estrangeira e o botão
+  *"Não fiz o PAS 1"*. Gestão ganhou o estado `grey` / *Sem previsão*.
+- **Aberto:** a turma viva (2024-2026) não recebe previsão enquanto `(2024, Etapa 1)` e
+  `(2025, Etapa 2)` não forem extraídos dos Editais de Etapa — §8 do relatório. Nenhuma mudança de
+  código será necessária quando existirem.
+- **Dívida declarada:** o `eb_pas3_previsto` saiu da tela até o Estimador Auxiliar e o Ano-Âncora
+  existirem (ticket 04 §7.1). §6 do relatório.

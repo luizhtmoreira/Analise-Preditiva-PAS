@@ -58,6 +58,18 @@ def _anos_do_trienio(trienio: str) -> tuple[int, int, int]:
     return ano_e1, ano_e1 + 1, ano_e3
 
 
+def etapa_1_ausente(nota_p1, nota_p2, nota_red):
+    """A regra do ADR-0008: as três notas da Etapa 1 iguais a zero.
+
+    Função e não expressão solta porque o **runtime** precisa dela tanto quanto o treino
+    (`model_package`): sem a detecção, o modelo lê *"fez a prova e tirou zero em tudo"* e erra a
+    previsão, não só a largura. Duas cópias da regra é o começo de duas regras.
+
+    Serve escalar e `Series` — o treino chama vetorizado, o runtime chama com um Aluno.
+    """
+    return (nota_p1 == 0) & (nota_p2 == 0) & (nota_red == 0)
+
+
 def _stats_por_ano_etapa_lingua() -> dict[tuple[int, int, str], HistoricalStats]:
     """Achata `OFFICIAL_STATS` para `(ano, etapa, lingua) -> HistoricalStats`.
 
@@ -79,6 +91,30 @@ def _stats_por_ano_etapa_lingua() -> dict[tuple[int, int, str], HistoricalStats]
 
 
 _STATS_POR_ANO_ETAPA_LINGUA = _stats_por_ano_etapa_lingua()
+
+
+class EstatisticaOficialAusenteError(KeyError):
+    """O Edital daquela `(Ano, Etapa)` ainda não foi extraído para o `OFFICIAL_STATS`.
+
+    Erro próprio, e não `KeyError` cru, porque em produção esta é uma condição **esperada**: o
+    triênio vivo sempre tem Etapas cujo Edital de média e desvio ainda não saiu, e quem chama
+    precisa distinguir "falta dado deste ano" de "chave escrita errado".
+    """
+
+
+def stats_da_prova(ano: int, etapa: int, lingua: str) -> HistoricalStats:
+    """Média e desvio oficiais de uma `(Ano, Etapa, língua estrangeira)`.
+
+    Ponto único de leitura do `OFFICIAL_STATS` para quem vai calcular um Argumento de Etapa —
+    treino e runtime pela mesma porta, senão o `A1` que a API mostra deixa de ser o `A1` com que
+    o modelo foi treinado.
+    """
+    try:
+        return _STATS_POR_ANO_ETAPA_LINGUA[(ano, etapa, lingua)]
+    except KeyError:
+        raise EstatisticaOficialAusenteError(
+            f"OFFICIAL_STATS não cobre (ano={ano}, etapa={etapa}, língua={lingua!r})."
+        ) from None
 
 
 def _pseudonimizar(inscricao: pd.Series) -> pd.Series:
@@ -137,8 +173,8 @@ def build_training_dataset(source: pd.DataFrame) -> pd.DataFrame:
     df["_ano_e2"] = anos.map(lambda t: t[1])
     df["_ano_e3"] = anos.map(lambda t: t[2])
 
-    df["etapa_1_ausente"] = (
-        (df["eb_p1_e1"] == 0) & (df["eb_p2_e1"] == 0) & (df["red_e1"] == 0)
+    df["etapa_1_ausente"] = etapa_1_ausente(
+        df["eb_p1_e1"], df["eb_p2_e1"], df["red_e1"]
     )
 
     repetidas = df["inscricao"].value_counts()

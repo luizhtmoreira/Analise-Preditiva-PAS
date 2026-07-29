@@ -9,6 +9,14 @@ import { useRouter } from "next/navigation";
 /* ─── constants ─────────────────────────────────────────────────── */
 
 const TRIENIOS = ["2024-2026", "2023-2025", "2022-2024"];
+// O Cebraspe normaliza a Parte 1 por língua estrangeira e não publica qual língua cada
+// candidato fez. Perguntar custa um campo e evita viés sistemático contra quem fez espanhol
+// ou francês — em (2024, Etapa 2) a diferença entre as médias passou de um desvio inteiro.
+const LINGUAS = [
+  { valor: "inglesa", rotulo: "Inglês" },
+  { valor: "espanhola", rotulo: "Espanhol" },
+  { valor: "francesa", rotulo: "Francês" },
+];
 const COTAS = [
   "Sistema Universal",
   "L1 - Escola Pública + Renda ≤ 1,5 SM + PPI",
@@ -180,9 +188,17 @@ function CourseCombobox({ value, onChange, courses }: {
 }
 
 function ArgCard({ result }: { result: PredictResponse }) {
-  const range = (result.arg_max - result.arg_min) || 1;
-  const pct = Math.min(100, Math.max(0, ((result.arg_previsto - result.arg_min) / range) * 100));
-
+  // Nem faixa `±` nem EB PAS 3 aqui, e os dois por motivos diferentes.
+  //
+  // A faixa: `previsto ± 13,49` aparecia sem rótulo e acertava 63% — 1 em cada 3 candidatos
+  // terminava fora do intervalo que a tela lhe mostrou. Rotulá-la a 80% deixaria o número
+  // honesto, mas ele responde uma pergunta que o candidato não fez: ele quer saber em que curso
+  // entra, não entre que valores a nota dele cai. A Largura de Incerteza continua trabalhando —
+  // é ela que produz as probabilidades por curso logo abaixo (ADR-0012 §7).
+  //
+  // O EB PAS 3: era uma **segunda** previsão, de um modelo independente, que discordava desta
+  // sobre "passa ou não passa" em 11% dos candidatos. Voltará derivado do Argumento, por
+  // aritmética, quando o Estimador Auxiliar e o Ano-Âncora existirem (ticket 04 §7.1).
   return (
     <div className="pred-result pred-result-1" style={{ position: "relative", overflow: "hidden" }}>
       <div style={{
@@ -204,39 +220,36 @@ function ArgCard({ result }: { result: PredictResponse }) {
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
-            <div style={{ textAlign: "right" }}>
-              <p className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(0,194,106,0.8)" }}>EB PAS 3 previsto</p>
-              <p className="mono" style={{ fontSize: 28, fontWeight: 700, color: C.green, lineHeight: 1.2 }}>
-                {result.eb_pas3_previsto.toFixed(1)}
-              </p>
-            </div>
-            <p style={{ fontSize: 11, color: C.faint, textAlign: "right" }}>
-              ref. {result.trienio_ref}
-            </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4, textAlign: "right" }}>
+            <p style={{ fontSize: 11, color: C.faint }}>ref. {result.trienio_ref}</p>
           </div>
         </div>
 
-        {/* Intervalo de confiança */}
-        <div style={{ marginTop: 28 }}>
-          <div style={{ position: "relative", height: 6, borderRadius: 99, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, #FF6B6B 0%, #FFC25E 35%, #00C26A 100%)" }} />
-            <div
-              className="bar-grow"
-              style={{
-                position: "absolute", top: 0, bottom: 0, left: 0,
-                width: `${pct}%`, background: "transparent",
-                borderRight: "3px solid #fff",
-                boxShadow: "2px 0 12px rgba(255,255,255,0.6)",
-              }}
-            />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-            <span className="mono" style={{ fontSize: 11, color: C.faint }}>{result.arg_min.toFixed(1)}</span>
-            <span style={{ fontSize: 11, color: C.faint }}>intervalo ±13,49</span>
-            <span className="mono" style={{ fontSize: 11, color: C.faint }}>{result.arg_max.toFixed(1)}</span>
-          </div>
+        {/* De onde o número vem: as duas Etapas já feitas são conta fechada, só a terceira é
+            previsão. Mostrar a decomposição é o que impede o Argumento de parecer um palpite. */}
+        <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 24, flexWrap: "wrap" }}>
+          {[
+            { rotulo: "PAS 1 (feito)", valor: result.a1, peso: "×1" },
+            { rotulo: "PAS 2 (feito)", valor: result.a2, peso: "×2" },
+            { rotulo: "PAS 3 (previsto)", valor: result.a3_previsto, peso: "×3" },
+          ].map(({ rotulo, valor, peso }) => (
+            <div key={rotulo}>
+              <p className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: C.faint, marginBottom: 3 }}>
+                {rotulo} <span style={{ color: C.cyanSoft }}>{peso}</span>
+              </p>
+              <p className="mono" style={{ fontSize: 18, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>
+                {valor.toFixed(2)}
+              </p>
+            </div>
+          ))}
         </div>
+
+        {result.etapa_1_ausente && (
+          <p style={{ marginTop: 16, fontSize: 11, color: C.faint, lineHeight: 1.5 }}>
+            Calculado como candidato <strong style={{ color: C.dim }}>sem PAS 1</strong> — o modelo usa
+            uma leitura própria para quem entrou no programa na Etapa 2.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -415,6 +428,7 @@ const emptyScores = () => ({ p1: "0", p2: "0", red: "0" });
 export function PreditorPage() {
   const [pas1, setPas1] = useState(emptyScores());
   const [pas2, setPas2] = useState(emptyScores());
+  const [lingua, setLingua] = useState("inglesa");
   const [cota, setCota] = useState("Sistema Universal");
   const [trienio, setTrienio] = useState("2024-2026");
   const [cursoAlvo, setCursoAlvo] = useState("");
@@ -435,7 +449,7 @@ export function PreditorPage() {
       const data = await fetchPredict({
         p1_pas1: Number(pas1.p1), p2_pas1: Number(pas1.p2), red_pas1: Number(pas1.red),
         p1_pas2: Number(pas2.p1), p2_pas2: Number(pas2.p2), red_pas2: Number(pas2.red),
-        cota, trienio, curso_alvo: cursoAlvo.trim() || undefined,
+        lingua, cota, trienio, curso_alvo: cursoAlvo.trim() || undefined,
       });
       setResult(data);
     } catch {
@@ -506,6 +520,25 @@ export function PreditorPage() {
                         onChange={(v) => set((s) => ({ ...s, p2: v }))} step={0.5} min={-100} max={100} />
                       <StepperInput label="Redação" value={state.red}
                         onChange={(v) => set((s) => ({ ...s, red: v }))} step={0.1} min={0} max={10} />
+                      {/* Quem entrou no programa na Etapa 2 é uma população que o modelo trata
+                          por conta própria (8,7% da base histórica), não um caso de nota zero.
+                          Sem o botão, o candidato teria que adivinhar que "tudo zero" é a
+                          codificação — e quem adivinhasse errado receberia a previsão de alguém
+                          que fez a prova e zerou. */}
+                      {title === "PAS 1" && (
+                        <button
+                          type="button"
+                          onClick={() => set({ p1: "0", p2: "0", red: "0" })}
+                          style={{
+                            alignSelf: "flex-start", marginTop: 2, padding: 0, border: "none",
+                            background: "transparent", color: C.cyanSoft, fontSize: 11,
+                            textDecoration: "underline", cursor: "pointer",
+                            fontFamily: "var(--font-body), sans-serif",
+                          }}
+                        >
+                          Não fiz o PAS 1
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -520,6 +553,15 @@ export function PreditorPage() {
                     <div style={{ position: "relative" }}>
                       <select value={trienio} onChange={(e) => setTrienio(e.target.value)} className="pred-select">
                         {TRIENIOS.map((t) => <option key={t} style={{ background: "#00305F" }}>{t}</option>)}
+                      </select>
+                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.dim, pointerEvents: "none", fontSize: 12 }}>▾</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Língua Estrangeira</p>
+                    <div style={{ position: "relative" }}>
+                      <select value={lingua} onChange={(e) => setLingua(e.target.value)} className="pred-select">
+                        {LINGUAS.map((l) => <option key={l.valor} value={l.valor} style={{ background: "#00305F" }}>{l.rotulo}</option>)}
                       </select>
                       <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.dim, pointerEvents: "none", fontSize: 12 }}>▾</span>
                     </div>
@@ -562,8 +604,24 @@ export function PreditorPage() {
               </div>
             )}
 
+            {/* Sem previsão: acontece enquanto o Edital de média e desvio de uma das Etapas já
+                feitas não foi publicado/extraído. A1 e A2 são a parte exata da conta — aproximá-los
+                seria pior que não responder. */}
+            {result && !result.modelo_disponivel && (
+              <div style={{ marginTop: 40, padding: "20px 24px", borderRadius: 16, background: "rgba(255,194,94,0.08)", border: "1px solid rgba(255,194,94,0.28)" }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: C.amber, marginBottom: 6 }}>
+                  Ainda não dá para calcular o seu triênio
+                </p>
+                <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>
+                  O Argumento das Etapas que você já fez depende da média e do desvio-padrão que o
+                  Cebraspe publica no Edital de cada Etapa, e o do seu triênio ainda não saiu.
+                  Preferimos não responder a responder por estimativa.
+                </p>
+              </div>
+            )}
+
             {/* Results */}
-            {result && (
+            {result && result.modelo_disponivel && (
               <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 14 }}>
                 <p className="mono" style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 4 }}>
                   Diagnóstico gerado

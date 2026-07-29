@@ -69,7 +69,7 @@ export async function compareGroups(body: {
 export async function fetchPredict(body: {
   p1_pas1: number; p2_pas1: number; red_pas1: number;
   p1_pas2: number; p2_pas2: number; red_pas2: number;
-  cota?: string; trienio?: string; curso_alvo?: string;
+  lingua?: string; cota?: string; trienio?: string; curso_alvo?: string;
 }) {
   const res = await fetch(`${API_URL}/api/predict`, {
     method: "POST",

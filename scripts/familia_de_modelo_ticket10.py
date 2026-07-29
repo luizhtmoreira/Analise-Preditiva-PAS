@@ -49,7 +49,6 @@ from pas_intelligence.dataset_pas3 import (  # noqa: E402
     carregar_dataset as _carregar_dataset_base,
     com_faltante_nativo_etapa1 as com_faltante_nativo,
 )
-from pas_intelligence.ensemble import _sigmoid_weight  # noqa: E402
 from pas_intelligence.validation import (  # noqa: E402
     TRIENIO_LACRADO,
     ResultadoValidacao,
@@ -57,7 +56,9 @@ from pas_intelligence.validation import (  # noqa: E402
     erro_de_decisao,
 )
 
-from baseline_honesto import menor_corte_por_aluno  # noqa: E402
+from baseline_honesto import menor_corte_por_aluno, peso_sigmoide_da_volatilidade  # noqa: E402
+
+_sigmoid_weight = peso_sigmoide_da_volatilidade
 
 warnings.filterwarnings("ignore")
 

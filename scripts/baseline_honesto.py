@@ -46,6 +46,22 @@ MODELOS = RAIZ / "models"
 # ─── Preparo ────────────────────────────────────────────────────────────────────────────────
 
 
+def peso_sigmoide_da_volatilidade(cv: float, low_cv: float = 10.0, high_cv: float = 20.0) -> float:
+    """O peso do modelo arrojado no ensemble por Volatilidade, transcrito de `ensemble.py`.
+
+    O módulo original foi **removido** no ticket 13, porque o ADR-0011 aposentou o ensemble
+    (ganho de 0,10% sobre o melhor componente sozinho, dentro do ruído entre dobras). O mecanismo
+    sobrevive aqui, e só aqui, porque este script e o do ticket 10 **são** as medições que o
+    aposentaram: apagar o mecanismo junto com o veredito deixaria o veredito impossível de
+    conferir. Sigmoide de 0,2 (Volatilidade baixa → conservador) a 0,8 (alta → arrojado), com os
+    mesmos limiares de 10% e 20% do módulo original.
+    """
+    ponto_medio = (low_cv + high_cv) / 2
+    escala = (high_cv - low_cv) / 2
+    x = (cv - ponto_medio) / escala * 3
+    return float(0.2 + 0.6 * (1 / (1 + np.exp(-x))))
+
+
 def linhas_de_teste(df: pd.DataFrame) -> pd.DataFrame:
     """As 37.844 linhas de teste das 5 dobras — o mesmo recorte que a régua usa."""
     testes = [d.trienio_teste for d in gerar_dobras(df["trienio"].unique())]
@@ -362,14 +378,12 @@ def main() -> None:
     print(linha("repete o EB da Etapa 2", Erro.medir(eb3_real, teste["eb_pas2"].to_numpy(float))))
 
     # O ensemble por volatilidade — `std/mean × 100` sobre [EB1, EB2] com média **com sinal**,
-    # exatamente como `ensemble.calculate_volatility`, e a mesma sigmoide.
-    from pas_intelligence.ensemble import _sigmoid_weight  # noqa: E402
-
+    # e a mesma sigmoide (`peso_sigmoide_da_volatilidade`, no topo deste arquivo).
     eb1 = teste["eb_pas1"].to_numpy(float)
     eb2 = teste["eb_pas2"].to_numpy(float)
     media = (eb1 + eb2) / 2
     cv = np.where(media != 0, np.abs(eb2 - eb1) / 2 / media * 100, np.nan)
-    peso = np.array([_sigmoid_weight(v) if np.isfinite(v) else 0.5 for v in cv])
+    peso = np.array([peso_sigmoide_da_volatilidade(v) if np.isfinite(v) else 0.5 for v in cv])
     ensemble = (1 - peso) * previsoes_eb["modelo_linear"] + peso * previsoes_eb["modelo_lgbm"]
     for recorte, mascara in (("todas", np.ones(len(teste), bool)),
                              ("limpas", (~ja_visto).to_numpy())):

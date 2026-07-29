@@ -1,43 +1,82 @@
 """
-Preditor PAS 3 — previsão individual de EB e Argumento Final.
+Preditor PAS 3 — previsão individual do Argumento Final.
+
+Uma previsão só (`Â3`, o Alvo Canônico do ADR-0009); todo o resto da resposta sai dela por
+aritmética. Antes deste ticket a tela mostrava **dois** números previstos por modelos
+independentes — Argumento Final e EB PAS 3 — que discordavam sobre "passa ou não passa" em 11%
+dos Alunos (relatório 04 §3.2). Agora existe um número e ele não pode se contradizer.
+
+O EB PAS 3 saiu da resposta: derivá-lo do `A3` exige o Estimador Auxiliar e o Ano-Âncora do
+ticket 04 §7.1, que ainda não têm ticket; ressuscitar o modelo aposentado para preenchê-lo
+traria de volta exatamente a contradição acima.
 """
-import numpy as np
+import logging
 
 from api.schemas.predict import PredictInput, PredictResponse, CourseResult
 from api.services import gestao_service          # referência ao módulo, não ao valor
-from api.services.gestao_service import (
-    _find_best_match,
-    _build_cutoff_maps,
-    ARG_FINAL_MAE,
+from api.services.gestao_service import _find_best_match, _build_cutoff_maps
+from pas_intelligence.model_package import (
+    EntradaDePrevisao,
+    EstatisticasIndisponiveisError,
+    NotasDeEtapa,
 )
 from pas_intelligence.statistics import calculate_approval_probability
 
+logger = logging.getLogger(__name__)
+
 TOP_CURSOS_LIMIT = 8
 MIN_PROB_THRESHOLD = 0.30
-EB_MAE = 5.0  # margem aproximada para EB PAS 3
+
+SEM_PACOTE = (
+    "Nenhum pacote de modelo carregado. Sem pacote não há previsão nem Largura de Incerteza — "
+    "o estado 'previsão sim, largura não' não é representável (ADR-0012)."
+)
+
+
+def entrada_de_previsao(inp: PredictInput) -> EntradaDePrevisao:
+    return EntradaDePrevisao(
+        etapa_1=NotasDeEtapa(p1=inp.p1_pas1, p2=inp.p2_pas1, redacao=inp.red_pas1),
+        etapa_2=NotasDeEtapa(p1=inp.p1_pas2, p2=inp.p2_pas2, redacao=inp.red_pas2),
+        lingua=inp.lingua,
+        trienio=inp.trienio,
+    )
 
 
 def predict_student(inp: PredictInput) -> PredictResponse:
-    eb_p1 = inp.p1_pas1 + inp.p2_pas1
-    eb_p2 = inp.p1_pas2 + inp.p2_pas2
-    c_eb  = eb_p2 - eb_p1
-    c_red = inp.red_pas2 - inp.red_pas1
-
-    features = np.array([[eb_p1, inp.red_pas1, eb_p2, inp.red_pas2, c_eb, c_red]])
-
-    # EB PAS 3 previsto (LightGBM)
-    eb_pas3_previsto = 0.0
-    if gestao_service._eb_model is not None:
-        eb_pas3_previsto = float(gestao_service._eb_model.predict(features)[0])
-
-    # Argumento Final previsto
-    arg_previsto = 0.0
-    if gestao_service._arg_model is not None:
-        arg_previsto = float(gestao_service._arg_model.predict(features)[0])
-
-    modelo_disponivel = gestao_service._arg_model is not None
-
+    entrada = entrada_de_previsao(inp)
     c1_map, c2_map, trienio_ref = _build_cutoff_maps(inp.trienio)
+
+    previsao = None
+    motivo_indisponivel = None
+    if gestao_service._pacote is None:
+        motivo_indisponivel = SEM_PACOTE
+    else:
+        try:
+            previsao = gestao_service._pacote.prever(entrada)
+        except EstatisticasIndisponiveisError as erro:
+            # Esperado no triênio vivo: enquanto o Edital de média e desvio daquela Etapa não for
+            # extraído, `A1` e `A2` não são exatos — e aproximá-los destruiria a parte exata da
+            # conta, que é a fundação do ADR-0009. Recusar é a resposta certa, não um bug.
+            motivo_indisponivel = str(erro)
+            logger.info("Previsão recusada por Edital de Etapa ausente: %s", erro)
+
+    if previsao is None:
+        return PredictResponse(
+            arg_previsto=0.0,
+            a1=0.0,
+            a2=0.0,
+            a3_previsto=0.0,
+            largura_incerteza=0.0,
+            etapa_1_ausente=entrada.etapa_1_ausente,
+            curso_alvo_result=None,
+            top_cursos=[],
+            trienio_ref=trienio_ref,
+            modelo_disponivel=False,
+            motivo_indisponivel=motivo_indisponivel,
+        )
+
+    arg_previsto = previsao.argumento_final
+    largura = previsao.largura_argumento_final
 
     available_systems = list(set(c1_map.keys()) | set(c2_map.keys()))
     sistema = _find_best_match(inp.cota, available_systems, cutoff=0.6) if available_systems else inp.cota
@@ -54,7 +93,7 @@ def predict_student(inp: PredictInput) -> PredictResponse:
         for semestre, m in [("1°", m1), ("2°", m2)]:
             nota = m.get(curso_matched)
             if nota:
-                prob = calculate_approval_probability(arg_previsto, nota, rmse=ARG_FINAL_MAE)
+                prob = calculate_approval_probability(arg_previsto, nota, largura_incerteza=largura)
                 parts = _parse_course_key(curso_matched)
                 curso_alvo_result = CourseResult(
                     curso=parts["curso"],
@@ -74,7 +113,7 @@ def predict_student(inp: PredictInput) -> PredictResponse:
         for course_key, nota in sorted(m.items(), key=lambda x: x[1], reverse=True):
             if course_key in seen:
                 continue
-            prob = calculate_approval_probability(arg_previsto, nota, rmse=ARG_FINAL_MAE)
+            prob = calculate_approval_probability(arg_previsto, nota, largura_incerteza=largura)
             if prob < MIN_PROB_THRESHOLD:
                 continue
             seen.add(course_key)
@@ -95,14 +134,16 @@ def predict_student(inp: PredictInput) -> PredictResponse:
     top_cursos.sort(key=lambda c: c.prob, reverse=True)
 
     return PredictResponse(
-        eb_pas3_previsto=round(eb_pas3_previsto, 3),
         arg_previsto=round(arg_previsto, 1),
-        arg_min=round(arg_previsto - ARG_FINAL_MAE, 1),
-        arg_max=round(arg_previsto + ARG_FINAL_MAE, 1),
+        a1=round(previsao.a1, 3),
+        a2=round(previsao.a2, 3),
+        a3_previsto=round(previsao.a3, 3),
+        largura_incerteza=round(largura, 3),
+        etapa_1_ausente=previsao.etapa_1_ausente,
         curso_alvo_result=curso_alvo_result,
         top_cursos=top_cursos[:TOP_CURSOS_LIMIT],
         trienio_ref=trienio_ref,
-        modelo_disponivel=modelo_disponivel,
+        modelo_disponivel=True,
     )
 
 
