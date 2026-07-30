@@ -56,3 +56,39 @@ def test_regex_de_preview_da_vercel_casa_com_subdominio(monkeypatch, api_main):
     assert resposta.headers["access-control-allow-origin"] == (
         "https://vetor-pas-git-preview-abc123.vercel.app"
     )
+
+
+def test_origem_de_producao_e_aceita(monkeypatch, api_main):
+    monkeypatch.setenv(
+        "CORS_ALLOW_ORIGINS", "https://vetorpas.com.br,https://www.vetorpas.com.br"
+    )
+    monkeypatch.delenv("CORS_ALLOW_ORIGIN_REGEX", raising=False)
+    importlib.reload(api_main)
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(api_main.app) as client:
+        resposta_apex = client.get(
+            "/health", headers={"Origin": "https://vetorpas.com.br"}
+        )
+        resposta_www = client.get(
+            "/health", headers={"Origin": "https://www.vetorpas.com.br"}
+        )
+
+    assert resposta_apex.headers["access-control-allow-origin"] == "https://vetorpas.com.br"
+    assert resposta_www.headers["access-control-allow-origin"] == "https://www.vetorpas.com.br"
+
+
+def test_origem_desconhecida_e_recusada(monkeypatch, api_main):
+    monkeypatch.setenv("CORS_ALLOW_ORIGINS", "https://vetorpas.com.br")
+    monkeypatch.delenv("CORS_ALLOW_ORIGIN_REGEX", raising=False)
+    importlib.reload(api_main)
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(api_main.app) as client:
+        resposta = client.get(
+            "/health", headers={"Origin": "https://site-malicioso.com"}
+        )
+
+    assert "access-control-allow-origin" not in resposta.headers
