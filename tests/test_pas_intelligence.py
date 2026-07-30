@@ -498,15 +498,17 @@ class TestExamStats:
 
     def test_m_p1_e_dp_p1_sao_media_das_tres_linguas(self):
         """m_p1/dp_p1 continuam existindo, mas como média simples das três línguas."""
-        from pas_intelligence.pas_constants import ExamStats, ValorLingua  # type: ignore
+        from pas_intelligence.pas_constants import (  # type: ignore
+            ExamStats, Parte1PorLingua, ValorLingua,
+        )
 
         stats = ExamStats(
             m_p2=25.0, dp_p2=13.0, m_red=6.0, dp_red=2.0,
-            parte_1={
+            parte_1=Parte1PorLingua({
                 "inglesa": ValorLingua(3.0, 2.0),
                 "francesa": ValorLingua(6.0, 2.6),
                 "espanhola": ValorLingua(3.0, 2.0),
-            },
+            }),
         )
 
         assert stats.m_p1 == pytest.approx(4.0)  # (3 + 6 + 3) / 3
@@ -514,13 +516,20 @@ class TestExamStats:
 
     def test_official_stats_tem_24_entradas_com_tres_linguas_cada(self):
         """As 21 entradas antigas mais o triênio 2023/2025 (3 Etapas), todas com Parte 1
-        completa — nenhuma ficou com estimativa parcial de língua."""
-        from pas_intelligence.pas_constants import OFFICIAL_STATS  # type: ignore
+        completa — nenhuma ficou com estimativa parcial de língua.
+
+        A checagem é pelo **tipo**, não pelo conjunto de chaves: desde o ticket 01 a forma
+        misturada também tem as três, então contar chaves deixou de discriminar.
+        """
+        from pas_intelligence.pas_constants import (  # type: ignore
+            LINGUAS_OFICIAIS, OFFICIAL_STATS, Parte1PorLingua,
+        )
 
         assert len(OFFICIAL_STATS) == 24
         assert (2023, 1) in OFFICIAL_STATS and (2024, 2) in OFFICIAL_STATS and (2025, 3) in OFFICIAL_STATS
         for chave, stats in OFFICIAL_STATS.items():
-            assert set(stats.parte_1) == {"inglesa", "francesa", "espanhola"}, chave
+            assert isinstance(stats.parte_1, Parte1PorLingua), chave
+            assert set(stats.parte_1) == set(LINGUAS_OFICIAIS), chave
 
     def test_consumidor_analytics_service_continua_funcionando(self):
         """api/services/analytics_service.py lê s.m_p1 e s.m_p1 + s.m_p2 — a interface não
@@ -530,6 +539,92 @@ class TestExamStats:
         s = OFFICIAL_STATS[(2022, 1)]
         assert isinstance(s.m_p1, float)
         assert isinstance(s.m_p1 + s.m_p2, float)
+
+
+# =============================================================================
+# TESTES: Parte 1 misturada e procedência (ticket 01 — publicar-site)
+# =============================================================================
+
+def _etapa_misturada(**overrides):
+    """Uma `(Ano, Etapa)` sintética vinda de Edital isolado de Etapa: Parte 1 misturada."""
+    from pas_intelligence.pas_constants import (  # type: ignore
+        ExamStats, Parte1Misturada, ValorLingua,
+    )
+
+    campos = dict(
+        m_p2=25.0, dp_p2=13.0, m_red=6.0, dp_red=2.0,
+        parte_1=Parte1Misturada(ValorLingua(4.0, 2.2)),
+    )
+    campos.update(overrides)
+    return ExamStats(**campos)
+
+
+class TestParte1Misturada:
+    """O Edital isolado de Etapa não diz a língua de ninguém: só dá a Parte 1 misturada."""
+
+    def test_forma_misturada_e_distinguivel_da_forma_por_lingua_pelo_tipo(self):
+        """Sem contar chaves de dicionário — as duas formas são tipos diferentes."""
+        from pas_intelligence.pas_constants import (  # type: ignore
+            OFFICIAL_STATS, Parte1Misturada, Parte1PorLingua,
+        )
+
+        misturada = _etapa_misturada()
+        por_lingua = OFFICIAL_STATS[(2022, 1)]
+
+        assert isinstance(misturada.parte_1, Parte1Misturada)
+        assert misturada.parte_1.misturada is True
+        assert isinstance(por_lingua.parte_1, Parte1PorLingua)
+        assert por_lingua.parte_1.misturada is False
+
+    def test_m_p1_e_dp_p1_na_forma_misturada_sao_o_proprio_valor(self):
+        stats = _etapa_misturada()
+
+        assert stats.m_p1 == pytest.approx(4.0)
+        assert stats.dp_p1 == pytest.approx(2.2)
+
+    def test_as_tres_linguas_devolvem_a_estatistica_misturada(self):
+        from pas_intelligence.pas_constants import LINGUAS_OFICIAIS, ValorLingua  # type: ignore
+
+        parte_1 = _etapa_misturada().parte_1
+
+        assert set(parte_1) == set(LINGUAS_OFICIAIS)
+        for lingua in LINGUAS_OFICIAIS:
+            assert parte_1[lingua] == ValorLingua(4.0, 2.2)
+
+    def test_lingua_desconhecida_continua_sendo_erro_na_forma_misturada(self):
+        """"Devolve o mesmo valor para as três" não é "devolve para qualquer coisa"."""
+        with pytest.raises(KeyError):
+            _etapa_misturada().parte_1["alemã"]
+
+    def test_parte_1_por_lingua_recusa_conjunto_de_linguas_incompleto(self):
+        from pas_intelligence.pas_constants import Parte1PorLingua, ValorLingua  # type: ignore
+
+        with pytest.raises(ValueError):
+            Parte1PorLingua({"inglesa": ValorLingua(3.0, 2.0)})
+
+
+class TestProcedencia:
+    """Quando o Edital de verdade sair, esses números serão substituídos e as previsões vão
+    mexer — a origem precisa estar registrada, não descoberta depois."""
+
+    def test_as_24_entradas_existentes_sao_de_edital(self):
+        from pas_intelligence.pas_constants import OFFICIAL_STATS, Origem  # type: ignore
+
+        assert all(s.origem is Origem.EDITAL for s in OFFICIAL_STATS.values())
+
+    def test_entrada_pode_declarar_se_derivada(self):
+        from pas_intelligence.pas_constants import Origem  # type: ignore
+
+        assert _etapa_misturada(origem=Origem.DERIVADA).origem is Origem.DERIVADA
+
+    def test_misturada_e_derivada_sao_eixos_independentes(self):
+        """O Edital isolado de Etapa é um Edital: dá Parte 1 misturada de origem `EDITAL`."""
+        from pas_intelligence.pas_constants import Origem  # type: ignore
+
+        stats = _etapa_misturada()
+
+        assert stats.parte_1.misturada is True
+        assert stats.origem is Origem.EDITAL
 
 
 if __name__ == "__main__":

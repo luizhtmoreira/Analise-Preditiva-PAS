@@ -84,6 +84,11 @@ def _stats_por_ano_etapa_lingua() -> dict[tuple[int, int, str], HistoricalStats]
 
     Só reformata o que já existe em `pas_constants`; o cálculo em si continua sendo
     `calculate_argument_etapa`, para não duplicar a fórmula do Argumento de Etapa.
+
+    Acomoda as duas formas de Parte 1 sem saber qual é qual: `Parte1PorLingua` e
+    `Parte1Misturada` são as duas `Mapping` das três línguas oficiais, e a misturada devolve
+    o mesmo par média/desvio para as três. É por isso que a Etapa cujo Edital não diz a língua
+    de ninguém entra no cache com três chaves, como as demais.
     """
     cache: dict[tuple[int, int, str], HistoricalStats] = {}
     for (ano, etapa), stats in OFFICIAL_STATS.items():

@@ -188,3 +188,44 @@ def test_stats_faltando_para_ano_lingua_leva_a_erro_claro():
     }
     with pytest.raises(ValueError, match="OFFICIAL_STATS não cobre"):
         build_training_dataset(_df([linha]))
+
+
+def test_stats_da_prova_devolve_a_misturada_para_as_tres_linguas(monkeypatch):
+    """O Edital isolado de Etapa não diz a língua de ninguém. Quando a entrada é misturada,
+    a mesma porta (`stats_da_prova`) responde o mesmo valor para as três línguas em vez de
+    recusar — recusar devolveria o Preditor ao estado de não atender a Turma viva."""
+    from pas_intelligence import training_dataset as td
+    from pas_intelligence.pas_constants import (
+        LINGUAS_OFICIAIS,
+        ExamStats,
+        Origem,
+        Parte1Misturada,
+        ValorLingua,
+    )
+
+    sintetico = {
+        (2024, 1): ExamStats(
+            m_p2=26.0, dp_p2=13.5, m_red=6.5, dp_red=2.0,
+            parte_1=Parte1Misturada(ValorLingua(4.2, 2.3)),
+            origem=Origem.DERIVADA,
+        )
+    }
+    monkeypatch.setattr(td, "OFFICIAL_STATS", sintetico)
+    monkeypatch.setattr(td, "_STATS_POR_ANO_ETAPA_LINGUA", td._stats_por_ano_etapa_lingua())
+
+    for lingua in LINGUAS_OFICIAIS:
+        stats = td.stats_da_prova(2024, 1, lingua)
+        assert stats.mean_p1 == pytest.approx(4.2)
+        assert stats.std_p1 == pytest.approx(2.3)
+        assert stats.mean_p2 == pytest.approx(26.0)
+
+
+def test_stats_da_prova_continua_por_lingua_quando_a_entrada_e_por_lingua():
+    from pas_intelligence.pas_constants import LINGUAS_OFICIAIS
+    from pas_intelligence.training_dataset import stats_da_prova
+
+    oficial = OFFICIAL_STATS[(2022, 1)]
+    for lingua in LINGUAS_OFICIAIS:
+        assert stats_da_prova(2022, 1, lingua).mean_p1 == pytest.approx(
+            oficial.parte_1[lingua].media
+        )
