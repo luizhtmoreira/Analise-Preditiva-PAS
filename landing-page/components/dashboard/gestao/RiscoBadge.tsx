@@ -1,10 +1,10 @@
 import type { RiscoStatus } from "@/lib/types";
 
-// Semáforo oficial — docs/identidade-visual.md §3
+// Semáforo oficial — docs/identidade-visual.md §3 (tokens --risk-* em globals.css)
 const CONFIG: Record<RiscoStatus, { bg: string; color: string; dot: string; label: string }> = {
-  green:  { bg: "#C8E6C9", color: "#1B5E20", dot: "#00843D", label: "Baixo Risco" },
-  yellow: { bg: "#FFF9C4", color: "#F57F17", dot: "#F57F17", label: "Oportunidade" },
-  red:    { bg: "#FFCDD2", color: "#B71C1C", dot: "#C62828", label: "Alto Risco" },
+  green:  { bg: "var(--risk-low-bg)",  color: "var(--risk-low-text)",  dot: "var(--vp-green)", label: "Baixo Risco" },
+  yellow: { bg: "var(--risk-mid-bg)",  color: "var(--risk-mid-text)",  dot: "var(--risk-mid-text)", label: "Oportunidade" },
+  red:    { bg: "var(--risk-high-bg)", color: "var(--risk-high-text)", dot: "#C62828", label: "Alto Risco" },
 };
 
 export function RiscoBadge({ status }: { status: RiscoStatus }) {

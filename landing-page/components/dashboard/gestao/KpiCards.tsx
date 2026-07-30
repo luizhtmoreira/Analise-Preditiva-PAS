@@ -7,11 +7,11 @@ interface KpiCardProps {
   valueColor?: string;
 }
 
-function KpiCard({ label, value, accent = "#00AEEF", valueColor = "#1D1D1F" }: KpiCardProps) {
+function KpiCard({ label, value, accent = "#00AEEF", valueColor = "#002147" }: KpiCardProps) {
   return (
-    <div className="rounded-xl bg-white border border-[#E6E6E8] p-4 flex flex-col gap-1.5 overflow-hidden relative">
+    <div className="vp-card p-4 flex flex-col gap-1.5 overflow-hidden relative">
       <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: accent }} />
-      <p className="font-mono text-[0.62rem] tracking-[0.16em] uppercase text-[#6E6E73]">{label}</p>
+      <p className="vp-label">{label}</p>
       <p className="font-mono text-3xl font-bold leading-none" style={{ color: valueColor }}>
         {value}
       </p>

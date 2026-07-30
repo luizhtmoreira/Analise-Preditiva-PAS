@@ -61,7 +61,7 @@ export function EscolaCombobox({ value, onChange }: { value: string; onChange: (
   }, []);
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} className="relative">
       <input
         type="text"
         value={value}
@@ -70,32 +70,15 @@ export function EscolaCombobox({ value, onChange }: { value: string; onChange: (
         autoComplete="off"
         onFocus={() => setOpen(true)}
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
-        style={{
-          width: "100%", padding: "11px 14px", borderRadius: 10,
-          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
-          color: "#fff", fontSize: 14, outline: "none",
-          fontFamily: "var(--font-body), sans-serif",
-          transition: "border-color .2s",
-        }}
-        className="escola-input"
+        className="vp-input"
       />
       {open && filtered.length > 0 && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 50,
-          background: "#00305F", border: "1px solid rgba(0,174,239,0.3)",
-          borderRadius: 12, boxShadow: "0 16px 48px rgba(0,10,25,0.6)",
-          maxHeight: 220, overflowY: "auto",
-        }}>
+        <div className="vp-dropdown absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-[220px] overflow-y-auto">
           {filtered.map((escola) => (
             <div
               key={escola}
               onMouseDown={() => { onChange(escola); setOpen(false); }}
-              style={{
-                padding: "9px 14px", fontSize: 13, color: "rgba(255,255,255,0.75)",
-                cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.06)",
-                transition: "all .15s",
-              }}
-              className="escola-item"
+              className="vp-dropdown-item"
             >
               {escola}
             </div>
@@ -151,17 +134,11 @@ export function AlunoSignupForm() {
 
   if (done) {
     return (
-      <div style={{
-        padding: "28px 24px", borderRadius: 16,
-        background: "rgba(0,194,106,0.08)", border: "1px solid rgba(0,194,106,0.3)",
-        textAlign: "center",
-      }}>
-        <p style={{ fontSize: 28, marginBottom: 12 }}>✓</p>
-        <p style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
-          Conta criada!
-        </p>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
-          Enviamos um link de confirmação para <strong style={{ color: "#fff" }}>{email}</strong>.
+      <div className="p-6 rounded-2xl bg-[#00843D]/8 border border-[#00843D]/25 text-center">
+        <p className="text-2xl mb-2">✓</p>
+        <p className="text-base font-bold text-[#002147] mb-2">Conta criada!</p>
+        <p className="text-[0.8rem] text-[#4A5568] leading-relaxed">
+          Enviamos um link de confirmação para <strong className="text-[#002147]">{email}</strong>.
           Abra o email e clique no link para ativar sua conta.
         </p>
       </div>
@@ -169,87 +146,48 @@ export function AlunoSignupForm() {
   }
 
   return (
-    <>
-      <style>{`
-        .escola-input:focus { border-color: rgba(0,174,239,0.6) !important; }
-        .escola-item:hover { background: rgba(0,174,239,0.15); color: #fff; }
-        .aluno-input:focus { border-color: rgba(0,174,239,0.6) !important; }
-        .signup-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 32px rgba(0,174,239,0.45) !important; background: #33C1F3 !important; }
-        .signup-btn { transition: transform .2s, box-shadow .2s, background .2s; }
-      `}</style>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div>
+        <label className="vp-label block mb-1.5">Email</label>
+        <input
+          type="email"
+          value={email}
+          required
+          autoComplete="email"
+          placeholder="seu@email.com"
+          onChange={(e) => setEmail(e.target.value)}
+          className="vp-input"
+        />
+      </div>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-geist-mono), monospace" }}>
-            Email
-          </label>
-          <input
-            type="email" value={email} required autoComplete="email"
-            placeholder="seu@email.com"
-            onChange={(e) => setEmail(e.target.value)}
-            className="aluno-input"
-            style={{
-              width: "100%", padding: "11px 14px", borderRadius: 10,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
-              color: "#fff", fontSize: 14, outline: "none",
-              fontFamily: "var(--font-body), sans-serif", transition: "border-color .2s",
-            }}
-          />
-        </div>
+      <div>
+        <label className="vp-label block mb-1.5">Senha</label>
+        <input
+          type="password"
+          value={password}
+          required
+          autoComplete="new-password"
+          placeholder="mínimo 8 caracteres"
+          minLength={8}
+          onChange={(e) => setPassword(e.target.value)}
+          className="vp-input"
+        />
+      </div>
 
-        <div>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-geist-mono), monospace" }}>
-            Senha
-          </label>
-          <input
-            type="password" value={password} required autoComplete="new-password"
-            placeholder="mínimo 8 caracteres"
-            minLength={8}
-            onChange={(e) => setPassword(e.target.value)}
-            className="aluno-input"
-            style={{
-              width: "100%", padding: "11px 14px", borderRadius: 10,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
-              color: "#fff", fontSize: 14, outline: "none",
-              fontFamily: "var(--font-body), sans-serif", transition: "border-color .2s",
-            }}
-          />
-        </div>
+      <div>
+        <label className="vp-label block mb-1.5">
+          Escola <span className="normal-case tracking-normal font-normal text-[#718096]">(obrigatório)</span>
+        </label>
+        <EscolaCombobox value={escola} onChange={setEscola} />
+      </div>
 
-        <div>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-geist-mono), monospace" }}>
-            Escola <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>(obrigatório)</span>
-          </label>
-          <EscolaCombobox value={escola} onChange={setEscola} />
-        </div>
+      {error && (
+        <div className="text-sm rounded-lg px-3 py-2 bg-[#FFCDD2] text-[#B71C1C]">{error}</div>
+      )}
 
-        {error && (
-          <div style={{
-            padding: "10px 14px", borderRadius: 10,
-            background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.3)",
-            color: "#FF6B6B", fontSize: 13,
-          }}>
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="signup-btn"
-          style={{
-            width: "100%", padding: "14px", borderRadius: 12, border: "none",
-            background: "#00AEEF", color: "#002147", fontSize: 14, fontWeight: 700,
-            cursor: loading ? "not-allowed" : "pointer",
-            fontFamily: "var(--font-body), sans-serif",
-            opacity: loading ? 0.6 : 1,
-            boxShadow: "0 8px 28px rgba(0,174,239,0.35)",
-            marginTop: 4,
-          }}
-        >
-          {loading ? "Criando conta…" : "Criar conta gratuita →"}
-        </button>
-      </form>
-    </>
+      <button type="submit" disabled={loading} className="vp-btn vp-btn-cyan py-3 mt-1">
+        {loading ? "Criando conta…" : "Criar conta gratuita →"}
+      </button>
+    </form>
   );
 }

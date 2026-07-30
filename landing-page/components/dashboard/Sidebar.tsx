@@ -51,9 +51,9 @@ function NavLink({ href, label, icon: Icon, active }: {
       }`}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-[#00AEEF]" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-[var(--vp-cyan)]" />
       )}
-      <Icon size={16} strokeWidth={2} className={active ? "text-[#00AEEF]" : ""} />
+      <Icon size={16} strokeWidth={2} className={active ? "text-[var(--vp-cyan)]" : ""} />
       <span>{label}</span>
     </Link>
   );
@@ -120,7 +120,7 @@ export function DashboardSidebar({ tenant, userEmail }: { tenant: string; userEm
       {/* ── Top bar (mobile) ── */}
       <div
         className="md:hidden flex-shrink-0 sticky top-0 z-50 flex items-center justify-between px-4 h-14 border-b border-white/10 print:hidden"
-        style={{ background: "#002147" }}
+        style={{ background: "var(--vp-ink)" }}
       >
         <BrandMark sublabel={sublabel} />
         <button
@@ -142,7 +142,7 @@ export function DashboardSidebar({ tenant, userEmail }: { tenant: string; userEm
           />
           <nav
             className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] flex flex-col gap-0.5 py-5 px-4 overflow-y-auto shadow-2xl"
-            style={{ background: "linear-gradient(180deg, #002147 0%, #003366 100%)" }}
+            style={{ background: "linear-gradient(180deg, var(--vp-ink) 0%, #003366 100%)" }}
           >
             <NavSections pathname={pathname} />
             <UserFooter userEmail={userEmail} onLogout={handleLogout} />

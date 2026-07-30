@@ -33,85 +33,45 @@ export function AlunoLoginForm() {
   }
 
   return (
-    <>
-      <style>{`
-        .aluno-login-input:focus { border-color: rgba(0,174,239,0.6) !important; }
-        .aluno-login-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 32px rgba(0,174,239,0.45) !important; background: #33C1F3 !important; }
-        .aluno-login-btn { transition: transform .2s, box-shadow .2s, background .2s; }
-      `}</style>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div>
+        <label className="vp-label block mb-1.5">Email</label>
+        <input
+          type="email"
+          value={email}
+          required
+          autoComplete="email"
+          placeholder="seu@email.com"
+          onChange={(e) => setEmail(e.target.value)}
+          className="vp-input"
+        />
+      </div>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-geist-mono), monospace" }}>
-            Email
-          </label>
-          <input
-            type="email" value={email} required autoComplete="email"
-            placeholder="seu@email.com"
-            onChange={(e) => setEmail(e.target.value)}
-            className="aluno-login-input"
-            style={{
-              width: "100%", padding: "11px 14px", borderRadius: 10,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
-              color: "#fff", fontSize: 14, outline: "none",
-              fontFamily: "var(--font-body), sans-serif", transition: "border-color .2s",
-            }}
-          />
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="vp-label">Senha</label>
+          <Link href="/auth/esqueci-senha" className="text-xs text-[#00843D] font-semibold hover:underline">
+            Esqueci minha senha
+          </Link>
         </div>
+        <input
+          type="password"
+          value={password}
+          required
+          autoComplete="current-password"
+          placeholder="••••••••"
+          onChange={(e) => setPassword(e.target.value)}
+          className="vp-input"
+        />
+      </div>
 
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", fontFamily: "var(--font-geist-mono), monospace" }}>
-              Senha
-            </label>
-            <Link
-              href="/auth/esqueci-senha"
-              style={{ fontSize: 11, color: "#7FD8F7", textDecoration: "none", fontWeight: 500 }}
-            >
-              Esqueci minha senha
-            </Link>
-          </div>
-          <input
-            type="password" value={password} required autoComplete="current-password"
-            placeholder="••••••••"
-            onChange={(e) => setPassword(e.target.value)}
-            className="aluno-login-input"
-            style={{
-              width: "100%", padding: "11px 14px", borderRadius: 10,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
-              color: "#fff", fontSize: 14, outline: "none",
-              fontFamily: "var(--font-body), sans-serif", transition: "border-color .2s",
-            }}
-          />
-        </div>
+      {error && (
+        <div className="text-sm rounded-lg px-3 py-2 bg-[#FFCDD2] text-[#B71C1C]">{error}</div>
+      )}
 
-        {error && (
-          <div style={{
-            padding: "10px 14px", borderRadius: 10,
-            background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.3)",
-            color: "#FF6B6B", fontSize: 13,
-          }}>
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="aluno-login-btn"
-          style={{
-            width: "100%", padding: "14px", borderRadius: 12, border: "none",
-            background: "#00AEEF", color: "#002147", fontSize: 14, fontWeight: 700,
-            cursor: loading ? "not-allowed" : "pointer",
-            fontFamily: "var(--font-body), sans-serif",
-            opacity: loading ? 0.6 : 1,
-            boxShadow: "0 8px 28px rgba(0,174,239,0.35)",
-            marginTop: 4,
-          }}
-        >
-          {loading ? "Entrando…" : "Entrar →"}
-        </button>
-      </form>
-    </>
+      <button type="submit" disabled={loading} className="vp-btn vp-btn-cyan py-3 mt-1">
+        {loading ? "Entrando…" : "Entrar →"}
+      </button>
+    </form>
   );
 }

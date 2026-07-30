@@ -9,69 +9,21 @@ export const metadata = {
 
 export default function RedefinirSenhaPage() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(168deg, #002147 0%, #003366 60%, #003A70 100%)",
-        display: "flex", flexDirection: "column", alignItems: "center",
-        justifyContent: "center", padding: "32px 20px",
-      }}
-    >
-      {/* Grid decorativo */}
-      <div
-        style={{
-          position: "fixed", inset: 0, pointerEvents: "none",
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-        }}
-      />
-
-      <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 420 }}>
-        {/* Header */}
-        <div style={{ marginBottom: 32, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <BrandMark sublabel="Nova senha" />
-          <Link
-            href="/auth/entrar"
-            style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}
-          >
+    <div className="vp-wash relative min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center px-5 py-10 overflow-hidden">
+      <div className="relative z-10 w-full max-w-[420px]">
+        <div className="mb-8 flex items-center justify-between">
+          <BrandMark light={false} sublabel="Nova senha" />
+          <Link href="/auth/entrar" className="text-xs text-[#718096] hover:text-[#4A5568] transition-colors">
             ← Voltar
           </Link>
         </div>
 
-        {/* Card */}
-        <div
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 20, padding: "32px 28px",
-            boxShadow: "0 24px 80px rgba(0,10,25,0.4)",
-          }}
-        >
-          <div style={{
-            height: 2, marginBottom: 28, borderRadius: 99,
-            background: "linear-gradient(to right, transparent, #00AEEF 30%, transparent)",
-          }} />
-
-          <p
-            style={{
-              fontFamily: "var(--font-geist-mono), monospace",
-              fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase",
-              color: "#7FD8F7", marginBottom: 8,
-            }}
-          >
-            Segurança da Conta
-          </p>
-          <h1
-            style={{
-              fontFamily: "var(--font-display), sans-serif",
-              fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em",
-              lineHeight: 1.15, color: "#fff", marginBottom: 6,
-            }}
-          >
+        <div className="vp-card p-8">
+          <span className="vp-eyebrow vp-eyebrow-cyan mb-2">Segurança da Conta</span>
+          <h1 className="font-heading text-[1.5rem] font-extrabold tracking-tight leading-tight text-[#002147] mt-3 mb-1.5">
             Crie sua nova senha
           </h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 28 }}>
+          <p className="text-[0.8rem] text-[#4A5568] leading-relaxed mb-7">
             Escolha uma senha forte de no mínimo 8 caracteres para proteger seu acesso.
           </p>
 
