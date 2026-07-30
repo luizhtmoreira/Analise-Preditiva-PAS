@@ -75,9 +75,9 @@ export function PublicHeader() {
   const userEmail = user?.email || "";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#001a35]/85 backdrop-blur-md">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <BrandMark />
+    <header className="sticky top-0 z-50 w-full border-b border-[#E2E8F0] bg-white/95 backdrop-blur-md transition-all duration-300">
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <BrandMark light={false} />
 
         <nav className="flex items-center gap-1.5 sm:gap-3">
           {links.map((link) => {
@@ -86,10 +86,10 @@ export function PublicHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`text-[0.78rem] sm:text-sm px-2.5 sm:px-3.5 py-2 rounded-lg transition-all ${
+                className={`text-[0.78rem] sm:text-sm px-2.5 sm:px-3.5 py-2 rounded-lg transition-colors ${
                   active
-                    ? "text-[#00AEEF] bg-[#00AEEF]/10 font-semibold"
-                    : "text-white/70 hover:text-white hover:bg-white/5 font-medium"
+                    ? "text-[#00843D] bg-[#00843D]/8 font-bold"
+                    : "text-[#002147] hover:text-[#00843D] font-semibold"
                 }`}
               >
                 {link.label}
@@ -101,40 +101,40 @@ export function PublicHeader() {
             <div className="relative ml-1" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/25 transition-all text-left"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-black/10 bg-[#F8F9FA] hover:bg-white hover:border-[#00843D]/30 transition-all text-left shadow-sm active:scale-95"
                 aria-expanded={menuOpen}
               >
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#00AEEF] to-[#0055A5] flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#00AEEF] to-[#002147] flex items-center justify-center text-white font-bold text-xs shadow-sm">
                   {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
                 </div>
                 <div className="hidden sm:flex flex-col max-w-[130px]">
-                  <span className="text-xs font-semibold text-white truncate leading-tight">
+                  <span className="text-xs font-bold text-[#002147] truncate leading-tight">
                     {userEmail.split("@")[0]}
                   </span>
-                  <span className="text-[10px] text-[#7FD8F7] font-medium leading-tight truncate">
+                  <span className="text-[10px] text-[#00843D] font-semibold leading-tight truncate">
                     {isCoordinator ? "Coordenação" : (userEscola || "Aluno Cadastrado")}
                   </span>
                 </div>
                 <ChevronDown
                   size={14}
-                  className={`text-white/60 transition-transform duration-200 ${
-                    menuOpen ? "rotate-180 text-white" : ""
+                  className={`text-[#4A5568] transition-transform duration-200 ${
+                    menuOpen ? "rotate-180 text-[#002147]" : ""
                   }`}
                 />
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-[#002147] border border-white/15 shadow-2xl p-2 z-50 text-white animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-white border border-black/5 shadow-[0_15px_40px_rgba(0,33,71,0.12)] p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   {/* Account Summary Header */}
-                  <div className="p-3 mb-1 rounded-xl bg-white/5 border border-white/10">
-                    <p className="text-[11px] font-mono uppercase tracking-wider text-[#7FD8F7] font-medium flex items-center gap-1.5">
+                  <div className="p-3 mb-1 rounded-xl bg-[#F8F9FA] border border-black/5">
+                    <p className="text-[11px] font-mono uppercase tracking-wider text-[#00843D] font-bold flex items-center gap-1.5">
                       <Sparkles size={12} />
                       {isCoordinator ? "Coordenador Pedagógico" : "Aluno Cadastrado"}
                     </p>
-                    <p className="text-xs font-bold text-white truncate mt-1">{userEmail}</p>
+                    <p className="text-xs font-bold text-[#002147] truncate mt-1">{userEmail}</p>
                     {userEscola && (
-                      <p className="text-[11px] text-white/60 truncate flex items-center gap-1 mt-0.5">
-                        <Building2 size={11} className="text-white/40 flex-shrink-0" />
+                      <p className="text-[11px] text-[#4A5568] truncate flex items-center gap-1 mt-0.5">
+                        <Building2 size={11} className="text-[#718096] flex-shrink-0" />
                         <span className="truncate">{userEscola}</span>
                       </p>
                     )}
@@ -146,14 +146,14 @@ export function PublicHeader() {
                       <>
                         <Link
                           href="/perfil"
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors font-medium"
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#4A5568] hover:text-[#002147] hover:bg-[#F8F9FA] transition-colors font-semibold"
                         >
                           <User size={14} className="text-[#00AEEF]" />
                           <span>Meu Perfil</span>
                         </Link>
                         <Link
                           href="/predict"
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors font-medium"
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#4A5568] hover:text-[#002147] hover:bg-[#F8F9FA] transition-colors font-semibold"
                         >
                           <Target size={14} className="text-[#00AEEF]" />
                           <span>Preditor PAS 3</span>
@@ -162,7 +162,7 @@ export function PublicHeader() {
                     ) : (
                       <Link
                         href="/gestao"
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors font-medium"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#4A5568] hover:text-[#002147] hover:bg-[#F8F9FA] transition-colors font-semibold"
                       >
                         <LayoutGrid size={14} className="text-[#00AEEF]" />
                         <span>Painel da Escola</span>
@@ -170,12 +170,12 @@ export function PublicHeader() {
                     )}
                   </div>
 
-                  <div className="my-1 border-t border-white/10" />
+                  <div className="my-1 border-t border-black/5" />
 
                   {/* Logout Action */}
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors font-medium text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#B71C1C] hover:bg-[#FFCDD2]/50 transition-colors font-semibold text-left"
                   >
                     <LogOut size={14} />
                     <span>Sair da Conta</span>
@@ -186,7 +186,7 @@ export function PublicHeader() {
           ) : (
             <Link
               href="/auth/entrar"
-              className="text-[0.78rem] sm:text-sm px-4 py-2 rounded-lg font-semibold bg-[#00AEEF] text-[#002147] hover:bg-[#33C1F3] transition-all whitespace-nowrap shadow-md shadow-[#00AEEF]/20 ml-1"
+              className="text-[0.78rem] sm:text-sm px-4 py-2 rounded-xl font-semibold bg-[#002147] text-white hover:bg-[#003366] transition-all whitespace-nowrap shadow-sm active:scale-95 ml-1"
             >
               Entrar
             </Link>

@@ -18,19 +18,21 @@ const COTAS = [
   "L10 - Escola Pública",
 ];
 
+// Mesma paleta clara do Preditor e da landing — Azul UnB como tinta, não fundo.
 const C = {
-  bg:       "#002147",
-  surface:  "rgba(255,255,255,0.05)",
-  border:   "rgba(255,255,255,0.13)",
-  borderHi: "rgba(0,174,239,0.5)",
-  text:     "#FFFFFF",
-  dim:      "rgba(255,255,255,0.55)",
-  faint:    "rgba(255,255,255,0.3)",
+  page:     "#F8F9FA",
+  surface:  "#FFFFFF",
+  border:   "rgba(0,0,0,0.05)",
+  hairline: "#E2E8F0",
+  text:     "#002147",
+  dim:      "#4A5568",
+  faint:    "#718096",
+  label:    "#00843D",
   cyan:     "#00AEEF",
   cyanSoft: "#7FD8F7",
-  green:    "#00C26A",
-  red:      "#FF6B6B",
-  amber:    "#FFC25E",
+  green:    "#00843D",
+  red:      "#B71C1C",
+  amber:    "#F57F17",
 } as const;
 
 /* ─── global styles injected once ──────────────────────────────── */
@@ -49,33 +51,31 @@ const GLOBAL_STYLES = `
   .calc-result-1 { animation-delay: 0.05s; }
   .calc-result-2 { animation-delay: 0.15s; }
 
-  .calc-stepper { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 12px; transition: border-color .2s; }
-  .calc-stepper:focus-within { border-color: rgba(0,174,239,0.6); }
-  .calc-stepper:focus-within .calc-stepper-num { color: #00AEEF !important; }
+  .calc-stepper { background: #F8F9FA; border: 1px solid rgba(0,0,0,0.10); border-radius: 12px; transition: border-color .2s, box-shadow .2s; }
+  .calc-stepper:focus-within { border-color: #00843D; box-shadow: 0 0 0 3px rgba(0,132,61,0.10); }
+  .calc-stepper:focus-within .calc-stepper-num { color: #00843D !important; }
 
-  .calc-btn-adj { background: transparent; border: none; cursor: pointer; padding: 0 18px; color: rgba(255,255,255,0.35); font-size: 22px; font-weight: 300; transition: color .15s; line-height: 1; }
-  .calc-btn-adj:hover { color: #00AEEF; }
+  .calc-btn-adj { background: transparent; border: none; cursor: pointer; padding: 0 18px; color: #718096; font-size: 22px; font-weight: 300; transition: color .15s; line-height: 1; }
+  .calc-btn-adj:hover { color: #00843D; }
 
   .calc-cta { transition: transform .2s, box-shadow .3s, background .2s, opacity .2s; }
-  .calc-cta:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,174,239,0.45) !important; background: #33C1F3 !important; }
+  .calc-cta:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,174,239,0.40) !important; background: #33C1F3 !important; }
+  .calc-cta:active:not(:disabled) { transform: scale(0.98); }
 
-  .calc-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 16px; }
+  .calc-card { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.05); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
 
-  .calc-select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; color: #fff; padding: 10px 14px; font-size: 13px; font-family: var(--font-body), sans-serif; width: 100%; outline: none; transition: border-color .2s; appearance: none; cursor: pointer; }
-  .calc-select:focus { border-color: rgba(0,174,239,0.6); }
+  .calc-select { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.15); border-radius: 12px; color: #002147; padding: 11px 14px; font-size: 13px; font-weight: 500; font-family: var(--font-body), sans-serif; width: 100%; outline: none; transition: border-color .2s, box-shadow .2s; appearance: none; cursor: pointer; }
+  .calc-select:focus { border-color: #00843D; box-shadow: 0 0 0 3px rgba(0,132,61,0.10); }
 
-  .calc-combo-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; color: #fff; padding: 10px 14px; font-size: 13px; font-family: var(--font-body), sans-serif; width: 100%; outline: none; transition: border-color .2s; }
-  .calc-combo-input:focus { border-color: rgba(0,174,239,0.6); }
-  .calc-combo-input::placeholder { color: rgba(255,255,255,0.3); }
+  .calc-combo-input { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.15); border-radius: 12px; color: #002147; padding: 11px 14px; font-size: 13px; font-weight: 500; font-family: var(--font-body), sans-serif; width: 100%; outline: none; transition: border-color .2s, box-shadow .2s; }
+  .calc-combo-input:focus { border-color: #00843D; box-shadow: 0 0 0 3px rgba(0,132,61,0.10); }
+  .calc-combo-input::placeholder { color: #718096; }
 
-  .calc-dropdown { background: #00305F; border: 1px solid rgba(0,174,239,0.3); border-radius: 12px; box-shadow: 0 16px 48px rgba(0,10,25,0.6); overflow: hidden; }
-  .calc-dropdown-item { padding: 9px 14px; font-size: 12.5px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all .15s; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .calc-dropdown-item:hover { background: rgba(0,174,239,0.15); color: #fff; }
-
-  .calc-grid-bg {
-    background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
-    background-size: 56px 56px;
-  }
+  /* Dropdown navy — o contraste que a landing usa nos seletores */
+  .calc-dropdown { background: #001730; border: 1px solid rgba(0,132,61,0.55); border-radius: 12px; box-shadow: 0 15px 30px rgba(0,0,0,0.35); overflow: hidden; }
+  .calc-dropdown-item { padding: 10px 16px; font-size: 12.5px; color: rgba(255,255,255,0.85); cursor: pointer; transition: all .15s; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .calc-dropdown-item:last-child { border-bottom: none; }
+  .calc-dropdown-item:hover { background: #00843D; color: #fff; font-weight: 700; }
 
   .calc-grid-2 { display: grid; grid-template-columns: 1fr; gap: 14px; }
   .calc-grid-cfg { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -85,16 +85,16 @@ const GLOBAL_STYLES = `
   }
 
   /* ── Simulador de Itens ── */
-  .sim-gate { border-radius: 18px; border: 1.5px solid rgba(0,174,239,0.35); background: rgba(0,174,239,0.06); padding: 24px 22px; margin-top: 4px; }
+  .sim-gate { border-radius: 16px; border: 1px solid rgba(0,0,0,0.05); border-top: 4px solid #00AEEF; background: #FFFFFF; box-shadow: 0 1px 2px rgba(0,0,0,0.04); padding: 24px 22px; margin-top: 4px; }
   .sim-gate-blur { filter: blur(3px); pointer-events: none; user-select: none; opacity: 0.5; }
-  .sim-slider { width: 100%; accent-color: #00AEEF; cursor: pointer; }
+  .sim-slider { width: 100%; accent-color: #00843D; cursor: pointer; }
   .sim-slider:disabled { opacity: 0.4; cursor: default; }
   @keyframes simFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   .sim-in { animation: simFadeIn 0.4s cubic-bezier(.16,1,.3,1) both; }
-  .sim-progress-track { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 99px; overflow: hidden; }
+  .sim-progress-track { width: 100%; height: 8px; background: #E2E8F0; border-radius: 99px; overflow: hidden; }
   .sim-progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s cubic-bezier(.16,1,.3,1); }
-  .sim-unlock-btn { width: 100%; padding: 14px 20px; border-radius: 12px; background: #00AEEF; border: none; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; transition: transform .2s, box-shadow .3s; }
-  .sim-unlock-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(0,174,239,0.45); }
+  .sim-unlock-btn { width: 100%; padding: 14px 20px; border-radius: 12px; background: #00AEEF; border: none; color: #002147; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 30px rgba(0,174,239,0.3); transition: transform .2s, box-shadow .3s, background .2s; }
+  .sim-unlock-btn:hover { transform: translateY(-2px); background: #33C1F3; box-shadow: 0 12px 36px rgba(0,174,239,0.40); }
 `;
 
 /* ─── subcomponents ─────────────────────────────────────────────── */
@@ -115,7 +115,7 @@ function StepperInput({ label, value, onChange, step = 0.5, min = -100, max = 10
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim }}>
+      <span className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim }}>
         {label}
       </span>
       <div className="calc-stepper" style={{ display: "flex", alignItems: "stretch", height: 48 }}>
@@ -125,7 +125,7 @@ function StepperInput({ label, value, onChange, step = 0.5, min = -100, max = 10
           onChange={(e) => onChange(e.target.value)}
           className="calc-stepper-num mono"
           style={{
-            flex: 1, textAlign: "center", fontSize: 17, fontWeight: 700, background: "transparent",
+            flex: 1, textAlign: "center", fontSize: 17, fontWeight: 800, background: "transparent",
             border: "none", outline: "none", color: C.text, width: 0,
           }}
         />
@@ -224,7 +224,7 @@ export function CalculadoraPage() {
       if (user) {
         setIsLoggedIn(true);
         setUserId(user.id);
-        
+
         supabase
           .from("alunos_perfis")
           .select("*")
@@ -352,8 +352,8 @@ export function CalculadoraPage() {
         color: C.green,
         title: "Meta Alcançável!",
         desc: `Perfil estatisticamente consolidado. Historicamente, ${ph}% dos candidatos com este perfil de nota obtiveram a vaga.`,
-        bg: "rgba(0,194,106,0.12)",
-        border: "rgba(0,194,106,0.3)",
+        bg: "#C8E6C9",
+        border: "rgba(0,132,61,0.25)",
         icon: "🟢"
       };
     } else if (ph >= 5.0) {
@@ -361,8 +361,8 @@ export function CalculadoraPage() {
         color: C.amber,
         title: "Meta Desafiadora",
         desc: `Zona de concorrência acirrada. A taxa de aprovação histórica para este perfil de nota é de ${ph}%. Requer esforço acima da média.`,
-        bg: "rgba(255,194,94,0.12)",
-        border: "rgba(255,194,94,0.3)",
+        bg: "#FFF9C4",
+        border: "rgba(245,127,23,0.25)",
         icon: "🟡"
       };
     } else {
@@ -370,8 +370,8 @@ export function CalculadoraPage() {
         color: C.red,
         title: "Meta de Alto Risco",
         desc: `Cenário estatisticamente atípico. Apenas ${ph}% da base histórica com estas notas atingiu este resultado. Requer desempenho significativamente acima da média.`,
-        bg: "rgba(255,107,107,0.12)",
-        border: "rgba(255,107,107,0.3)",
+        bg: "#FFCDD2",
+        border: "rgba(183,28,28,0.25)",
         icon: "🔴"
       };
     }
@@ -381,39 +381,37 @@ export function CalculadoraPage() {
     <>
       <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLES }} />
       <div
-        className="calc-root"
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(168deg, #002147 0%, #003366 60%, #003A70 100%)",
-          color: C.text,
-        }}
+        className="calc-root antialiased selection:bg-[#00843D] selection:text-white"
+        style={{ minHeight: "100vh", background: C.page, color: C.text }}
       >
         <PublicHeader />
 
-        {/* Content */}
-        <div className="calc-grid-bg">
-          <div style={{ maxWidth: 680, margin: "0 auto", padding: "48px 20px 96px" }}>
-            <p className="mono" style={{ fontSize: 12, letterSpacing: "0.22em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 14 }}>
-              ESTRATÉGIA DE NORMALIZAÇÃO · PAS 3
-            </p>
-            <h1 className="heading" style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 10, color: "#fff" }}>
-              Calculadora de <span style={{ color: C.cyan }}>Estratégia</span>
+        {/* Cabeçalho, sobre a lavagem radial branca do topo */}
+        <div className="vp-wash relative bg-white border-b border-[#E2E8F0]">
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "56px 24px 48px" }}>
+            <span className="vp-eyebrow">Estratégia de normalização · PAS 3</span>
+            <h1 className="heading" style={{ fontSize: "clamp(32px, 7vw, 42px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.08, margin: "24px 0 12px", color: C.text }}>
+              Calculadora de <span style={{ color: C.green }}>Estratégia</span>
             </h1>
-            <p style={{ fontSize: 14.5, color: C.dim, marginBottom: 36, maxWidth: 480, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 17, color: C.dim, maxWidth: 500, lineHeight: 1.6 }}>
               Defina seu curso objetivo e analise qual a nota de conhecimentos <span style={{ whiteSpace: "nowrap" }}>(Parte 2)</span> você precisa atingir na prova do PAS 3.
             </p>
+          </div>
+        </div>
 
+        {/* Content */}
+        <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px 96px" }}>
             <form onSubmit={handleRouteCalculate} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              
+
               {/* Configuração do Candidato */}
               <div className="calc-card" style={{ padding: "22px 20px" }}>
-                <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 16 }}>
+                <p className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: C.label, marginBottom: 16 }}>
                   CONFIGURAÇÃO DO CANDIDATO
                 </p>
 
                 <div className="calc-grid-cfg" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Semestre de Entrada</p>
+                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Semestre de Entrada</p>
                     <select value={semestre} onChange={(e) => setSemestre(e.target.value)} className="calc-select">
                       <option value="1°">1º Semestre (Última chamada)</option>
                       <option value="2°">2º Semestre (1ª chamada)</option>
@@ -421,14 +419,14 @@ export function CalculadoraPage() {
                   </div>
 
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Triênio</p>
+                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Triênio</p>
                     <select value={trienio} onChange={(e) => setTrienio(e.target.value)} className="calc-select">
                       {TRIENIOS.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
 
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Sistema de Concorrência</p>
+                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Sistema de Concorrência</p>
                     <select value={cota} onChange={(e) => setCota(e.target.value)} className="calc-select">
                       {COTAS.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
@@ -443,7 +441,7 @@ export function CalculadoraPage() {
                   { title: "Notas do PAS 2", state: pas2, set: setPas2 },
                 ].map(({ title, state, set }) => (
                   <div key={title} className="calc-card" style={{ padding: "22px 20px" }}>
-                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 16 }}>
+                    <p className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: C.label, marginBottom: 16 }}>
                       {title}
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -460,27 +458,27 @@ export function CalculadoraPage() {
 
               {/* Curso Objetivo */}
               <div className="calc-card" style={{ padding: "22px 20px" }}>
-                <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 16 }}>
+                <p className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: C.label, marginBottom: 16 }}>
                   CURSO OBJETIVO
                 </p>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Curso Objetivo</p>
+                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Curso Objetivo</p>
                     <CourseCombobox value={cursoAlvo} onChange={setCursoAlvo} courses={courses} />
                   </div>
 
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Argumento de Corte Alvo</p>
+                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Argumento de Corte Alvo</p>
                     <input
                       type="number"
                       step="any"
                       value={notaAlvo}
                       readOnly
                       className="calc-combo-input mono"
-                      style={{ fontSize: 14, opacity: 0.65, cursor: "not-allowed" }}
+                      style={{ fontSize: 14, fontWeight: 800, background: C.page, color: C.dim, cursor: "not-allowed" }}
                     />
-                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
+                    <p style={{ fontSize: 11, color: C.faint, marginTop: 4 }}>
                       Nota padrão atualizada automaticamente ao selecionar o curso.
                     </p>
                   </div>
@@ -492,21 +490,21 @@ export function CalculadoraPage() {
                 <button
                   type="button"
                   onClick={() => setShowOverrides(!showOverrides)}
-                  style={{ width: "100%", background: "none", border: "none", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", padding: 0, cursor: "pointer", outline: "none" }}
+                  style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", padding: 0, cursor: "pointer", outline: "none" }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 600, color: C.cyanSoft }}>⚙️ Customizar Projeções (Parte 1 e Redação)</span>
-                  <span style={{ fontSize: 12, color: C.dim }}>{showOverrides ? "Recolher ▲" : "Expandir ▼"}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>⚙️ Customizar Projeções (Parte 1 e Redação)</span>
+                  <span style={{ fontSize: 12, color: C.label, fontWeight: 700 }}>{showOverrides ? "Recolher ▲" : "Expandir ▼"}</span>
                 </button>
 
                 {showOverrides && (
-                  <div style={{ marginTop: 18, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 18, display: "flex", flexDirection: "column", gap: 16 }}>
-                    <p style={{ fontSize: 12, color: C.dim, lineHeight: 1.5 }}>
+                  <div style={{ marginTop: 18, borderTop: `1px solid ${C.hairline}`, paddingTop: 18, display: "flex", flexDirection: "column", gap: 16 }}>
+                    <p style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>
                       Ajuste as expectativas de nota para a Parte 1 (Língua Estrangeira) e para a Redação no PAS 3 para refazer os cálculos.
                     </p>
 
                     <div className="calc-grid-cfg">
                       <div>
-                        <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                        <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
                           Expectativa P1 PAS 3 {iaEstimates ? `(Estimativa IA: ${iaEstimates.p1.toFixed(2)})` : ""}
                         </p>
                         <input
@@ -516,17 +514,17 @@ export function CalculadoraPage() {
                           step="0.5"
                           value={p1Override ?? (iaEstimates?.p1 ?? 0)}
                           onChange={(e) => setP1Override(parseFloat(e.target.value))}
-                          style={{ width: "100%", accentColor: C.cyan }}
+                          className="sim-slider"
                         />
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.dim, marginTop: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.faint, marginTop: 4 }}>
                           <span>-20.0</span>
-                          <span className="mono" style={{ color: "#fff", fontWeight: 700 }}>{((p1Override !== null ? p1Override : (iaEstimates?.p1 ?? 0))).toFixed(1)}</span>
+                          <span className="mono" style={{ color: C.text, fontWeight: 800 }}>{((p1Override !== null ? p1Override : (iaEstimates?.p1 ?? 0))).toFixed(1)}</span>
                           <span>20.0</span>
                         </div>
                       </div>
 
                       <div>
-                        <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                        <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
                           Expectativa Redação PAS 3 {iaEstimates ? `(Estimativa IA: ${iaEstimates.red.toFixed(2)})` : ""}
                         </p>
                         <input
@@ -536,11 +534,11 @@ export function CalculadoraPage() {
                           step="0.1"
                           value={redOverride ?? (iaEstimates?.red ?? 0)}
                           onChange={(e) => setRedOverride(parseFloat(e.target.value))}
-                          style={{ width: "100%", accentColor: C.cyan }}
+                          className="sim-slider"
                         />
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.dim, marginTop: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.faint, marginTop: 4 }}>
                           <span>0.0</span>
-                          <span className="mono" style={{ color: "#fff", fontWeight: 700 }}>{((redOverride !== null ? redOverride : (iaEstimates?.red ?? 0))).toFixed(1)}</span>
+                          <span className="mono" style={{ color: C.text, fontWeight: 800 }}>{((redOverride !== null ? redOverride : (iaEstimates?.red ?? 0))).toFixed(1)}</span>
                           <span>10.0</span>
                         </div>
                       </div>
@@ -553,44 +551,29 @@ export function CalculadoraPage() {
               <button
                 type="submit"
                 disabled={loading || !cursoAlvo}
-                className="calc-cta"
-                style={{
-                  height: 52,
-                  borderRadius: 12,
-                  background: C.cyan,
-                  border: "none",
-                  outline: "none",
-                  color: "#fff",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: `0 8px 30px rgba(0, 174, 239, 0.3)`,
-                  opacity: (loading || !cursoAlvo) ? 0.6 : 1,
-                }}
+                className="calc-cta vp-btn vp-btn-cyan"
+                style={{ height: 52, fontSize: 15, fontWeight: 700 }}
               >
                 {loading ? "Calculando rota de aprovação..." : "🚀 Traçar Rota de Aprovação"}
               </button>
             </form>
 
             {error && (
-              <p style={{ color: C.red, fontSize: 13, marginTop: 16, textAlign: "center", fontWeight: 500 }}>
+              <div style={{ marginTop: 16, padding: "12px 16px", borderRadius: 12, background: "#FFCDD2", border: "1px solid rgba(183,28,28,0.2)", color: C.red, fontSize: 13, fontWeight: 600, textAlign: "center" }}>
                 {error}
-              </p>
+              </div>
             )}
 
             {/* Results Block */}
             {result && semaphor && (
               <div className="calc-result" style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 16 }}>
-                
+
                 {/* Cor semáforo / Feedback */}
                 <div
                   style={{
                     background: semaphor.bg,
                     border: `1px solid ${semaphor.border}`,
-                    borderRadius: 14,
+                    borderRadius: 16,
                     padding: "18px 20px",
                     display: "flex",
                     alignItems: "flex-start",
@@ -599,10 +582,10 @@ export function CalculadoraPage() {
                 >
                   <span style={{ fontSize: 24, lineHeight: 1 }}>{semaphor.icon}</span>
                   <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px", color: semaphor.color }}>
+                    <h3 className="heading" style={{ fontSize: 16, fontWeight: 800, margin: "0 0 4px", color: semaphor.color }}>
                       {semaphor.title}
                     </h3>
-                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", margin: 0, lineHeight: 1.5 }}>
+                    <p style={{ fontSize: 13, color: C.text, opacity: 0.8, margin: 0, lineHeight: 1.5 }}>
                       {semaphor.desc}
                     </p>
                   </div>
@@ -611,19 +594,19 @@ export function CalculadoraPage() {
                 {/* Grid metrics */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                   <div className="calc-card" style={{ padding: "16px 14px", textAlign: "center" }}>
-                    <p style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                    <p className="mono" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
                       P1 PAS 3 (Est.)
                     </p>
-                    <p className="mono" style={{ fontSize: 20, fontWeight: 800, color: "#fff", margin: 0 }}>
+                    <p className="mono" style={{ fontSize: 20, fontWeight: 900, color: C.text, margin: 0 }}>
                       {result.p1_estimado.toFixed(2)}
                     </p>
                   </div>
 
                   <div className="calc-card" style={{ padding: "16px 14px", textAlign: "center" }}>
-                    <p style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                    <p className="mono" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
                       Redação (Est.)
                     </p>
-                    <p className="mono" style={{ fontSize: 20, fontWeight: 800, color: "#fff", margin: 0 }}>
+                    <p className="mono" style={{ fontSize: 20, fontWeight: 900, color: C.text, margin: 0 }}>
                       {result.red_estimada.toFixed(2)}
                     </p>
                   </div>
@@ -634,25 +617,24 @@ export function CalculadoraPage() {
                     style={{
                       padding: "16px 14px",
                       textAlign: "center",
-                      border: `1.5px solid ${semaphor.border}`,
-                      background: "rgba(255,255,255,0.03)",
+                      borderTop: `4px solid ${semaphor.color}`,
                     }}
                   >
-                    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 6 }}>
+                    <p className="mono" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.label, marginBottom: 6 }}>
                       P2 NECESSÁRIA
                     </p>
-                    <p className="mono" style={{ fontSize: 22, fontWeight: 800, color: C.cyan, margin: 0 }}>
+                    <p className="mono" style={{ fontSize: 22, fontWeight: 900, color: C.text, margin: 0 }}>
                       {result.p2_necessario.toFixed(2)}
                     </p>
                     <span
                       style={{
                         fontSize: 9,
                         fontWeight: 700,
-                        padding: "2px 6px",
+                        padding: "2px 8px",
                         borderRadius: 20,
-                        background: result.p2_necessario < 30 ? "rgba(0,194,106,0.15)" : (result.p2_necessario < 60 ? "rgba(255,194,94,0.15)" : "rgba(255,107,107,0.15)"),
+                        background: result.p2_necessario < 30 ? "#C8E6C9" : (result.p2_necessario < 60 ? "#FFF9C4" : "#FFCDD2"),
                         color: result.p2_necessario < 30 ? C.green : (result.p2_necessario < 60 ? C.amber : C.red),
-                        marginTop: 4,
+                        marginTop: 6,
                         display: "inline-block",
                       }}
                     >
@@ -667,20 +649,20 @@ export function CalculadoraPage() {
                     className="calc-card"
                     style={{
                       padding: "16px 20px",
-                      background: "rgba(0,174,239,0.06)",
-                      border: "1px solid rgba(0,174,239,0.15)",
+                      borderLeft: `8px solid ${C.cyan}`,
+                      borderRadius: "0 16px 16px 0",
                       display: "flex",
                       gap: 12,
                       alignItems: "center",
                     }}
                   >
                     <span style={{ fontSize: 18 }}>📊</span>
-                    <p style={{ fontSize: 12, color: C.dim, margin: 0, lineHeight: 1.5 }}>
-                      <strong>Reality Check:</strong> Encontramos <strong>{result.amostra} alunos</strong> no histórico com perfil similar de escore bruto (PAS 1 + PAS 2). A probabilidade foi estimada analisando a taxa de conversão deles na prova final.
+                    <p style={{ fontSize: 12.5, color: C.dim, margin: 0, lineHeight: 1.5 }}>
+                      <strong style={{ color: C.text }}>Reality Check:</strong> Encontramos <strong style={{ color: C.text }}>{result.amostra} alunos</strong> no histórico com perfil similar de escore bruto (PAS 1 + PAS 2). A probabilidade foi estimada analisando a taxa de conversão deles na prova final.
                     </p>
                   </div>
                 ) : (
-                  <p style={{ fontSize: 11, color: C.dim, textAlign: "center", margin: 0 }}>
+                  <p style={{ fontSize: 11.5, color: C.faint, textAlign: "center", margin: 0 }}>
                     ℹ️ Amostra histórica insuficiente para gerar análise de coorte de alunos similares.
                   </p>
                 )}
@@ -711,10 +693,10 @@ export function CalculadoraPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                         <span style={{ fontSize: 20 }}>🎯</span>
                         <div>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: 0 }}>
+                          <p className="heading" style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: 0 }}>
                             Simulador de Itens (Meta PAS 3)
                           </p>
-                          <p style={{ fontSize: 11, color: C.dim, margin: 0 }}>
+                          <p style={{ fontSize: 11.5, color: C.dim, margin: 0 }}>
                             Converta sua meta em acertos por tipo de questão
                           </p>
                         </div>
@@ -724,10 +706,10 @@ export function CalculadoraPage() {
                           style={{
                             marginLeft: "auto",
                             fontSize: 13,
-                            fontWeight: 800,
+                            fontWeight: 900,
                             color: C.cyan,
-                            background: "rgba(0,174,239,0.12)",
-                            border: "1px solid rgba(0,174,239,0.3)",
+                            background: "rgba(0,174,239,0.08)",
+                            border: "1px solid rgba(0,174,239,0.22)",
                             borderRadius: 8,
                             padding: "4px 10px",
                             whiteSpace: "nowrap",
@@ -738,15 +720,15 @@ export function CalculadoraPage() {
                       </div>
 
                       {/* Separator */}
-                      <div style={{ height: 1, background: "rgba(255,255,255,0.08)", marginBottom: 16 }} />
+                      <div style={{ height: 1, background: C.hairline, marginBottom: 16 }} />
 
                       {!isLoggedIn ? (
                         /* ── VISITANTE: Banner + Prévia Bloqueada ── */
                         <>
                           <div
                             style={{
-                              background: "rgba(0,10,25,0.5)",
-                              border: "1px solid rgba(0,174,239,0.25)",
+                              background: C.page,
+                              border: `1px solid ${C.border}`,
                               borderRadius: 12,
                               padding: "16px 18px",
                               marginBottom: 16,
@@ -757,10 +739,10 @@ export function CalculadoraPage() {
                           >
                             <span style={{ fontSize: 22, lineHeight: 1 }}>🔒</span>
                             <div>
-                              <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", margin: "0 0 4px" }}>
+                              <p className="heading" style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: "0 0 4px" }}>
                                 Recurso Exclusivo para Alunos Cadastrados
                               </p>
-                              <p style={{ fontSize: 12, color: C.dim, margin: 0, lineHeight: 1.5 }}>
+                              <p style={{ fontSize: 12.5, color: C.dim, margin: 0, lineHeight: 1.5 }}>
                                 O Simulador converte sua nota-alvo em metas práticas de acertos por tipo de questão
                                 (Tipo A, B, C e D). Cadastre-se gratuitamente para simular em tempo real.
                               </p>
@@ -768,7 +750,7 @@ export function CalculadoraPage() {
                           </div>
 
                           {/* Prévia bloqueada */}
-                          <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>
+                          <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.faint, marginBottom: 10 }}>
                             👁️ Prévia — Acesso Bloqueado
                           </p>
                           <div className="sim-gate-blur">
@@ -780,11 +762,11 @@ export function CalculadoraPage() {
                                 { label: "Tipo D · Discursiva (Peso 3.0×)",   max: 5,   val: 2 },
                               ] as { label: string; max: number; val: number }[]).map((item) => (
                                 <div key={item.label}>
-                                  <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: C.dim, marginBottom: 4 }}>
+                                  <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.dim, marginBottom: 4 }}>
                                     {item.label}
                                   </p>
                                   <input type="range" min={0} max={item.max} value={item.val} disabled className="sim-slider" readOnly />
-                                  <div style={{ textAlign: "right", fontSize: 11, color: C.faint, marginTop: 2 }}>
+                                  <div className="mono" style={{ textAlign: "right", fontSize: 11, color: C.faint, marginTop: 2 }}>
                                     {item.val} / {item.max} acertos
                                   </div>
                                 </div>
@@ -809,11 +791,9 @@ export function CalculadoraPage() {
                           <div
                             style={{
                               padding: "10px 14px",
-                              borderRadius: 10,
-                              background: atingiu
-                                ? "rgba(0,194,106,0.12)"
-                                : "rgba(0,174,239,0.08)",
-                              border: `1px solid ${atingiu ? "rgba(0,194,106,0.35)" : "rgba(0,174,239,0.2)"}`,
+                              borderRadius: 12,
+                              background: atingiu ? "#C8E6C9" : C.page,
+                              border: `1px solid ${atingiu ? "rgba(0,132,61,0.25)" : C.border}`,
                               marginBottom: 14,
                               display: "flex",
                               alignItems: "center",
@@ -821,7 +801,7 @@ export function CalculadoraPage() {
                             }}
                           >
                             <span style={{ fontSize: 16 }}>{atingiu ? "🟢" : "🟡"}</span>
-                            <p style={{ fontSize: 12, color: "#fff", margin: 0, fontWeight: 600 }}>
+                            <p style={{ fontSize: 12.5, color: C.text, margin: 0, fontWeight: 700 }}>
                               {atingiu
                                 ? `Meta Atingida! P2 Simulado: ${pontos.toFixed(2)} pts (+${diff.toFixed(2)} pts de folga)`
                                 : `Em Progresso: ${pontos.toFixed(2)} pts — Faltam ${diff.toFixed(2)} pts para a meta`}
@@ -837,7 +817,7 @@ export function CalculadoraPage() {
                               { label: "Tipo D · Discursiva (Peso 3.0×)",   max: 5,   val: simD, set: setSimD },
                             ] as { label: string; max: number; val: number; set: (v: number) => void }[]).map((item) => (
                               <div key={item.label}>
-                                <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: C.dim, marginBottom: 4 }}>
+                                <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.dim, marginBottom: 4 }}>
                                   {item.label}
                                 </p>
                                 <input
@@ -848,7 +828,7 @@ export function CalculadoraPage() {
                                   onChange={(e) => item.set(Number(e.target.value))}
                                   className="sim-slider"
                                 />
-                                <div style={{ textAlign: "right", fontSize: 11, color: C.faint, marginTop: 2 }}>
+                                <div className="mono" style={{ textAlign: "right", fontSize: 11, color: C.faint, marginTop: 2 }}>
                                   {item.val} / {item.max} acertos
                                 </div>
                               </div>
@@ -858,8 +838,8 @@ export function CalculadoraPage() {
                           {/* Progress Bar */}
                           <div style={{ marginBottom: 8 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: C.dim }}>Progresso da Meta P2</span>
-                              <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: progressColor }}>{pct.toFixed(1)}%</span>
+                              <span className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.dim }}>Progresso da Meta P2</span>
+                              <span className="mono" style={{ fontSize: 12, fontWeight: 800, color: progressColor }}>{pct.toFixed(1)}%</span>
                             </div>
                             <div className="sim-progress-track">
                               <div className="sim-progress-fill" style={{ width: `${pct}%`, background: progressColor }} />
@@ -877,15 +857,15 @@ export function CalculadoraPage() {
                               <div
                                 key={item.label}
                                 style={{
-                                  background: "rgba(255,255,255,0.04)",
-                                  border: "1px solid rgba(255,255,255,0.09)",
-                                  borderRadius: 10,
+                                  background: C.page,
+                                  border: `1px solid ${C.border}`,
+                                  borderRadius: 12,
                                   padding: "10px 8px",
                                   textAlign: "center",
                                 }}
                               >
-                                <p style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, margin: "0 0 4px" }}>{item.label}</p>
-                                <p className="mono" style={{ fontSize: 16, fontWeight: 800, color: "#fff", margin: 0 }}>{item.pts.toFixed(1)}</p>
+                                <p className="mono" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, margin: "0 0 4px" }}>{item.label}</p>
+                                <p className="mono" style={{ fontSize: 16, fontWeight: 900, color: C.text, margin: 0 }}>{item.pts.toFixed(1)}</p>
                                 <p style={{ fontSize: 9, color: C.faint, margin: "2px 0 0" }}>pts</p>
                               </div>
                             ))}
@@ -897,7 +877,6 @@ export function CalculadoraPage() {
                 })()}
               </div>
             )}
-          </div>
         </div>
       </div>
     </>
