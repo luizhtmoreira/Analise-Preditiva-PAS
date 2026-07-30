@@ -532,5 +532,82 @@ class TestExamStats:
         assert isinstance(s.m_p1 + s.m_p2, float)
 
 
+# =============================================================================
+# TESTES: Parte 1 misturada e procedência (ticket 01 — publicar-site)
+# =============================================================================
+
+class TestParte1Misturada:
+    """O Edital isolado de Etapa não diz a língua de ninguém: só dá a Parte 1 misturada."""
+
+    def test_forma_misturada_e_distinguivel_da_forma_por_lingua_pelo_tipo(self):
+        """Sem contar chaves de dicionário — as duas formas são tipos diferentes."""
+        from pas_intelligence.pas_constants import (  # type: ignore
+            OFFICIAL_STATS, ExamStats, Parte1Misturada, Parte1PorLingua, ValorLingua,
+        )
+
+        misturada = ExamStats(
+            m_p2=25.0, dp_p2=13.0, m_red=6.0, dp_red=2.0,
+            parte_1=Parte1Misturada(ValorLingua(4.0, 2.2)),
+        )
+
+        assert misturada.parte_1.misturada is True
+        assert isinstance(misturada.parte_1, Parte1Misturada)
+        assert isinstance(OFFICIAL_STATS[(2022, 1)].parte_1, Parte1PorLingua)
+        assert OFFICIAL_STATS[(2022, 1)].parte_1.misturada is False
+
+    def test_m_p1_e_dp_p1_na_forma_misturada_sao_o_proprio_valor(self):
+        from pas_intelligence.pas_constants import (  # type: ignore
+            ExamStats, Parte1Misturada, ValorLingua,
+        )
+
+        stats = ExamStats(
+            m_p2=25.0, dp_p2=13.0, m_red=6.0, dp_red=2.0,
+            parte_1=Parte1Misturada(ValorLingua(4.0, 2.2)),
+        )
+
+        assert stats.m_p1 == pytest.approx(4.0)
+        assert stats.dp_p1 == pytest.approx(2.2)
+
+    def test_as_tres_linguas_devolvem_a_estatistica_misturada(self):
+        from pas_intelligence.pas_constants import (  # type: ignore
+            LINGUAS_OFICIAIS, Parte1Misturada, ValorLingua,
+        )
+
+        parte_1 = Parte1Misturada(ValorLingua(4.0, 2.2))
+
+        assert set(parte_1) == set(LINGUAS_OFICIAIS)
+        for lingua in LINGUAS_OFICIAIS:
+            assert parte_1[lingua] == ValorLingua(4.0, 2.2)
+
+    def test_parte_1_por_lingua_recusa_conjunto_de_linguas_incompleto(self):
+        from pas_intelligence.pas_constants import Parte1PorLingua, ValorLingua  # type: ignore
+
+        with pytest.raises(ValueError):
+            Parte1PorLingua({"inglesa": ValorLingua(3.0, 2.0)})
+
+
+class TestProcedencia:
+    """Quando o Edital de verdade sair, esses números serão substituídos e as previsões vão
+    mexer — a origem precisa estar registrada, não descoberta depois."""
+
+    def test_as_24_entradas_existentes_sao_de_edital(self):
+        from pas_intelligence.pas_constants import OFFICIAL_STATS, Origem  # type: ignore
+
+        assert all(s.origem is Origem.EDITAL for s in OFFICIAL_STATS.values())
+
+    def test_entrada_pode_declarar_se_derivada(self):
+        from pas_intelligence.pas_constants import (  # type: ignore
+            ExamStats, Origem, Parte1Misturada, ValorLingua,
+        )
+
+        stats = ExamStats(
+            m_p2=25.0, dp_p2=13.0, m_red=6.0, dp_red=2.0,
+            parte_1=Parte1Misturada(ValorLingua(4.0, 2.2)),
+            origem=Origem.DERIVADA,
+        )
+
+        assert stats.origem is Origem.DERIVADA
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

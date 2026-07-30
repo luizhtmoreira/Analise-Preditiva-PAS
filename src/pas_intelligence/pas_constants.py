@@ -1,5 +1,22 @@
-from dataclasses import dataclass
-from typing import Dict
+from abc import ABC, abstractmethod
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, Union
+
+# As três línguas estrangeiras que o Cebraspe normaliza separadamente na Parte 1.
+LINGUAS_OFICIAIS = ("inglesa", "francesa", "espanhola")
+
+
+class Origem(Enum):
+    """De onde veio a média e o desvio de uma `(Ano, Etapa)`.
+
+    Existe porque, quando o Edital de verdade sair, os números `DERIVADA` serão substituídos
+    e as previsões vão mexer — isso precisa estar registrado no dado, não descoberto depois.
+    """
+
+    EDITAL = "edital"
+    DERIVADA = "derivada"
 
 
 @dataclass(frozen=True)
@@ -8,14 +25,89 @@ class ValorLingua:
     desvio_padrao: float
 
 
+class Parte1(Mapping[str, ValorLingua], ABC):
+    """A Parte 1 de uma Etapa, nas duas formas em que as fontes a publicam.
+
+    É um `Mapping` das três línguas oficiais nas duas formas, para que quem só quer o valor de
+    uma língua leia igual nos dois casos. O que distingue as formas é o **tipo** (e o
+    `misturada`), nunca o número de chaves — as duas têm três.
+    """
+
+    misturada: bool
+
+    @abstractmethod
+    def para(self, lingua: str) -> ValorLingua:
+        """Média e desvio a aplicar a quem fez `lingua`."""
+
+    def __getitem__(self, lingua: str) -> ValorLingua:
+        return self.para(lingua)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(LINGUAS_OFICIAIS)
+
+    def __len__(self) -> int:
+        return len(LINGUAS_OFICIAIS)
+
+
+@dataclass(frozen=True)
+class Parte1PorLingua(Parte1):
+    """A forma do **Edital de médias e desvios**: um par por língua estrangeira.
+
+    Agrupar as três embute viés sistemático contra quem fez espanhol ou francês, então esta
+    forma exige as três — uma Parte 1 parcial não é um dado válido deste domínio.
+    """
+
+    valores: Dict[str, ValorLingua]
+    misturada = False
+
+    def __post_init__(self) -> None:
+        if set(self.valores) != set(LINGUAS_OFICIAIS):
+            raise ValueError(
+                f"Parte 1 por língua exige exatamente {set(LINGUAS_OFICIAIS)}; "
+                f"recebido {set(self.valores)}."
+            )
+
+    def para(self, lingua: str) -> ValorLingua:
+        return self.valores[lingua]
+
+
+@dataclass(frozen=True)
+class Parte1Misturada(Parte1):
+    """A forma do **Edital isolado de Etapa**: um único par, as três línguas juntas.
+
+    Essa fonte — o "Resultado final nos itens do tipo D e na prova de redação", a única
+    disponível para a Turma viva — lista nota por candidato e não diz a língua de ninguém.
+    Preencher as três exigiria inventar valores, então o dado assume o que é.
+
+    O custo está medido: usar a Parte 1 misturada em vez da língua declarada custa 0,46 ponto
+    de Argumento Final em média (máximo 3,21) com viés zero — é ruído, não erro sistemático.
+    """
+
+    valor: ValorLingua
+    misturada = True
+
+    def para(self, lingua: str) -> ValorLingua:
+        if lingua not in LINGUAS_OFICIAIS:
+            raise KeyError(lingua)
+        return self.valor
+
+
 @dataclass
 class ExamStats:
     m_p2: float; dp_p2: float
     m_red: float; dp_red: float
-    # Parte 1 por língua estrangeira — o Edital nunca publica um valor único (ver `m_p1`/`dp_p1`).
-    # Sempre as três línguas (Inglesa, Francesa, Espanhola); sem default porque um ExamStats
-    # sem Parte 1 não é um dado válido deste domínio.
-    parte_1: Dict[str, ValorLingua]
+    # Parte 1 nas duas formas acima — o Edital nunca publica um valor único por língua
+    # (ver `m_p1`/`dp_p1`). Sem default porque um ExamStats sem Parte 1 não é um dado válido.
+    # Um `dict` cru é aceito como atalho para `Parte1PorLingua`, que é a forma das entradas
+    # vindas de Edital de médias e desvios.
+    parte_1: Union[Parte1, Dict[str, ValorLingua]]
+    # `EDITAL` por default porque é o que toda entrada escrita à mão aqui é; a forma derivada
+    # nasce de um único ponto de construção programática, que declara.
+    origem: Origem = field(default=Origem.EDITAL)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.parte_1, Parte1):
+            self.parte_1 = Parte1PorLingua(dict(self.parte_1))
 
     def _media_parte_1(self, atributo: str) -> float:
         valores = self.parte_1.values()
@@ -28,7 +120,8 @@ class ExamStats:
         Não existe um `m_p1` oficial: cada Aluno fez uma única língua estrangeira e o
         Resultado Final não imprime qual. Esta média simples das três existe só para manter
         `api/services/analytics_service.py` funcionando sem mudança de interface — para
-        precisão por língua, leia `parte_1` diretamente.
+        precisão por língua, leia `parte_1` diretamente. Na forma misturada as três línguas
+        são o mesmo valor, então a média é o próprio valor.
         """
         return self._media_parte_1("media")
 
