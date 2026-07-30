@@ -32,6 +32,7 @@ import pandas as pd  # type: ignore
 
 from .argument_calculator import calculate_argument_etapa
 from .dataset_pas3 import FEATURES_CANONICAS, montar_features
+from .pas_constants import LINGUAS_OFICIAIS
 from .training_dataset import (
     EstatisticaOficialAusenteError,
     anos_do_trienio,
@@ -51,9 +52,8 @@ ESCALA_DA_LARGURA = "a3"
 """A Largura de Incerteza é medida em `A3` e vale `3×` em Argumento Final (ADR-0009). Conferida
 no carregamento, para que ninguém multiplique duas vezes."""
 
-LINGUAS_OFICIAIS = ("inglesa", "francesa", "espanhola")
-"""As três que o Cebraspe normaliza separadamente. O Aluno declara a dele (ticket 04 §5.3):
-agrupar as três embute viés sistemático contra quem fez espanhol ou francês."""
+# `LINGUAS_OFICIAIS` é reexportado de `pas_constants` — a lista mora junto do dado que ela
+# indexa, e quem já importava daqui continua importando daqui.
 
 
 class PacoteIndisponivelError(RuntimeError):

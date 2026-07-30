@@ -221,10 +221,11 @@ def test_stats_da_prova_devolve_a_misturada_para_as_tres_linguas(monkeypatch):
 
 
 def test_stats_da_prova_continua_por_lingua_quando_a_entrada_e_por_lingua():
+    from pas_intelligence.pas_constants import LINGUAS_OFICIAIS
     from pas_intelligence.training_dataset import stats_da_prova
 
     oficial = OFFICIAL_STATS[(2022, 1)]
-    for lingua in ("inglesa", "francesa", "espanhola"):
+    for lingua in LINGUAS_OFICIAIS:
         assert stats_da_prova(2022, 1, lingua).mean_p1 == pytest.approx(
             oficial.parte_1[lingua].media
         )
