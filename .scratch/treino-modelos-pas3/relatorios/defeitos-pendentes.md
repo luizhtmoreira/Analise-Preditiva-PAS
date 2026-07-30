@@ -266,7 +266,7 @@ informação, e o ticket 10 mede num arranjo que já está sob julgamento.
 
 ---
 
-## 6. `TRIENNIUM_STATS` não bate com os Editais — a API calcula o Argumento com números que não são do Cebraspe
+## 6. ~~`TRIENNIUM_STATS` não bate com os Editais — a API calcula o Argumento com números que não são do Cebraspe~~ — **CORRIGIDO em 2026-07-30**
 
 **Onde foi encontrado:** ticket 04, ao verificar se `A1` e `A2` podem ser calculados exatos para o
 Aluno vivo. Ver `relatorios/04-alvo-canonico-argumento-ou-tres-notas.md`, §4 da conversa e §9.
@@ -304,6 +304,15 @@ dependendo da extração dos Editais por Etapa — item bloqueante no `map.md`.
 inteiro, um erro ali se diluía. Na rota canônica do ADR-0009 eles são a parte **exata** da conta —
 `Argumento Final = A1 + 2·A2 + 3·Â3` — e um desvio errado no denominador contamina ⅗ do peso, sem
 nada para compensar. Alta severidade com conserto barato: a fonte certa já está em disco.
+
+**Corrigido em 2026-07-30** (ticket 05 da rodada `publicar-site`), em
+`api/services/gestao_service.py`. `TRIENNIUM_STATS` e `STATS_PAS3_TREND` saíram do código; o
+Reality Check da Gestão de Ativos agora lê `pas_constants.OFFICIAL_STATS` pela mesma porta única
+que o Preditor usa — `training_dataset.anos_do_trienio` + `stats_da_prova(ano, etapa, língua)` —,
+garantindo que `A1` e `A2` sejam idênticos nos dois caminhos. Para a Etapa 3 da turma viva, cujo
+Edital ainda não saiu, um Ano-Âncora de um ano real e já publicado (`_stats_pas3_ancora`) substitui
+a regressão que `STATS_PAS3_TREND` fazia sobre uma prova futura — versão de um ano só; o ticket 12
+da rodada `publicar-site` constrói os cinco Anos-Âncora na tela.
 
 ---
 

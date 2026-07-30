@@ -15,6 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+import pandas as pd  # type: ignore
 import pytest  # type: ignore
 
 from api.schemas.gestao import StudentInput
@@ -198,6 +199,43 @@ def test_gestao_preve_quando_o_trienio_tem_edital(api_com_pacote):
     assert resposta.results[0].status != "grey"
     assert resposta.kpis.n_sem_previsao == 0
     assert resposta.modelo_disponivel is True
+
+
+def test_trienniumstats_e_stats_pas3_trend_nao_existem_mais():
+    """Ticket 05: só existe um lugar de onde sai média e desvio oficiais — `OFFICIAL_STATS`."""
+    assert not hasattr(gestao_service, "TRIENNIUM_STATS")
+    assert not hasattr(gestao_service, "STATS_PAS3_TREND")
+
+
+def test_reality_check_le_official_stats_pela_porta_unica(api_com_pacote, monkeypatch, caplog):
+    """O Reality Check (cohort) tem que continuar funcionando, agora só com os números do
+    Edital — nunca com um dicionário próprio que possa divergir do `A1`/`A2` do Preditor."""
+    monkeypatch.setattr(
+        gestao_service,
+        "_df_cohort",
+        pd.DataFrame({
+            "P1_PAS1": [4.0] * 5, "P2_PAS1": [30.0] * 5,
+            "P1_PAS2": [5.0] * 5, "P2_PAS2": [35.0] * 5,
+            "P1_PAS3": [5.0] * 5, "P2_PAS3": [40.0] * 5,
+            "ARG_FINAL_REAL": [1.0] * 5,
+            "EB_PAS1": [34.0] * 5, "EB_PAS2": [40.0] * 5,
+        }),
+    )
+    monkeypatch.setattr(
+        gestao_service,
+        "_build_cutoff_maps",
+        lambda _: (
+            {"Sistema Universal": {"Medicina - Diurno (Darcy Ribeiro)": 5.0}}, {}, TRIENIO_COM_EDITAL,
+        ),
+    )
+
+    with caplog.at_level("ERROR"):
+        resposta = gestao_service.analyze_students(
+            [aluno_gestao(curso_alvo="Medicina")], TRIENIO_COM_EDITAL, "padrao"
+        )
+
+    assert "falhou" not in caplog.text
+    assert resposta.results[0].historico_pct > 0.0
 
 
 def test_lote_misto_conta_os_dois_lados(api_com_pacote):
