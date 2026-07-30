@@ -1,0 +1,27 @@
+# A imagem só precisa de api/, src/pas_intelligence/, deploy/ e o requirements-api.txt — o
+# resto do monorepo (frontend, notebooks, .venv, o próprio git) infla o contexto de build à toa.
+# `models/` e `data/` ficam de fora de propósito: o Dockerfile os busca no Hugging Face Hub
+# (ticket 08), nunca copia do disco de quem builda.
+
+.git/
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+
+landing-page/
+app/
+assets/
+models/
+data/
+notebooks/
+tests/
+.scratch/
+docs/
+scripts/
+
+.streamlit/
+*.xlsx
+*.xls
+.DS_Store

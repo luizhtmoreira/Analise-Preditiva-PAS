@@ -1,0 +1,16 @@
+{
+  "modelo": {
+    "repo_id": "Luiz1912/vetor-pas3-modelo",
+    "repo_type": "model",
+    "revision": null,
+    "arquivos": ["modelo_pas3.txt", "manifest.json"],
+    "destino": "models/pas3"
+  },
+  "dados": {
+    "repo_id": "Luiz1912/vetor-pas-dados",
+    "repo_type": "dataset",
+    "revision": null,
+    "arquivos": ["notas_corte.csv", "resultado_final.csv"],
+    "destino": "data"
+  }
+}
