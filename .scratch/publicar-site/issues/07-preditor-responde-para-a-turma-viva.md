@@ -20,8 +20,19 @@ a fundação do ADR-0009. O que este ticket muda não é a política de recusa; 
 ## O que entra
 
 Duas entradas novas no `OFFICIAL_STATS`, marcadas como **derivadas** (ticket 01), com a Parte 1 na
-forma **misturada** (o Edital isolado não diz a língua de ninguém) e a média já corrigida pelo
-Deslocamento calibrado no ticket 06:
+forma **misturada** (o Edital isolado não diz a língua de ninguém) e a P2/Redação já corrigidas
+pela calibração do ticket 06.
+
+> ⚠ **O ticket 06 mudou de forma na 2ª rodada — leia antes de usar a tabela abaixo.** A correção
+> deixou de ser uma constante no Argumento e passou a ser **média *e* desvio**, aplicados aos
+> stats. Corrigir só a média reprova o portão (6,886); corrigir os dois aprova (4,366). Não
+> reimplemente a conta: chame
+> `pas_extraction.calibracao_deslocamento.Correcao.aplicar(StatsEmpiricos) → HistoricalStats`,
+> com a correção vinda de `montar_calibracao(...).correcao()`. É a porta única.
+>
+> **A Parte 1 sai sem correção**, de propósito e por medição (corrigi-la piora o resíduo) — os
+> valores misturados abaixo entram como estão. O preço é um viés de +0,35 ponto, que vale
+> registrar junto da marca de "derivada".
 
 | | `(2024, Etapa 1)` | `(2025, Etapa 2)` |
 |---|---:|---:|
@@ -52,14 +63,14 @@ A **língua estrangeira**, que parecia o bloqueador, custa **0,46 ponto de Argum
 soma 10, e a média misturada cai praticamente em cima da média da inglesa, que é 66% a 73% da
 população.
 
-**Blocked by:** 01 (`ExamStats` com Parte 1 misturada e procedência) e 06 (Calibração do
-Deslocamento e o portão — se ele reprovar, este ticket não acontece).
+**Blocked by:** 01 (`ExamStats` com Parte 1 misturada e procedência) e ~~06~~ — **o 06 aprovou**
+(2ª rodada, resíduo 4,366 < 5,009). Este ticket está liberado.
 
 **Status:** ready-for-agent
 
 - [ ] `OFFICIAL_STATS` tem 26 entradas; as duas novas têm `origem = derivada` e Parte 1 misturada
-- [ ] As médias das entradas novas estão corrigidas pelo Deslocamento calibrado no ticket 06, e o
-      valor bruto (não corrigido) está registrado em algum lugar rastreável
+- [ ] A média **e o desvio** da P2 e da Redação das entradas novas saem de `Correcao.aplicar`
+      (ticket 06), e o valor bruto (não corrigido) está registrado em algum lugar rastreável
 - [ ] `POST /api/predict` com `trienio = "2024-2026"` devolve `modelo_disponivel: true`, com `a1`,
       `a2`, `a3_previsto`, `arg_previsto` e `largura_incerteza` preenchidos
 - [ ] Um triênio que continua sem Edital segue recebendo `modelo_disponivel: false` com motivo — a

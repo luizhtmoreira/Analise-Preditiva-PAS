@@ -1,49 +1,46 @@
 # Relatório — Ticket 06: Calibração do Deslocamento e o portão
 
 **Ticket:** `.scratch/publicar-site/issues/06-calibracao-do-deslocamento-e-o-portao.md`
-**Status:** concluído — **o portão reprovou**
-**Onde vive o código:** `src/pas_extraction/calibracao_deslocamento.py` (cálculo, testado em
+**Status:** concluído — **o portão aprovou na 2ª rodada** (resíduo máximo 4,366 < 5,009)
+**Onde vive o código:** `src/pas_extraction/calibracao_deslocamento.py` (cálculo, 28 testes em
 `tests/test_pas_extraction_calibracao_deslocamento.py`) + `scripts/medir_deslocamento.py`
 (orquestra a rodada real sobre `data/pdfs` e `resultado_final.csv`).
+
+> **Este ticket teve duas rodadas.** A 1ª reprovou (5,751 ≥ 5,009) e o achado dela — *onde* o
+> resíduo morava — foi o que apontou o defeito de forma corrigido na 2ª. As duas estão
+> registradas: §3-§4 são a 1ª rodada, §5-§7 são a 2ª. A medição de apoio da 2ª rodada, com
+> todos os esquemas testados, está em `.scratch/publicar-site/medicao-portao-06/`.
 
 ---
 
 ## 1. O que foi pedido, e o resultado
 
 A pergunta do ticket: *o Deslocamento é estável o bastante entre triênios para o Preditor
-atender a Turma viva?* Resposta medida: **não, ainda não** — com os dados hoje em disco, o
-portão reprova.
+atender a Turma viva?* Resposta medida: **sim — desde que a correção tenha a forma certa.**
+Como uma constante subtraída do Argumento, não; como uma correção de média **e desvio**
+aplicada aos stats, sim, com folga de 0,64 ponto.
 
 Critérios de aceite:
 
 - [x] A calibração roda sobre **6 triênios** com as duas fontes (Edital isolado de Etapa 1 e 2
       + Edital/CSV oficial) — acima do mínimo de 4 — e estão nomeados na §2
-- [x] O Deslocamento é calculado **por Etapa** (1 e 2), com média e dispersão entre triênios
+- [x] A correção é calculada **por Etapa** (1 e 2), com dispersão entre anos (§5)
 - [x] O portão é uma **asserção em código**: `calibracao_deslocamento.verificar_portao` levanta
       `PortaoReprovadoError` — não é uma leitura de tabela
-- [x] O relatório registra, por triênio: offset (Deslocamento) medido, residual após correção,
-      e o `n` de cada Edital (§3)
-- [x] **O portão reprovou** — nenhuma entrada foi escrita em `OFFICIAL_STATS`; a medição e a
-      reprovação são a entrega (§4); o mapa foi atualizado (`map.md`, "O que pode reordenar
-      tudo", item 2)
+- [x] O relatório registra, por triênio: parâmetros medidos, residual após correção, e o `n` de
+      cada Edital (§3 e §7)
+- [x] **O portão aprovou** — a entrada em `OFFICIAL_STATS` é trabalho do ticket 07, que este
+      desbloqueia; `Correcao.aplicar` é a porta que ele chama (§6)
 - [x] Este relatório vive em `.scratch/publicar-site/relatorios/`
 
 ---
 
-## 2. O que mudou desde o Passo 1
+## 2. Os Editais usados
 
-O Passo 1 (`.scratch/publicar-site/medicao-passo-1/`) media o Deslocamento com **3 pontos**
-`(ano, Etapa)`: `(2022, Etapa 1)`, `(2023, Etapa 1)`, `(2024, Etapa 2)` — só um triênio
-(2023/2025) tinha Edital isolado de Etapa 1 **e** 2 ao mesmo tempo, o mínimo para montar um
-Argumento Final completo (`1×A1 + 2×A2`) e comparar contra o oficial.
-
-Este ticket teve uma pré-condição que não é trabalho de agente: baixar Editais isolados de
-Etapa de triênios mais antigos. Os downloads **já estavam em `data/pdfs/editais-de-etapa/`**
-quando a sessão começou (14 arquivos, contra os 6 do Passo 1) — o `INDICE.md` é que estava
-desatualizado; `scripts/organizar_pdfs.py --aplicar` só precisou ser rodado de novo para
-refletir o que já tinha sido baixado. Isso deu **4 triênios novos com Etapa 1 e 2 completas**:
-2018/2020, 2019/2021, 2020/2022, 2021/2023 — mais 2023/2025 (já tinha as duas) e 2022/2024
-(só Etapa 1; entra no Deslocamento por Etapa mas não na tabela por triênio, que exige as duas).
+O Passo 1 (`.scratch/publicar-site/medicao-passo-1/`) media com **3 pontos** `(ano, Etapa)`.
+Este ticket rodou com **11**, cobrindo 6 triênios — os downloads já estavam em
+`data/pdfs/editais-de-etapa/` quando a sessão começou (14 arquivos contra os 6 do Passo 1); o
+`INDICE.md` é que estava desatualizado, e `scripts/organizar_pdfs.py --aplicar` bastou.
 
 | Triênio | Edital Etapa 1 | Edital Etapa 2 |
 |---|---|---|
@@ -52,169 +49,212 @@ refletir o que já tinha sido baixado. Isso deu **4 triênios novos com Etapa 1 
 | 2020/2022 | `ED_8_PAS_1_2020-2022...` | `ED_13_PAS_2_2020-2022...` |
 | 2021/2023 | `ED_5_PAS_1_2021-2023...` | `ED_16_PAS_2_2021-2023...` |
 | 2022/2024 | `ED_8_PAS_1_2022-2024_Retificação...` | — (não baixado) |
-| 2023/2025 | `Ed_7_PAS_1_2023_2025...` (não o `Ed_8`, que é a Retificação **parcial** de 827 registros) | `Ed_15_PAS_2_2023-2025...` |
+| 2023/2025 | `Ed_7_PAS_1_2023_2025...` (não o `Ed_8`, Retificação **parcial** de 827 registros) | `Ed_15_PAS_2_2023-2025...` |
 
-A "verdade" (nota real + Argumento Final oficial) para todos os 8 triênios fechados já existia
-em `.scratch/pdf-extraction/saida-nova/resultado_final.csv` (extraído para o mapa de treino do
-modelo) — este ticket não precisou extrair Resultado Final nenhum, só os Editais isolados de
-Etapa que faltavam.
+A "verdade" (nota real + Argumento Final oficial) veio de
+`.scratch/pdf-extraction/saida-nova/resultado_final.csv`, filtrado por `checksum_fecha`.
 
 ---
 
-## 3. A medição
+## 3. 1ª rodada — a medição que reprovou
 
-**Método.** Para cada `(ano, Etapa)` com Edital isolado, `pas_extraction.etapa` (ticket 02)
-extrai média/desvio *empíricos* (o que a Turma viva veria). Para o mesmo `(ano, Etapa, língua)`,
-`training_dataset.stats_da_prova` devolve o oficial (o que o Cebraspe publicou). Para cada Aluno
-de `resultado_final.csv`, o Argumento de Etapa é calculado duas vezes com
-`argument_calculator.calculate_argument_etapa` — a mesma função de produção, nunca reimplementada
-— uma vez com cada fonte; a diferença é `dA`. Isso reproduz o cenário realista do Passo 1 (o
-"LP": língua misturada **e** população de inscritos, não de concluintes), agora com dado real em
-vez de simulado em 5 dos 6 triênios.
+Correção = **uma constante por Etapa**, subtraída do Argumento (o *Deslocamento*).
 
-**Deslocamento por Etapa** (média entre os anos com Edital isolado daquela Etapa; desvio é
-**amostral**, porque os triênios medidos são uma amostra dos possíveis):
+| Etapa | Média | Desvio entre anos | Anos |
+|---|---:|---:|---:|
+| 1 | 1,808 | 0,769 | 6 |
+| 2 | 3,215 | 0,353 | 5 |
 
-| Etapa | Média | Desvio entre triênios | Triênios | Por ano |
-|---|---:|---:|---:|---|
-| 1 | 1,808 | 0,769 | 6 | 2018=2,19 · 2019=2,96 · 2020=1,91 · 2021=0,75 · 2022=1,23 · 2023=1,81 |
-| 2 | 3,215 | 0,353 | 5 | 2019=3,80 · 2020=3,01 · 2021=3,28 · 2022=2,94 · 2024=3,04 |
-
-O desvio da Etapa 1 (0,77) é mais de duas vezes o da Etapa 2 (0,35) — a Etapa 2 é a mais
-otimista na média (o que já se sabia do Passo 1), mas é a Etapa 1 que **varia mais** de ano para
-ano, e é essa variação que o portão vai cobrar.
-
-**Por triênio, aplicando a média acima como correção única** (nenhum triênio usa o próprio
-Deslocamento — isso seria simular ter o dado que a Turma viva não tem):
-
-| Triênio | n Alunos | n Edital E1 | n Edital E2 | Bruto \|erro\| médio | Bruto p95 | Bruto máx | Corrigido \|erro\| médio | Corrigido p95 | **Corrigido máx** |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 2018/2020 | 5.384 | 22.666 | 21.380 | 9,787 | 11,130 | 12,834 | 1,555 | 2,891 | 4,595 |
-| 2019/2021 | 7.915 | 23.803 | 16.079 | 8,983 | 10,716 | 12,883 | 0,979 | 2,477 | 4,644 |
-| 2020/2022 | 6.553 | 16.298 | 14.016 | 8,445 | 10,180 | 12,624 | 0,822 | 2,035 | 4,385 |
-| **2021/2023** | 7.122 | 15.780 | 15.428 | 6,625 | 9,195 | 13,323 | 1,859 | 3,932 | **5,751** |
-| 2023/2025 | 7.838 | 19.506 | 16.340 | 7,864 | 9,846 | 11,452 | 1,127 | 2,860 | 4,560 |
-
-**Resíduo máximo, sobre todos os 5 triênios: 5,751. Limiar do portão: 5,009. `PORTÃO:
-REPROVADO`** (`scripts/medir_deslocamento.py` sai com código 1).
-
-O bruto e o corrigido de 2023/2025 (7,864 / 4,560) ficam perto do que o Passo 1 media (7,87 /
-4,19) — a pequena diferença vem de o Deslocamento aqui ser a média de **6** anos, não só dos 2-3
-que o Passo 1 tinha para a Etapa 1.
+Resíduo máximo: **5,751** (triênio 2021/2023) contra o limiar 5,009. **REPROVADO.**
 
 ---
 
-## 4. Por que reprovou, e por que não é um artefato de dado
+## 4. 1ª rodada — o achado que valeu mais que a reprovação
 
-O culpado é **2021/2023**: sozinho, passa do limiar em 0,74 ponto. Investigando quem carrega
-esse resíduo (`erro_corrigido` por Aluno naquele triênio): os 5 piores são todos alunos do
-**topo** — P2 entre 61 e 69 (a média da Etapa é ~21), redação 9 a 10. Isso é esperado, não um
-bug: o erro de um z-score escala com a distância à média, então o mesmo desvio-padrão errado
-pesa mais em quem está longe da média — e é justamente o extremo superior que
-`[[project_lista_maiores_argumentos]]` (outro ticket desta frente) tenta enumerar. O portão
-aperta exatamente onde o produto mais precisa de precisão.
+Os 5 piores resíduos eram **todos Alunos do topo** (P2 entre 61 e 69, numa Etapa de média ~21).
+A 1ª rodada leu isso como "esperado, o erro de um z-score escala com a distância à média". Está
+certo — mas a leitura parou cedo demais. Essa concentração no topo não é uma propriedade
+inevitável do problema: é a **assinatura de um defeito na forma da correção**.
 
-A causa de fundo é a mesma do Passo 1 — Etapa 2 estimada sobre inscritos, não concluintes — mas
-agora com um segundo efeito visível: o **Deslocamento da Etapa 1 varia entre 0,75 e 2,96** ponto
-conforme o ano (desvio amostral 0,77), e usar a média de 6 anos para corrigir um ano específico
-deixa sobra justamente quando esse ano se afasta da média — como 2021, que está no extremo baixo
-(0,75) enquanto a média é 1,81.
+O Argumento de Etapa é uma soma de z-scores, `(nota − média) ÷ desvio`. Errar cada parâmetro
+produz um erro de formato diferente:
 
-**O que não é a causa:** falha de extração. As 6 novas extrações rodaram os 12 Editais sem
-`EditalParcialError`, e os `n` batem com o que se espera de um Edital completo (14-24 mil
-registros cada). O parser do ticket 02 continua funcionando sem alteração nesta família de
-documento, exatamente como o ticket previa.
+- errar **a média** desloca todo Aluno pela mesma quantidade — é um **degrau**, e uma
+  constante o corrige por inteiro;
+- errar **o desvio** produz um erro **proporcional à distância do Aluno até a média** — é uma
+  **reta**, e nenhuma constante a corrige.
 
----
+E o Edital isolado erra o desvio, muito:
 
-## 5. Decisões tomadas e o porquê
+| Etapa | `desvio_edital ÷ desvio_oficial`, P2 | Redação |
+|---|---:|---:|
+| 1 | **0,874** (13% menor) | 0,861 |
+| 2 | 1,005 | **1,207** (21% maior) |
 
-**Deslocamento como uma média simples entre triênios, não uma projeção temporal.** Havia a opção
-de ajustar uma tendência (regressão linear, como `argument_calculator.project_historical_stats`
-já faz para outra finalidade) em vez de uma média fixa — talvez a Etapa 1 esteja subindo ano a
-ano, e extrapolar reduzisse o resíduo de 2021. Decisão: **não** fazer isso neste ticket. Com 5-6
-pontos e um padrão que não parece monotônico (2,19 → 2,96 → 1,91 → 0,75 → 1,23 → 1,81), ajustar
-uma tendência seria data dredging — encontrar a curva que faz o portão passar, não a que
-descreve o fenômeno. Fica registrado como uma saída possível para quem decidir o próximo passo
-(§7), não como algo já tentado e descartado.
-
-**O portão também cobra `≥ 4` triênios em código, não só o resíduo.** `verificar_portao` levanta
-`PortaoReprovadoError` tanto por poucos triênios quanto por resíduo alto — são as duas formas do
-mesmo risco (Deslocamento medido em poucos pontos não generaliza), e a asserção não deveria
-aprovar por acidente se um Edital futuro sumir e a contagem cair para 3.
-
-**A correção usa a mesma fórmula duas vezes, nunca uma reimplementação.** `calcular_delta_por_etapa`
-chama `argument_calculator.calculate_argument_etapa` tanto para o Argumento "verdade" (stats
-oficiais, por língua) quanto para o "empírico" (stats do Edital isolado, língua misturada) — o
-mesmo cuidado que `training_dataset._calcular_argumentos_etapa` já toma. Duas fórmulas
-seriam o começo de uma divergência silenciosa entre o que este ticket mede e o que o Preditor
-calcula de verdade.
-
-**`stats_oficiais` é injetável, não importado direto.** Mesmo padrão de
-`relatorio_official_stats.comparar`: os testes montam `HistoricalStats` na mão em vez de
-depender do `OFFICIAL_STATS` de produção, para não quebrar toda vez que um Edital novo entrar em
-`pas_constants.py`.
-
-**2022/2024 entra no Deslocamento por Etapa mas fica fora da tabela por triênio.** Só tem Edital
-isolado de Etapa 1 (a Etapa 2 desse triênio não foi baixada) — sem as duas Etapas não há
-Argumento Final para comparar. Baixar essa Etapa 2 aumentaria a amostra do Deslocamento da Etapa
-2 de 5 para 6 pontos e adicionaria um sétimo triênio à tabela de validação; não foi feito porque
-o portão já tinha dado o número final desta rodada sem ela.
+Um Aluno com P2 = 65 está a 44 pontos da média; com o desvio 13% errado e o peso 8,28, isso
+sozinho move o Argumento em ~5 pontos. A 1ª rodada estava corrigindo um degrau e deixando a
+reta inteira em pé — e a reta é o termo dominante no topo.
 
 ---
 
-## 6. O que NÃO foi feito, de propósito
+## 5. 2ª rodada — a correção com a forma certa
 
-- **Nada foi escrito em `OFFICIAL_STATS`.** O ticket é explícito: se o portão reprova, a entrega
-  é a medição e a reprovação, sem entrada nova.
-- **`map.md` foi atualizado** ("O que pode reordenar tudo", item 2, e a linha do ticket 06 na
-  tabela de rota) — não reescrito. Reordenar o mapa inteiro (o que entra no lugar dos tickets 07
-  e 14) é decisão do dono do produto, não deste ticket.
-- **Nenhuma tentativa de "consertar" o resíduo por filtro ou tendência** (ver §5) — o ticket pede
-  a medição honesta, e o Passo 1 já registrou que filtrar a população do Edital isolado para
-  bater com o oficial não funciona (7 recortes testados, nenhum reproduziu).
+Dois parâmetros por (Etapa, componente), em vez de uma constante por Etapa:
+
+- **Δmédia** = `média_edital − média_oficial`
+- **razão de desvio** = `desvio_edital ÷ desvio_oficial`
+
+aplicados **nos stats**, antes do Argumento. Isso não é só mais preciso — é **mais estável**,
+que é o que o portão de fato cobra:
+
+| Parâmetro | Média | Desvio entre anos | Variação relativa |
+|---|---:|---:|---:|
+| Deslocamento da Etapa 1 (1ª rodada) | 1,808 | 0,769 | **43%** |
+| Δmédia da P2, Etapa 1 | −2,101 | 1,139 | 54% |
+| **razão de desvio da P2, Etapa 1** | **0,874** | **0,018** | **2,0%** |
+| **razão de desvio da P2, Etapa 2** | **1,005** | **0,015** | **1,5%** |
+
+O que a Turma viva precisa extrapolar deixa de ser um número que oscila 43% ao ano e passa a
+ser um que oscila 2%.
+
+Parâmetros medidos, por (Etapa, ano):
+
+| Etapa | Ano | Δmédia P2 | razão dp P2 | Δmédia Red | razão dp Red |
+|---|---:|---:|---:|---:|---:|
+| 1 | 2018 | −2,812 | 0,898 | −0,145 | 0,866 |
+| 1 | 2019 | −3,677 | 0,872 | −0,344 | 0,901 |
+| 1 | 2020 | −2,120 | 0,869 | −0,181 | 0,883 |
+| 1 | **2021** | **−0,473** | 0,847 | 0,160 | 0,820 |
+| 1 | 2022 | −1,346 | 0,887 | 0,132 | 0,822 |
+| 1 | 2023 | −2,180 | 0,872 | −0,064 | 0,872 |
+| 2 | 2019 | −4,978 | 1,001 | −0,694 | 1,201 |
+| 2 | 2020 | −4,050 | 1,003 | −0,569 | 1,168 |
+| 2 | 2021 | −4,229 | 1,026 | −0,652 | 1,180 |
+| 2 | 2022 | −3,473 | 0,985 | −0,577 | 1,264 |
+| 2 | 2024 | −4,610 | 1,012 | −0,722 | 1,220 |
 
 ---
 
-## 7. Próximo passo — decisão do dono do produto
+## 6. Decisões da 2ª rodada, e o porquê
 
-O portão reprovou; os tickets 07 (Preditor responde para a Turma viva) e 14 (publicação) ficam
-bloqueados até uma decisão. Três saídas visíveis na medição, nenhuma escolhida aqui:
+**A correção mora nos stats, não no Argumento.** Mesma decisão C que o ticket 07 já tinha
+tomado por outro motivo (não duplicar o ajuste em `stats_da_prova`, `model_package`,
+`training_dataset`, `target_calculator` e a API). Aqui ela ganhou um segundo motivo: é a única
+posição em que dá para corrigir o desvio. `Correcao.aplicar(StatsEmpiricos) → HistoricalStats`
+é a porta única, e é o que o ticket 07 chama para produzir a entrada `derivada`.
 
-1. **Deslocamento por triênio mais próximo**, em vez de uma média global — usar o ano mais
-   recente disponível de cada Etapa (ou os últimos 2-3) em vez da média dos 6, testando se isso
-   reduz o resíduo de 2021/2023 sem piorar os demais.
-2. **Aceitar o risco residual** — o pior caso medido (5,751) passa do limiar por 0,74 ponto, não
-   por uma ordem de grandeza; decidir se `LIMIAR_PORTAO` (1× RMSE) é conservador demais para este
-   uso, ou se o produto tolera esse resíduo com um aviso na tela do Aluno.
-3. **Baixar mais triênios** (só restam os anteriores a 2018, se existirem em formato compatível)
-   para engordar a amostra do Deslocamento antes de decidir 1 ou 2.
+**A razão de desvio é uma razão, não uma diferença.** É assim que ela entra no z-score, e é
+assim que ela é estável (2% de variação contra 54% da diferença de média).
 
-Nenhuma das três foi tentada nesta rodada — são chamadas de produto, e o ticket pede
-explicitamente que o código só torne a decisão visível, não que a tome no lugar do dono.
+**A Parte 1 não é corrigida — decisão medida, não esquecimento.** O Edital isolado não diz a
+língua de ninguém, então a única Parte 1 que ele oferece é a misturada; calibrá-la exigiria
+construir uma Parte 1 oficial misturada (mistura das três normais ponderada pelo share de
+língua de cada ano) só para servir de alvo. Medido: corrigir a Parte 1 **piora** o resíduo
+máximo (4,746 contra 4,366) e o p99,9 (4,32 contra 3,93) — a correção acrescenta ruído
+justamente onde o erro de não saber a língua já domina. O preço é um viés de **+0,35 ponto**,
+registrado aqui e não escondido.
+
+**A validação é *leave-one-year-out*.** Ao medir o resíduo de um triênio, os parâmetros são
+agregados **sem** o ano dele — a situação real da Turma viva, que não tem o próprio Edital
+oficial. A 1ª rodada não fazia isso: o 5,751 dela incluía o próprio ano. Refeito com LOO, o
+esquema da 1ª rodada sai em **6,101**.
+
+**Mediana entre anos, não média — e o portão não depende disso.** O pool contém a Etapa 1 de
+2021, aplicada na volta da pandemia (ensino remoto), com Δmédia da P2 de −0,47 contra −1,35 a
+−3,68 em todos os outros anos. Quando se sabe que a amostra tem um choque externo que o modelo
+não descreve, o agregado robusto é a escolha certa. **E ela não é o que salva o portão:** com
+esta calibração o resíduo máximo sai 4,366 com mediana e 4,761 com média, e as duas passam. Foi
+por isso que o esquema sem correção da Parte 1 foi preferido ao que a corrige — este último
+passa com mediana (4,746) mas reprova com média (5,129), e deixar o portão pendurado na escolha
+do agregado seria o data dredging que a 1ª rodada recusou fazer com a regressão.
+
+**Nada foi excluído do pool.** Tirar 2021 da calibração foi testado e é **pior** (4,921) do que
+mantê-lo com mediana. A robustez resolve o que a exclusão não resolveria.
 
 ---
 
-## 8. Glossário
+## 7. O resultado, por triênio
 
-- **Deslocamento:** a diferença sistemática entre o Argumento de Etapa calculado com a média/
-  desvio do Edital isolado (empírico, o que a Turma viva vê) e com a média/desvio oficial do
-  Cebraspe (o que só sai depois do PAS 3). Medido por Etapa (1 ou 2), porque o erro não se
-  distribui igual entre elas.
+| Triênio | n Alunos | n Edital E1 | n Edital E2 | Bruto \|erro\| médio | Bruto máx | Corrigido \|erro\| médio | Corrigido p95 | **Corrigido máx** |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2018/2020 | 5.384 | 22.666 | 21.380 | 9,787 | 12,834 | 2,142 | 2,648 | 3,549 |
+| 2019/2021 | 7.915 | 23.803 | 16.079 | 8,983 | 12,883 | 0,892 | 1,352 | 2,552 |
+| 2020/2022 | 6.553 | 16.298 | 14.016 | 8,445 | 12,624 | 0,810 | 1,826 | 4,116 |
+| 2021/2023 | 7.122 | 15.780 | 15.428 | 6,625 | 13,323 | 2,250 | 3,426 | **4,366** |
+| 2023/2025 | 7.838 | 19.506 | 16.340 | 7,864 | 11,452 | 1,227 | 2,013 | 2,574 |
+
+**Resíduo máximo: 4,366. Limiar: 5,009. `PORTÃO: APROVADO`** (`scripts/medir_deslocamento.py`
+sai com código 0).
+
+**E o resíduo mudou de lugar, que é a notícia melhor que o número.** Resíduo por faixa do
+Argumento Final verdadeiro, no esquema da 1ª rodada contra o da 2ª:
+
+| Faixa | 1ª rodada: viés / % otimista | **2ª rodada: viés / % otimista** |
+|---|---:|---:|
+| 0-25% | −0,682 / 41,0% | −0,033 / 62,4% |
+| 90-99% | +1,444 / 90,2% | +0,015 / 63,1% |
+| **top 1%** | **+2,285 / 95,7%** | **−0,257 / 53,0%** |
+
+Na 1ª rodada o topo saía inflado em 2,3 pontos e 95,7% dos Alunos do top 1% recebiam um
+Argumento otimista — o pior lugar possível, porque é o topo que a
+[[project_lista_maiores_argumentos]] enumera e é lá que a nota de corte decide. Na 2ª o viés do
+topo some e o máximo do topo cai de 5,085 para 2,933. O que sobra é a cauda **de baixo** de
+2021/2023, errando para menos — a direção segura.
+
+---
+
+## 8. O que NÃO foi feito, de propósito
+
+- **Nada foi escrito em `OFFICIAL_STATS`.** As duas entradas derivadas são o ticket 07, que
+  este desbloqueia. `Correcao.aplicar` é a porta pronta.
+- **Nenhum Edital novo foi baixado.** Três ainda valeriam a pena (§9), mas o portão fechou sem
+  eles e a rodada não ficou refém de download.
+- **O limiar não foi mexido.** Havia argumento para isso — 5,009 é um erro *típico* (o RMSE do
+  modelo) cobrado contra o **máximo entre 34.812 Alunos**, um erro *extremo*, e a língua
+  misturada sozinha já consome 3,207 desse orçamento. Ficou registrado como observação (§9), e
+  não como mudança: o portão passou na régua original, e afrouxá-la depois de passar seria
+  gratuito.
+
+---
+
+## 9. Recomendações para quem vier depois
+
+1. **Três Editais que ainda valem:** a Etapa 2 de 2022/2024 (o par que falta) e as Etapas 1 e 2
+   de 2016/2018 e 2017/2019 — os dois triênios já têm Edital oficial. Levaria a validação de 5
+   para 8 triênios e diria se 2021 é exceção ou regra. Zero código.
+2. **Declarar o resíduo na Largura de Incerteza.** O resíduo tem RMSE 1,633; o Argumento Final
+   já carrega 3 × 5,009 = 15,03 de incerteza vinda do `Â3`. Em quadratura, a calibração
+   acrescenta 0,56% à incerteza do Aluno. A Largura já é por classe e já vive no manifesto
+   (ADR-0012) — uma classe "Aluno servido por estatística derivada" põe esse resíduo na conta
+   da probabilidade de aprovação em vez de deixá-lo mudo.
+3. **A métrica do portão, se ele for reusado.** Um máximo sobre a população só cresce com mais
+   evidência: cada triênio novo pode reprovar um portão que já passou, sem que nada tenha
+   piorado. Se este portão virar regressão em CI, vale trocar o máximo por um quantil alto
+   (p99,9 = 3,930) ou pelo RMSE, que compõem com o tamanho da amostra em vez de brigar com ele.
+
+---
+
+## 10. Glossário
+
+- **Deslocamento:** a diferença sistemática entre o Argumento de Etapa calculado com a
+  média/desvio do Edital isolado e com os oficiais do Cebraspe. Era a *correção* na 1ª rodada;
+  na 2ª virou só **número de relatório** — o tamanho do erro que a calibração precisa vencer.
+- **Correção de estatística (`CorrecaoComponente`):** o par `(Δmédia, razão de desvio)` que
+  descreve o erro do Edital isolado num componente. Substituiu o Deslocamento como a coisa que
+  de fato corrige.
+- **Componente:** cada uma das três partes de uma Etapa — P1 (língua estrangeira), P2, Redação.
+  A correção é por componente porque o erro tem tamanho diferente em cada uma.
 - **Edital isolado de Etapa:** o "Resultado final nos itens do tipo D e na prova de redação" de
-  uma Etapa 1 ou 2 sozinha, publicado no ano seguinte à prova. Lista nota por candidato, mas
-  **não a língua estrangeira** de ninguém, e cobre todos os **inscritos**, não só os concluintes.
+  uma Etapa 1 ou 2 sozinha. Lista nota por candidato, mas **não a língua estrangeira** de
+  ninguém, e cobre todos os **inscritos**, não só os concluintes.
 - **Argumento de Etapa (`A1`, `A2`):** a nota de uma Etapa já padronizada pela média/desvio
-  daquele ano (`calculate_argument_etapa`). `Argumento Final = A1 + 2·A2 + 3·A3`; este ticket só
-  mede `A1` e `A2` — `A3` é previsto pelo modelo e está fora do escopo.
-- **Resíduo (corrigido):** `1·(A1_empírico − Deslocamento₁) + 2·(A2_empírico − Deslocamento₂)`
-  menos o mesmo cálculo com as stats oficiais — o quanto o Argumento Final de um Aluno erraria
-  mesmo depois de aplicar a correção.
-- **Portão:** a condição em código (`verificar_portao`) que decide se a calibração está boa o
-  bastante: pelo menos 4 triênios medidos, e o maior resíduo corrigido abaixo de `LIMIAR_PORTAO`
-  (5,009 — o RMSE do modelo de `A3`, uma vez, não três).
-- **Turma viva:** o triênio 2024-2026, que ainda não tem Edital oficial de nenhuma Etapa — só
-  Editais isolados. É quem o ticket 07 atenderia, se o portão tivesse aprovado.
-- **Triênio de validação:** um triênio fechado (já tem Argumento Final oficial) com Edital
-  isolado de Etapa 1 **e** 2 em disco — só esses entram na tabela do §3; 2022/2024 (só Etapa 1)
-  fica de fora dela.
+  daquele ano. `Argumento Final = A1 + 2·A2 + 3·A3`; este ticket só mede `A1` e `A2`.
+- **z-score:** `(nota − média) ÷ desvio`. O motivo de a correção precisar de dois parâmetros:
+  a média entra somando (erro vira degrau) e o desvio entra dividindo (erro vira reta).
+- **Leave-one-year-out (LOO):** ao validar o triênio X, calibrar sem o ano de X. É o que separa
+  "o método funciona" de "o método decora o próprio ano".
+- **Resíduo:** o quanto o Argumento Final de um Aluno ainda erra **depois** da correção.
+- **Portão:** a asserção em código (`verificar_portao`): pelo menos 4 triênios medidos, e o
+  maior resíduo abaixo de `LIMIAR_PORTAO` (5,009 — o RMSE do modelo de `A3`, uma vez, não três).
+- **Turma viva:** o triênio 2024-2026, que ainda não tem Edital oficial de nenhuma Etapa. É
+  quem o ticket 07 atende, agora que o portão aprovou.

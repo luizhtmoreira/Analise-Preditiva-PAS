@@ -2,9 +2,9 @@
 
 **Label:** `wayfinder:map`
 **Criado:** 2026-07-29
-**Atualizado:** 2026-07-30 — ticket 06 rodou e **reprovou**: o deslocamento não é estável entre
-triênios, o Preditor continua recusando a Turma viva, e os tickets 07/14 seguem bloqueados
-(ver "O que pode reordenar tudo" e o relatório do ticket 06).
+**Atualizado:** 2026-07-30 — ticket 06 rodou duas vezes: reprovou como constante (5,751) e
+**aprovou** ao corrigir média **e** desvio nos stats (4,366 < 5,009). O ticket 07 está
+desbloqueado (ver "O que pode reordenar tudo" e o relatório do ticket 06).
 
 ---
 
@@ -51,7 +51,7 @@ O B2B (Gestão de Ativos, Escola, Comparação, Relatórios) fica **fora desta r
 | Frente | Onde está | O que falta |
 |---|---|---|
 | Modelo PAS 3 | ✅ pronto e promovido (`models/pas3/`, `RMSE 5,009` em `A3`) | mora só no seu disco |
-| Método de inferir média e desvio | ✅ medido e aprovado com correção (Passo 1) | calibrar o deslocamento em mais triênios |
+| Método de inferir média e desvio | ✅ medido, calibrado e **aprovado no portão** (ticket 06, 2ª rodada) | — |
 | Editais de Etapa 1/2 | ✅ 6 baixados e extraídos sem falha de checksum | os de validação dos triênios antigos |
 | Extração de Editais | ✅ 12 tickets fechados, 77 PDFs processados | 6 tickets abertos; parser não conhece Etapa 1/2 |
 | Landing (`main`) | ✅ em produção na Vercel | — |
@@ -287,7 +287,7 @@ arquivo, nunca aqui: esta seção só ordena e diz quem precisa de você.
 | 3 | [CORS vindo do ambiente](issues/03-cors-vindo-do-ambiente.md) | não — delegável | Sonnet, baixo |
 | 4 | [PII sai da `proof-section`, visual vai a produção](issues/04-pii-sai-da-proof-section-e-o-visual-vai-a-producao.md) | **sim** — force-push e merge na `main` | Opus, médio |
 | 5 | [`TRIENNIUM_STATS` sai, tudo lê `OFFICIAL_STATS`](issues/05-trienniumstats-sai-tudo-le-official-stats.md) | não — delegável | Sonnet, médio |
-| 6 | [Calibração do Deslocamento e o portão](issues/06-calibracao-do-deslocamento-e-o-portao.md) | **sim, agora** — **reprovou** (resíduo 5,751 ≥ 5,009 em 2021/2023); 7 e 14 bloqueados até decisão | Opus, alto |
+| 6 | [Calibração do Deslocamento e o portão](issues/06-calibracao-do-deslocamento-e-o-portao.md) | ✅ **aprovado** na 2ª rodada (4,366 < 5,009, correção de média **e** desvio nos stats) | Opus, alto |
 | 7 | [Preditor responde para a Turma viva](issues/07-preditor-responde-para-a-turma-viva.md) | **sim** — põe número derivado na frente do Aluno | Opus, alto |
 | 8 | [API hospedada: Dockerfile, Space, pacote na imagem](issues/08-api-hospedada-dockerfile-space-pacote-na-imagem.md) | em parte — credenciais do HF e o domínio são suas | Sonnet, alto |
 | 9 | [Troca dos CSVs de Nota de Corte e população](issues/09-troca-dos-csvs-de-nota-de-corte-e-populacao.md) | não — delegável | Sonnet, médio |
@@ -371,17 +371,18 @@ Nada disto some — só não bloqueia publicar o lado público:
 ## O que pode reordenar tudo
 
 1. ~~O Passo 1 dar negativo.~~ **Resolvido:** serve com correção.
-2. **O deslocamento não é estável entre triênios — aconteceu.** Ticket 06 rodou com 6 triênios
-   fechados (2018/2020 a 2023/2025, todos com Edital isolado de Etapa 1 **e** 2 em disco — 4 a
-   mais do que os 3 pontos do Passo 1). O Deslocamento por Etapa saiu com dispersão real entre
-   anos (Etapa 1: média 1,81, desvio 0,77 entre 6 anos; Etapa 2: média 3,21, desvio 0,35 entre 5
-   anos), e aplicar a correção **média** a cada triênio deixa um resíduo que passa do limiar em
-   pelo menos um deles: **2021/2023 fecha em 5,751**, acima do portão de 5,009. **O portão
-   reprova.** Nenhuma entrada foi escrita no `OFFICIAL_STATS`; o Preditor continua recusando a
-   Turma viva, e os tickets 07 e 14 seguem bloqueados até uma decisão do dono do produto — seja
-   um deslocamento por (triênio próximo, Etapa) em vez de global, seja aceitar o risco residual,
-   seja outra saída. Medição e decisões em
-   `.scratch/publicar-site/relatorios/06-calibracao-do-deslocamento-e-o-portao.md`.
+2. ~~O deslocamento não é estável entre triênios.~~ **Resolvido — mas custou duas rodadas, e a
+   1ª reprovou.** Como uma **constante** subtraída do Argumento, o Deslocamento não generaliza:
+   resíduo 5,751 contra o limiar 5,009, e os piores casos todos no **topo**. Essa concentração
+   no topo era a assinatura do defeito, não uma fatalidade: o Argumento é uma soma de z-scores,
+   errar a **média** dá um degrau (constante corrige) e errar o **desvio** dá uma reta
+   (constante não corrige) — e o Edital isolado erra o desvio em 13% na Etapa 1 e 21% na
+   Redação da Etapa 2. Corrigindo **média e desvio, nos stats**, com validação
+   *leave-one-year-out*: resíduo máximo **4,366**, **portão APROVADO**, e o viés do topo cai de
+   +2,29 (95,7% otimista) para −0,26. O ticket 07 está desbloqueado, e `Correcao.aplicar` é a
+   porta que ele chama. Relatório em
+   `.scratch/publicar-site/relatorios/06-calibracao-do-deslocamento-e-o-portao.md`; a medição de
+   apoio, com todos os esquemas testados, em `.scratch/publicar-site/medicao-portao-06/`.
 3. ~~Você decidir publicar a Calculadora.~~ **Resolvido:** ela entra nesta rodada. Não é passo de
    modelo nem de pesquisa — é troca do estimador por aritmética e de duas constantes por valores
    medidos, tudo dentro do Passo 5.
