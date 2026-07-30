@@ -358,11 +358,21 @@ caminho reverso só faz sentido se o override **funcionar** no caminho reverso.
 
 ---
 
-## 8. ⚠ PII de Aluno real publicada no repositório remoto
+## 8. ~~PII de Aluno real publicada no repositório remoto~~ — **CORRIGIDO em 2026-07-30 (ticket 04)**
+
+> **Atualização (ticket 04):** o registro abaixo, escrito em 2026-07-29, dizia que o arquivo "não
+> existe na árvore de trabalho atual" — isso valia só para `feat/pdf-extraction`. Verificado depois
+> que `docs/notas/calibracao-modelo-arg-final.md` **estava na árvore**, não só no histórico, de
+> `feat/proof-section` e `origin/feat/proof-section`. O ticket 04 reescreveu o histórico dessa
+> branch (force-push autorizado pelo dono do produto) e mergeou a versão limpa na `main` — hoje
+> nenhuma branch local nem `origin/*` alcança o commit-raiz da PII ou o arquivo, e a `main`/produção
+> (`vetorpas.com.br`) mostram os nomes como pseudônimos (`Aluno A`–`E`). Pendência residual: o
+> objeto ainda é servível por SHA direto no GitHub (GC não coleta objeto inalcançável em
+> repositório público) — rastreada à parte no ticket 15.
 
 **Onde foi encontrado:** ticket 07, ao rastrear a proveniência do `13,49`.
 
-**O defeito:** o commit o commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15) cria `docs/notas/calibracao-modelo-arg-final.md`, que contém uma
+**O defeito:** o commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15) cria `docs/notas/calibracao-modelo-arg-final.md`, que contém uma
 tabela com o **nome completo de 6 Alunos reais** e a chance de aprovação calculada para cada um.
 
 O commit **não é ancestral do `HEAD`** e o arquivo não existe na árvore de trabalho atual — mas
@@ -395,7 +405,7 @@ Medido na régua, o `modelo_arg_final` tem **MAE 12,93** (que confirma a origem 
 distribuição e deixa **toda probabilidade confiante demais** — o Aluno que merece ouvir 70% ouve
 mais.
 
-Já havia sido descoberto em 2026-07-24 (commit o commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15), RMSE 18,01 medido em 2023/2025), com
+Já havia sido descoberto em 2026-07-24 (commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15), RMSE 18,01 medido em 2023/2025), com
 decisão explícita registrada de **não aplicar a correção**.
 
 **O que falta fazer:** ticket 11. Não é só trocar 13,49 por 16,26 — a largura precisa virar

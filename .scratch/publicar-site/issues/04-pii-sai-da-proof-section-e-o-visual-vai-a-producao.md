@@ -7,7 +7,7 @@ A `feat/proof-section` tem 14 commits de visual da landing, já contém a `main`
 conflita com nada** — pode ir a produção sozinha, sem esperar o resto do mapa. É o ganho mais
 barato desta rodada.
 
-**Mas ela carrega PII, e pior do que o registrado.** O commit o commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15) cria
+**Mas ela carrega PII, e pior do que o registrado.** O commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15) cria
 `docs/notas/calibracao-modelo-arg-final.md`, com uma tabela contendo o **nome completo de Alunos
 reais** e a chance de aprovação calculada para cada um. O registro em `defeitos-pendentes.md`
 (defeito 8) dizia que o arquivo não existia mais na árvore de trabalho — isso vale para a
@@ -27,16 +27,18 @@ o histórico da branch e sobrescreve o remoto. Confira antes que ninguém mais t
 
 **Blocked by:** Nenhum — pode começar imediatamente.
 
-**Status:** ready-for-agent
+**Status:** done — ver `.scratch/publicar-site/relatorios/04-pii-sai-da-proof-section-e-o-visual-vai-a-producao.md`
 
-- [ ] `docs/notas/calibracao-modelo-arg-final.md` não existe na árvore de trabalho da
+- [x] `docs/notas/calibracao-modelo-arg-final.md` não existe na árvore de trabalho da
       `feat/proof-section`
-- [ ] O arquivo não é alcançável por nenhum commit da `feat/proof-section` nem da
+- [x] O arquivo não é alcançável por nenhum commit da `feat/proof-section` nem da
       `origin/feat/proof-section` — histórico reescrito e remoto sobrescrito
-- [ ] Uma varredura no histórico das quatro branches (`main`, `feat/pdf-extraction`,
+- [x] Uma varredura no histórico das quatro branches (`main`, `feat/pdf-extraction`,
       `feat/proof-section`, `feat/nextjs-frontend`) não acha nenhum outro arquivo com nome de Aluno
       real, e o resultado fica registrado
-- [ ] A `feat/proof-section` é mergeada na `main` e o deploy da Vercel fica verde
-- [ ] O defeito 8 de `defeitos-pendentes.md` é marcado como corrigido, com a correção de que o
+- [x] A `feat/proof-section` é mergeada na `main` e o deploy da Vercel fica verde
+- [x] O defeito 8 de `defeitos-pendentes.md` é marcado como corrigido, com a correção de que o
       arquivo estava na **árvore** e não só no histórico
-- [ ] `[[project_parser_privacy]]` (a watch-list de privacidade) é atualizada com esta rodada
+- [ ] `[[project_parser_privacy]]` (a watch-list de privacidade) é atualizada com esta rodada —
+      ver nota no relatório: o objeto ainda é servível por SHA direto no GitHub (ticket 15), então
+      a memória só deve fechar o item 6/7 depois do GC confirmado

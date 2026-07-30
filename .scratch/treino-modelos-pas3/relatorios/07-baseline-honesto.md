@@ -224,7 +224,7 @@ em que o próprio modelo foi treinado**. Medição no dado de treino, com a mét
 com o comentário "Erro médio do modelo") e é passada como o parâmetro `rmse` de
 `calculate_approval_probability` em 6 lugares. O docstring de `statistics.py` afirma que é RMSE.
 
-**Isso já estava documentado e o registro sumiu do repositório.** O commit o commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15)
+**Isso já estava documentado e o registro sumiu do repositório.** O commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15)
 ("docs: record MAE-vs-RMSE calibration finding") criou
 `docs/notas/calibracao-modelo-arg-final.md` com exatamente este achado, mais um recálculo
 (MAE 14,32 · RMSE 18,01 · viés +8,82) e a decisão registrada de **não aplicar a correção**. O
@@ -380,7 +380,7 @@ aritmética exata dela. `lingua_e3` **não** entra na lista — o Aluno informa 
    qualquer forma.
 3. **`ensemble.py` é código morto** e o `CLAUDE.md` o descreve como se estivesse em produção. Ver
    §5.
-4. **⚠ PII no repositório remoto.** O commit o commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15) traz
+4. **⚠ PII no repositório remoto.** O commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15) traz
    `docs/notas/calibracao-modelo-arg-final.md` com **nome completo de 6 Alunos reais e a chance de
    aprovação de cada um**. O commit não é ancestral do `HEAD`, mas é alcançável pela branch
    `feat/proof-section` — **e por `origin/feat/proof-section`, ou seja, está publicado**. Isso

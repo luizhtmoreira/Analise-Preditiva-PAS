@@ -500,7 +500,7 @@ Os outros três são mecânicos.
 `/api/predict/strategy` com schema e serviço, `PublicHeader.tsx`, os fluxos de recuperação de
 senha, a página de perfil e a reescrita da landing.
 
-**Bloqueador de privacidade na `feat/proof-section`.** O commit o commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15) cria
+**Bloqueador de privacidade na `feat/proof-section`.** O commit-raiz da PII (SHA não citado aqui de propósito — ver ticket 15) cria
 `docs/notas/calibracao-modelo-arg-final.md`, com uma tabela contendo o **nome completo de 6 Alunos
 reais** e a chance de aprovação de cada um. Verificado em 2026-07-29: o arquivo **está na árvore de
 trabalho** da `feat/proof-section` e da `origin/feat/proof-section` — não é só histórico. Mergear
