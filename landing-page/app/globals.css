@@ -151,6 +151,15 @@
 
 /* ===== Landing page (/) ===== */
 
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes landing-fade-up {
   from {
     opacity: 0;
@@ -203,6 +212,35 @@
     animation: none;
   }
   .landing-tail-pulse {
+    animation: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Synchronized "breathing" pulse — used in Hero bg and Build-in-Public badge.
+   By sharing the same @keyframes name + duration + delay:0, the browser
+   anchors all instances to the same document-timeline phase, keeping them
+   visually in sync even across separate DOM nodes.
+   ───────────────────────────────────────────────────────────────────────────── */
+@keyframes unb-breathe {
+  0%, 100% { opacity: var(--breathe-min, 0.08); }
+  50%       { opacity: var(--breathe-max, 0.18); }
+}
+
+.animate-unb-breathe {
+  animation: unb-breathe 8s ease-in-out infinite;
+}
+
+/* Badge variant — smaller opacity swing */
+.animate-unb-breathe-badge {
+  --breathe-min: 1;
+  --breathe-max: 0.55;
+  animation: unb-breathe 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-unb-breathe,
+  .animate-unb-breathe-badge {
     animation: none;
   }
 }

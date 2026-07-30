@@ -5,6 +5,294 @@ import { BrandMark } from "@/components/brand/BrandMark";
 import { WaitlistForm } from "./WaitlistForm";
 import { Television, Lightbulb, Wrench, Megaphone, YoutubeLogo, CaretRight, ChartBar, Info, List, X } from "@phosphor-icons/react";
 
+// ---------------------------------------------------------------------------
+// Seção: Aprovações Reais — dados e subcomponentes
+// ---------------------------------------------------------------------------
+interface ProofPerson {
+  /** Pseudônimo. Nome real de Aluno nunca entra aqui — ver `selecao-casos-2023-2025.md` §7. */
+  name: string;
+  school: string;
+  curso: string;
+  pas1: number;
+  pas2: number;
+  previsto: number;
+  real: number;
+  chancePercent: number;
+  aprovado: boolean;
+  /**
+   * Nota de Corte usada para calcular `chancePercent`: a do triênio ANTERIOR, que é a
+   * última publicada antes da Etapa 3 do Aluno. A do próprio triênio sai no mesmo Edital
+   * que o resultado — usá-la seria dar ao modelo uma informação do futuro.
+   * Mesma regra do runtime: `gestao_service._build_cutoff_maps`.
+   */
+  corteRef: number;
+  corteRefTrienio: string;
+  theme: {
+    bgGradient: string;
+    headerBadgeBg: string;
+    headerBadgeText: string;
+    nameColor: string;
+    schoolColor: string;
+    cardBg: string;
+    cardBorder: string;
+    labelColor: string;
+    numberColor: string;
+    splitPrevBg: string;
+    splitRealBg: string;
+    gaugeTrack: string;
+    gaugeStroke: string;
+    gaugeText: string;
+    statusBg: string;
+    statusText: string;
+    statusBorder: string;
+  };
+}
+
+// Aprovados de verdade na ampla concorrência (Sistema Universal) do triênio 2023/2025, que o
+// modelo nunca viu no treino. A chance de cada um foi calculada contra a Nota de Corte de
+// 2022/2024 — a última publicada antes da Etapa 3 deles. Seleção e critério em
+// `data/prova-do-modelo/selecao-casos-2023-2025.md` §2 (gitignored, contém a inscrição real).
+const APROVACOES_REAIS: ProofPerson[] = [
+  {
+    name: "Aluno A",
+    school: "PAS 2023-2025",
+    curso: "MEDICINA",
+    pas1: 70.0,
+    pas2: 86.5,
+    previsto: 164.02,
+    real: 161.93,
+    chancePercent: 58,
+    aprovado: true,
+    corteRef: 161.14,
+    corteRefTrienio: "2022-2024",
+    theme: {
+      bgGradient: "linear-gradient(150deg, #00AEEF 0%, #0072B8 100%)",
+      headerBadgeBg: "rgba(0, 33, 71, 0.25)",
+      headerBadgeText: "#002147",
+      nameColor: "#002147",
+      schoolColor: "rgba(0, 33, 71, 0.8)",
+      cardBg: "rgba(255, 255, 255, 0.95)",
+      cardBorder: "rgba(255, 255, 255, 0.4)",
+      labelColor: "#4A5568",
+      numberColor: "#002147",
+      splitPrevBg: "#F8F9FA",
+      splitRealBg: "rgba(0, 174, 239, 0.12)",
+      gaugeTrack: "#E2E8F0",
+      gaugeStroke: "#0072B8",
+      gaugeText: "#002147",
+      statusBg: "#002147",
+      statusText: "#FFFFFF",
+      statusBorder: "rgba(0, 33, 71, 0.2)",
+    },
+  },
+  {
+    name: "Aluno B",
+    school: "PAS 2023-2025",
+    curso: "DIREITO DIURNO",
+    pas1: 53.1,
+    pas2: 76.1,
+    previsto: 117.6,
+    real: 118.18,
+    chancePercent: 80,
+    aprovado: true,
+    corteRef: 105.1,
+    corteRefTrienio: "2022-2024",
+    theme: {
+      bgGradient: "linear-gradient(150deg, #002147 0%, #001024 100%)",
+      headerBadgeBg: "rgba(0, 174, 239, 0.2)",
+      headerBadgeText: "#7FD8F7",
+      nameColor: "#FFFFFF",
+      schoolColor: "rgba(255, 255, 255, 0.7)",
+      cardBg: "rgba(255, 255, 255, 0.08)",
+      cardBorder: "rgba(255, 255, 255, 0.12)",
+      labelColor: "#94A3B8",
+      numberColor: "#FFFFFF",
+      splitPrevBg: "rgba(255, 255, 255, 0.04)",
+      splitRealBg: "rgba(0, 174, 239, 0.2)",
+      gaugeTrack: "rgba(255, 255, 255, 0.15)",
+      gaugeStroke: "#00AEEF",
+      gaugeText: "#FFFFFF",
+      statusBg: "#00AEEF",
+      statusText: "#002147",
+      statusBorder: "rgba(0, 174, 239, 0.4)",
+    },
+  },
+  {
+    name: "Aluno C",
+    school: "PAS 2023-2025",
+    curso: "DIREITO NOTURNO",
+    pas1: 51.0,
+    pas2: 63.8,
+    previsto: 92.38,
+    real: 91.87,
+    chancePercent: 88,
+    aprovado: true,
+    corteRef: 74.72,
+    corteRefTrienio: "2022-2024",
+    theme: {
+      bgGradient: "linear-gradient(150deg, #00843D 0%, #005626 100%)",
+      headerBadgeBg: "rgba(0, 0, 0, 0.25)",
+      headerBadgeText: "#FFFFFF",
+      nameColor: "#FFFFFF",
+      schoolColor: "rgba(255, 255, 255, 0.8)",
+      cardBg: "rgba(255, 255, 255, 0.95)",
+      cardBorder: "rgba(255, 255, 255, 0.3)",
+      labelColor: "#4A5568",
+      numberColor: "#002147",
+      splitPrevBg: "#F8F9FA",
+      splitRealBg: "rgba(0, 132, 61, 0.12)",
+      gaugeTrack: "#E2E8F0",
+      gaugeStroke: "#00843D",
+      gaugeText: "#002147",
+      statusBg: "#00843D",
+      statusText: "#FFFFFF",
+      statusBorder: "rgba(255, 255, 255, 0.3)",
+    },
+  },
+  {
+    name: "Aluno D",
+    school: "PAS 2023-2025",
+    curso: "CIÊNCIA DA COMPUTAÇÃO",
+    pas1: 62.9,
+    pas2: 63.8,
+    previsto: 104.11,
+    real: 103.49,
+    chancePercent: 67,
+    aprovado: true,
+    corteRef: 97.63,
+    corteRefTrienio: "2022-2024",
+    theme: {
+      bgGradient: "linear-gradient(150deg, #00AEEF 0%, #0072B8 100%)",
+      headerBadgeBg: "rgba(0, 33, 71, 0.25)",
+      headerBadgeText: "#002147",
+      nameColor: "#002147",
+      schoolColor: "rgba(0, 33, 71, 0.8)",
+      cardBg: "rgba(255, 255, 255, 0.95)",
+      cardBorder: "rgba(255, 255, 255, 0.4)",
+      labelColor: "#4A5568",
+      numberColor: "#002147",
+      splitPrevBg: "#F8F9FA",
+      splitRealBg: "rgba(0, 174, 239, 0.12)",
+      gaugeTrack: "#E2E8F0",
+      gaugeStroke: "#0072B8",
+      gaugeText: "#002147",
+      statusBg: "#002147",
+      statusText: "#FFFFFF",
+      statusBorder: "rgba(0, 33, 71, 0.2)",
+    },
+  },
+  {
+    name: "Aluno E",
+    school: "PAS 2023-2025",
+    curso: "ENGENHARIA DE COMPUTAÇÃO",
+    pas1: 57.2,
+    pas2: 65.1,
+    previsto: 99.87,
+    real: 101.73,
+    chancePercent: 85,
+    aprovado: true,
+    corteRef: 84.48,
+    corteRefTrienio: "2022-2024",
+    theme: {
+      bgGradient: "linear-gradient(150deg, #002147 0%, #001024 100%)",
+      headerBadgeBg: "rgba(0, 174, 239, 0.2)",
+      headerBadgeText: "#7FD8F7",
+      nameColor: "#FFFFFF",
+      schoolColor: "rgba(255, 255, 255, 0.7)",
+      cardBg: "rgba(255, 255, 255, 0.08)",
+      cardBorder: "rgba(255, 255, 255, 0.12)",
+      labelColor: "#94A3B8",
+      numberColor: "#FFFFFF",
+      splitPrevBg: "rgba(255, 255, 255, 0.04)",
+      splitRealBg: "rgba(0, 174, 239, 0.2)",
+      gaugeTrack: "rgba(255, 255, 255, 0.15)",
+      gaugeStroke: "#00AEEF",
+      gaugeText: "#FFFFFF",
+      statusBg: "#00AEEF",
+      statusText: "#002147",
+      statusBorder: "rgba(0, 174, 239, 0.4)",
+    },
+  },
+];
+
+/** Quão perto a previsão chegou. Verde/vermelho vai pela MAGNITUDE do erro, não pelo sinal:
+ *  prever 92,4 para quem tirou 91,9 é um acerto, e pintar de vermelho por ter passado 0,5 ponto
+ *  para cima contradiz o que a seção está tentando mostrar. 3 pontos de Argumento Final é a
+ *  faixa que o `selecao-casos-2023-2025.md` §3 usa como "chegou perto". */
+const PROOF_DELTA_OK = 3;
+
+function ProofDeltaBadge({ previsto, real }: { previsto: number; real: number }) {
+  const delta = (real - previsto).toFixed(1);
+  const positive = Math.abs(real - previsto) <= PROOF_DELTA_OK;
+  return (
+    <span
+      className="inline-block font-mono text-[0.7rem] font-bold px-2 py-0.5 rounded-md"
+      style={{
+        background: positive ? "#00843D22" : "#EF444422",
+        color: positive ? "#00843D" : "#EF4444",
+      }}
+    >
+      {positive ? "+" : ""}{delta}
+    </span>
+  );
+}
+
+function ProofChanceGauge({
+  percent,
+  strokeColor,
+  trackColor,
+  textColor,
+  size = 60,
+}: {
+  percent: number;
+  strokeColor: string;
+  trackColor: string;
+  textColor: string;
+  size?: number;
+}) {
+  const strokeWidth = size * 0.09;
+  const radius = size / 2 - strokeWidth;
+  const circ = 2 * Math.PI * radius;
+  const offset = circ - (percent / 100) * circ;
+  const center = size / 2;
+
+  return (
+    <div className="flex items-center gap-3">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+        <circle cx={center} cy={center} r={radius} fill="none" stroke={trackColor} strokeWidth={strokeWidth} />
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${center} ${center})`}
+          style={{ transition: "stroke-dashoffset 0.9s ease" }}
+        />
+        <text
+          x={center}
+          y={center + size * 0.045}
+          textAnchor="middle"
+          fontSize={size * 0.24}
+          fontWeight={800}
+          fill={textColor}
+          fontFamily="monospace"
+        >
+          {percent}%
+        </text>
+      </svg>
+      <p className="text-[0.58rem] font-mono uppercase tracking-wider font-bold leading-tight" style={{ color: textColor }}>
+        Chance<br />Prevista
+      </p>
+    </div>
+  );
+}
+
+
 // Dados reais do último vestibular UnB (Triênio 2023-2025) extraídos do CSV oficial
 // Os 10 cursos com maior nota de corte (na ampla) na 1ª chamada, 2º semestre (único do triênio no arquivo)
 interface CorteData {
@@ -79,6 +367,30 @@ export function LandingPage() {
   const [dropdownSearch, setDropdownSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Carrossel de Aprovações Reais
+  const proofScrollRef = useRef<HTMLDivElement>(null);
+  const [proofScrollState, setProofScrollState] = useState({ atStart: true, atEnd: false });
+
+  const updateProofScrollState = () => {
+    const el = proofScrollRef.current;
+    if (!el) return;
+    setProofScrollState({
+      atStart: el.scrollLeft <= 4,
+      atEnd: el.scrollLeft >= el.scrollWidth - el.clientWidth - 4,
+    });
+  };
+
+  const scrollProofBy = (direction: 1 | -1) => {
+    const el = proofScrollRef.current;
+    if (!el) return;
+    const cards = Array.from(el.children) as HTMLElement[];
+    if (cards.length === 0) return;
+    const currentIndex = cards.findIndex((c) => c.offsetLeft >= el.scrollLeft - 4);
+    const fromIndex = currentIndex === -1 ? cards.length - 1 : currentIndex;
+    const targetIndex = Math.min(Math.max(fromIndex + direction, 0), cards.length - 1);
+    el.scrollTo({ left: cards[targetIndex].offsetLeft, behavior: "smooth" });
+  };
+
   const filteredCourses = NOTAS_CORTE_REAIS.filter(c =>
     c.curso.toLowerCase().includes(dropdownSearch.toLowerCase())
   );
@@ -92,6 +404,13 @@ export function LandingPage() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Recalcular limites do carrossel de Aprovações Reais ao montar / redimensionar
+  useEffect(() => {
+    updateProofScrollState();
+    window.addEventListener("resize", updateProofScrollState);
+    return () => window.removeEventListener("resize", updateProofScrollState);
   }, []);
 
   const handleCourseSelect = (course: CorteData) => {
@@ -125,15 +444,28 @@ export function LandingPage() {
           {/* Desktop Menu Links */}
           <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-[#002147]">
             <a
-              href="#corte-preview"
+              href="#aprovacoes"
               onClick={(e) => {
                 e.preventDefault();
-                document.getElementById("corte-preview")?.scrollIntoView({ behavior: "smooth" });
+                document.getElementById("aprovacoes")?.scrollIntoView({ behavior: "smooth" });
               }}
               className="hover:text-[#00843D] transition-colors cursor-pointer"
             >
-              Notas de Corte
+              Aprovações
             </a>
+            {/* Notas de Corte — seção desativada temporariamente, ver bloco {false && (...)} abaixo */}
+            {false && (
+              <a
+                href="#corte-preview"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("corte-preview")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="hover:text-[#00843D] transition-colors cursor-pointer"
+              >
+                Notas de Corte
+              </a>
+            )}
             <a
               href="#historia"
               onClick={(e) => {
@@ -179,16 +511,29 @@ export function LandingPage() {
           {isMobileMenuOpen && (
             <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-[#E2E8F0] shadow-lg py-4 px-6 flex flex-col font-semibold text-[#002147] animate-in fade-in slide-in-from-top-1 duration-150 z-50">
               <a
-                href="#corte-preview"
+                href="#aprovacoes"
                 onClick={(e) => {
                   e.preventDefault();
                   setIsMobileMenuOpen(false);
-                  document.getElementById("corte-preview")?.scrollIntoView({ behavior: "smooth" });
+                  document.getElementById("aprovacoes")?.scrollIntoView({ behavior: "smooth" });
                 }}
                 className="hover:text-[#00843D] transition-colors py-3 border-b border-black/5 cursor-pointer text-sm"
               >
-                Notas de Corte
+                Aprovações
               </a>
+              {false && (
+                <a
+                  href="#corte-preview"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsMobileMenuOpen(false);
+                    document.getElementById("corte-preview")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="hover:text-[#00843D] transition-colors py-3 border-b border-black/5 cursor-pointer text-sm"
+                >
+                  Notas de Corte
+                </a>
+              )}
               <a
                 href="#historia"
                 onClick={(e) => {
@@ -227,48 +572,279 @@ export function LandingPage() {
         </div>
       </nav>
 
-      {/* ============ HERO & HEADER (FUNDO LIMPO BRANCO / HIGH CONTRAST) ============ */}
-      <header className="relative z-20 bg-white text-[#002147] pt-16 pb-24 border-b border-[#E2E8F0]">
-        {/* Elementos decorativos animados de fundo */}
+      {/* ══════════════════════════════════════════════════════════════════
+           Wrapper compartilhado: Hero + Aprovações
+           Um único elemento de gradiente cobre ambas as seções.
+           O mask-image faz o degradê sumir gradualmente conforme desce —
+           cheio na seção 1, a ~35% na seção 2, invisível antes da seção 3.
+          ══════════════════════════════════════════════════════════════════ */}
+      <div className="relative bg-white overflow-hidden">
+
+        {/* Gradiente único — sistema de coordenadas compartilhado entre as 2 seções */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-10 animate-pulse duration-[8000ms]"
+          className="absolute inset-0 pointer-events-none z-0"
           style={{
             backgroundImage:
-              "radial-gradient(ellipse at 80% 20%, #00843D 0%, transparent 65%), radial-gradient(ellipse at 20% 80%, #00AEEF 0%, transparent 65%)",
+              "radial-gradient(ellipse at 82% 18%, #00843D 0%, transparent 60%), radial-gradient(ellipse at 18% 82%, #00AEEF 0%, transparent 60%)",
+            maskImage:
+              "linear-gradient(to bottom, black 0%, black 32%, rgba(0,0,0,0.45) 58%, rgba(0,0,0,0.12) 78%, transparent 92%)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, black 0%, black 32%, rgba(0,0,0,0.45) 58%, rgba(0,0,0,0.12) 78%, transparent 92%)",
           }}
         />
 
-        <div className="relative z-10 max-w-6xl mx-auto px-6">
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
-            {/* Texto de Impacto */}
-            <div className="lg:col-span-7 space-y-6">
-              <span className="inline-block font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00843D] bg-[#00843D]/5 border border-[#00843D]/25 px-3.5 py-1.5 rounded-lg font-bold">
-                Análise Preditiva · PAS/UnB
-              </span>
-              <h1 className="font-heading text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.08] text-[#002147]">
-                Sua aprovação na UnB, calculada{" "}
-                <br />
-                <span className="text-[#00843D] relative inline-block">
-                  com precisão.
-                  <span className="absolute bottom-1 left-0 w-full h-[4px] bg-[#00AEEF]/40 rounded-full" />
+        {/* ============ HERO & HEADER ============ */}
+        <header className="relative z-20 text-[#002147] pt-16 pb-24">
+          <div className="relative z-10 max-w-6xl mx-auto px-6">
+            <div className="grid lg:grid-cols-12 gap-12 items-center">
+              {/* Texto de Impacto */}
+              <div className="lg:col-span-7 space-y-6">
+                <span className="inline-block font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00843D] bg-[#00843D]/5 border border-[#00843D]/25 px-3.5 py-1.5 rounded-lg font-bold">
+                  Análise Preditiva · PAS/UnB
                 </span>
-              </h1>
-              <p className="text-lg sm:text-xl text-[#4A5568] leading-relaxed max-w-xl">
-                O Vetor PAS combina IA e dados oficiais do Cebraspe para prever seu Argumento Final e calcular a chance real de você passar no seu curso no PAS 3.
-              </p>
-            </div>
+                <h1 className="font-heading text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.08] text-[#002147]">
+                  Sua aprovação na UnB, calculada{" "}
+                  <br />
+                  <span className="text-[#00843D] relative inline-block">
+                    com precisão.
+                    <span className="absolute bottom-1 left-0 w-full h-[4px] bg-[#00AEEF]/40 rounded-full" />
+                  </span>
+                </h1>
+                <p className="text-lg sm:text-xl text-[#4A5568] leading-relaxed max-w-xl">
+                  O Vetor PAS combina IA e dados oficiais do Cebraspe para prever seu Argumento Final e calcular a chance real de você passar no seu curso no PAS 3.
+                </p>
+              </div>
 
-            {/* Card do Formulário da Lista de Espera */}
-            <div id="lista-espera" className="lg:col-span-5 scroll-mt-24">
-              <div className="bg-[#002147] border border-black/10 p-1.5 rounded-3xl shadow-[0_20px_50px_rgba(0,33,71,0.15)] text-white hover:scale-[1.01] transition-transform duration-300">
-                <WaitlistForm variantStyle="card" buttonText="Garantir Meu Acesso Antecipado" />
+              {/* Card do Formulário da Lista de Espera */}
+              <div id="lista-espera" className="lg:col-span-5 scroll-mt-24">
+                <div className="bg-[#002147] border border-black/10 p-1.5 rounded-3xl shadow-[0_20px_50px_rgba(0,33,71,0.15)] text-white hover:scale-[1.01] transition-transform duration-300">
+                  <WaitlistForm variantStyle="card" buttonText="Garantir Meu Acesso Antecipado" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* ============ NOTAS DE CORTE PREVIEW (NOVA SEÇÃO INTERATIVA COM DADOS REAIS) ============ */}
+        {/* ============ APROVAÇÕES REAIS ============ */}
+        <section
+          id="aprovacoes"
+          className="py-20 sm:py-24 scroll-mt-20 relative z-10"
+        >
+          <div className="relative z-10 max-w-6xl mx-auto px-6">
+            {/* Cabeçalho — mesmo padrão tipográfico de todas as seções */}
+            <div className="max-w-3xl mb-14 space-y-4">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00843D] bg-[#00843D]/8 border border-[#00843D]/20 px-3 py-1.5 rounded-lg font-bold">
+                Aprovações Reais
+              </span>
+              <h2 className="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-[#002147]">
+                Antes do gabarito, a previsão já estava feita.
+              </h2>
+              <p className="text-base sm:text-lg text-[#4A5568] leading-relaxed">
+                Antes do PAS 3, o Vetor PAS calculou o argumento final e a chance de aprovação de cada aluno.
+                Veja a previsão lado a lado com o resultado oficial.
+              </p>
+              <p className="text-sm text-[#4A5568]/85 leading-relaxed">
+                Todos aprovados na ampla concorrência, no triênio 2023-2025 — que o modelo nunca
+                viu. A chance de cada um foi calculada contra a nota de corte de 2022-2024, a
+                última publicada antes da prova. Nomes preservados por privacidade.
+              </p>
+            </div>
+          </div>
+
+          {/* Carrossel de cards — bloco de cor sólido por aluno, borda a borda entre si, contido na mesma largura das demais seções */}
+          <div className="relative z-10 max-w-6xl mx-auto px-6">
+          <div className="relative rounded-2xl overflow-hidden border border-black/5 shadow-lg">
+            <div
+              ref={proofScrollRef}
+              onScroll={updateProofScrollState}
+              className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
+            >
+            {APROVACOES_REAIS.map((p, i) => (
+              <div
+                key={p.name}
+                className={`snap-start shrink-0 w-full sm:w-1/2 lg:w-1/3 relative flex flex-col justify-between p-8 sm:p-9 overflow-hidden ${
+                  i > 0 ? "border-l border-white/10" : ""
+                }`}
+                style={{ background: p.theme.bgGradient }}
+              >
+                <div className="relative z-10 space-y-5">
+                  {/* Cabeçalho editorial: curso (topo-esquerda) / aluno & escola (topo-direita) */}
+                  <div
+                    className="flex items-start justify-between gap-3 border-b pb-4"
+                    style={{ borderColor: p.theme.cardBorder }}
+                  >
+                    <span
+                      className="font-mono text-[0.7rem] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm"
+                      style={{ background: p.theme.headerBadgeBg, color: p.theme.headerBadgeText }}
+                    >
+                      {p.curso}
+                    </span>
+                    <div className="text-right min-w-0">
+                      <p className="font-bold text-base leading-tight truncate" style={{ color: p.theme.nameColor }}>
+                        {p.name}
+                      </p>
+                      <p className="text-xs truncate" style={{ color: p.theme.schoolColor }}>
+                        {p.school}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Histórico PAS 1 + PAS 2 */}
+                  <div>
+                    <p
+                      className="text-[0.62rem] font-mono uppercase tracking-wider font-bold mb-2"
+                      style={{ color: p.theme.nameColor, opacity: 0.9 }}
+                    >
+                      Histórico de Notas
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div
+                        className="p-3 rounded-2xl text-center backdrop-blur-sm shadow-sm"
+                        style={{ background: p.theme.cardBg, border: `1px solid ${p.theme.cardBorder}` }}
+                      >
+                        <p className="text-[0.58rem] font-mono uppercase font-bold" style={{ color: p.theme.labelColor }}>
+                          PAS 1
+                        </p>
+                        <p className="text-xl font-black mt-0.5" style={{ color: p.theme.numberColor }}>
+                          {p.pas1.toFixed(1)}
+                        </p>
+                      </div>
+                      <div
+                        className="p-3 rounded-2xl text-center backdrop-blur-sm shadow-sm"
+                        style={{ background: p.theme.cardBg, border: `1px solid ${p.theme.cardBorder}` }}
+                      >
+                        <p className="text-[0.58rem] font-mono uppercase font-bold" style={{ color: p.theme.labelColor }}>
+                          PAS 2
+                        </p>
+                        <p className="text-xl font-black mt-0.5" style={{ color: p.theme.numberColor }}>
+                          {p.pas2.toFixed(1)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Argumento Final (PAS 3) — Previsto vs Real Split */}
+                  <div>
+                    <p
+                      className="text-[0.62rem] font-mono uppercase tracking-wider font-bold mb-2"
+                      style={{ color: p.theme.nameColor, opacity: 0.9 }}
+                    >
+                      Argumento Final (PAS 3)
+                    </p>
+                    <div
+                      className="rounded-2xl overflow-hidden backdrop-blur-sm shadow-sm"
+                      style={{ background: p.theme.cardBg, border: `1px solid ${p.theme.cardBorder}` }}
+                    >
+                      <div className="grid grid-cols-2 divide-x" style={{ borderColor: p.theme.cardBorder }}>
+                        <div className="p-3 text-center" style={{ background: p.theme.splitPrevBg }}>
+                          <p className="text-[0.58rem] font-mono uppercase font-bold" style={{ color: p.theme.labelColor }}>
+                            Previsto
+                          </p>
+                          <p className="text-2xl font-black mt-0.5 opacity-70" style={{ color: p.theme.numberColor }}>
+                            {p.previsto.toFixed(1)}
+                          </p>
+                        </div>
+                        <div className="p-3 text-center" style={{ background: p.theme.splitRealBg }}>
+                          <p className="text-[0.58rem] font-mono uppercase font-bold" style={{ color: p.theme.labelColor }}>
+                            Real
+                          </p>
+                          <p className="text-2xl font-black mt-0.5" style={{ color: p.theme.numberColor }}>
+                            {p.real.toFixed(1)}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className="px-3.5 py-1.5 border-t flex items-center justify-between"
+                        style={{ borderColor: p.theme.cardBorder }}
+                      >
+                        <p className="text-[0.58rem] font-mono" style={{ color: p.theme.labelColor }}>
+                          Δ erro do modelo
+                        </p>
+                        <ProofDeltaBadge previsto={p.previsto} real={p.real} />
+                      </div>
+                      {/* A chance foi calculada contra este corte — o do triênio anterior, o
+                          único publicado antes da Etapa 3 do Aluno. Sem exibi-lo, o percentual
+                          do medidor abaixo fica sem lastro. */}
+                      <div
+                        className="px-3.5 py-1.5 border-t flex items-center justify-between gap-2"
+                        style={{ borderColor: p.theme.cardBorder }}
+                      >
+                        <p className="text-[0.58rem] font-mono" style={{ color: p.theme.labelColor }}>
+                          Corte de referência{" "}
+                          <span className="opacity-70">({p.corteRefTrienio})</span>
+                        </p>
+                        <p
+                          className="text-[0.7rem] font-mono font-black tabular-nums"
+                          style={{ color: p.theme.numberColor }}
+                        >
+                          {p.corteRef.toFixed(1)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Barra Inferior: Chance Gauge (em destaque) & Badge de Aprovado */}
+                <div
+                  className="relative z-10 pt-5 mt-5 border-t flex items-center justify-between gap-3"
+                  style={{ borderColor: p.theme.cardBorder }}
+                >
+                  <ProofChanceGauge
+                    percent={p.chancePercent}
+                    strokeColor={p.theme.gaugeStroke}
+                    trackColor={p.theme.gaugeTrack}
+                    textColor={p.theme.gaugeText}
+                    size={92}
+                  />
+                  <div>
+                    {p.aprovado && (
+                      <span
+                        className="inline-block font-bold text-sm px-3.5 py-1.5 rounded-xl shadow-sm"
+                        style={{
+                          background: p.theme.statusBg,
+                          color: p.theme.statusText,
+                          border: `1px solid ${p.theme.statusBorder}`,
+                        }}
+                      >
+                        ✓ Aprovada(o)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            </div>
+
+            {/* Setas de navegação do carrossel */}
+            <button
+              type="button"
+              onClick={() => scrollProofBy(-1)}
+              disabled={proofScrollState.atStart}
+              aria-label="Aluno anterior"
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm flex items-center justify-center text-white transition-all disabled:opacity-0 disabled:pointer-events-none"
+            >
+              <CaretRight size={16} weight="bold" className="rotate-180" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollProofBy(1)}
+              disabled={proofScrollState.atEnd}
+              aria-label="Próximo aluno"
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm flex items-center justify-center text-white transition-all disabled:opacity-0 disabled:pointer-events-none"
+            >
+              <CaretRight size={16} weight="bold" />
+            </button>
+          </div>
+          </div>
+        </section>
+
+        {/* Borda de separação para seção 3 */}
+        <div className="border-t border-[#E2E8F0]" />
+      </div>
+
+
+      {/* ============ NOTAS DE CORTE PREVIEW (desativada temporariamente — pode voltar) ============ */}
+      {false && (
       <section id="corte-preview" className="py-20 sm:py-24 bg-white border-b border-[#E2E8F0] scroll-mt-20 relative">
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           
@@ -401,8 +977,8 @@ export function LandingPage() {
                   <div className="pt-2">
                     <p className="text-xs text-[#00843D] font-mono uppercase tracking-wider font-bold">Nota de Corte (Mínimo)</p>
                     <p className="text-5xl sm:text-6xl font-black tracking-tight text-[#002147] mt-1">
-                      {activeMetrics.min >= 0 ? "+" : ""}
-                      {activeMetrics.min.toFixed(3)}
+                      {activeMetrics!.min >= 0 ? "+" : ""}
+                      {activeMetrics!.min.toFixed(3)}
                     </p>
                     <p className="text-xs text-[#4A5568] mt-1.5 font-medium">
                       Nota do último classificado convocado para matrícula.
@@ -414,15 +990,15 @@ export function LandingPage() {
                     <div>
                       <p className="text-[10px] text-[#4A5568] uppercase font-mono tracking-wider font-bold">Nota Média</p>
                       <p className="text-lg font-extrabold text-[#002147] mt-0.5">
-                        {activeMetrics.media >= 0 ? "+" : ""}
-                        {activeMetrics.media.toFixed(3)}
+                        {activeMetrics!.media >= 0 ? "+" : ""}
+                        {activeMetrics!.media.toFixed(3)}
                       </p>
                     </div>
                     <div>
                       <p className="text-[10px] text-[#4A5568] uppercase font-mono tracking-wider font-bold">Nota Máxima (1º Lugar)</p>
                       <p className="text-lg font-extrabold text-[#00843D] mt-0.5">
-                        {activeMetrics.max >= 0 ? "+" : ""}
-                        {activeMetrics.max.toFixed(3)}
+                        {activeMetrics!.max >= 0 ? "+" : ""}
+                        {activeMetrics!.max.toFixed(3)}
                       </p>
                     </div>
                   </div>
@@ -436,28 +1012,28 @@ export function LandingPage() {
                       <div 
                         className="absolute w-3.5 h-3.5 rounded-full bg-[#002147] border-2 border-white -top-[3px] -translate-x-1/2 z-20 cursor-help"
                         style={{ left: "10%" }}
-                        title={`Nota de Corte: ${activeMetrics.min.toFixed(3)}`}
+                        title={`Nota de Corte: ${activeMetrics!.min.toFixed(3)}`}
                       />
                       {/* Indicador de Média */}
                       <div 
                         className="absolute w-3.5 h-3.5 rounded-full bg-[#00AEEF] border-2 border-white -top-[3px] -translate-x-1/2 z-20 cursor-help"
                         style={{ left: "50%" }}
-                        title={`Média: ${activeMetrics.media.toFixed(3)}`}
+                        title={`Média: ${activeMetrics!.media.toFixed(3)}`}
                       />
                       {/* Indicador de Nota Máxima */}
                       <div 
                         className="absolute w-3.5 h-3.5 rounded-full bg-[#00843D] border-2 border-white -top-[3px] -translate-x-1/2 z-20 cursor-help"
                         style={{ left: "90%" }}
-                        title={`Nota Máxima: ${activeMetrics.max.toFixed(3)}`}
+                        title={`Nota Máxima: ${activeMetrics!.max.toFixed(3)}`}
                       />
                       {/* Track de preenchimento */}
                       <div className="absolute top-0 bottom-0 left-[10%] right-[10%] bg-gradient-to-r from-[#002147] via-[#00AEEF] to-[#00843D] opacity-60 rounded-full" />
                     </div>
 
                     <div className="flex items-center justify-between text-[9px] text-[#4A5568]/70 font-mono font-bold">
-                      <span>Corte: {activeMetrics.min.toFixed(3)}</span>
-                      <span>Média: {activeMetrics.media.toFixed(3)}</span>
-                      <span>Máx: {activeMetrics.max.toFixed(3)}</span>
+                      <span>Corte: {activeMetrics!.min.toFixed(3)}</span>
+                      <span>Média: {activeMetrics!.media.toFixed(3)}</span>
+                      <span>Máx: {activeMetrics!.max.toFixed(3)}</span>
                     </div>
                   </div>
 
@@ -485,6 +1061,7 @@ export function LandingPage() {
 
         </div>
       </section>
+      )}
 
       {/* ============ HISTÓRIA DO FUNDADOR (CLEAN WHITE CARD WITH GREEN LEFT BORDER) ============ */}
       <section id="historia" className="py-24 bg-[#F8F9FA] border-b border-[#E2E8F0] scroll-mt-20">
@@ -598,7 +1175,7 @@ export function LandingPage() {
           <div className="grid lg:grid-cols-12 gap-12 items-center">
             {/* Texto */}
             <div className="lg:col-span-6 space-y-6">
-              <span className="inline-block font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00AEEF] bg-[#00AEEF]/5 border border-[#00AEEF]/20 px-3.5 py-1.5 rounded-lg font-bold animate-pulse">
+              <span className="inline-block font-mono text-[0.78rem] tracking-[0.2em] uppercase text-[#00AEEF] bg-[#00AEEF]/5 border border-[#00AEEF]/20 px-3.5 py-1.5 rounded-lg font-bold animate-unb-breathe-badge">
                 Build in Public
               </span>
               <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.1] text-[#002147]">
