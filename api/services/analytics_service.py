@@ -40,19 +40,30 @@ def _load_population() -> Optional[pd.DataFrame]:
     if _df_pop is not None:
         return _df_pop
 
-    path = _ROOT / "data" / "banco_alunos_pas_final.csv"
+    # Mesma frente de extração e mesma tradução de `load_resources` (ticket 09): schema minúsculo,
+    # `inscricao` mantido (precisa dele pra casar Aluno de Escola com o banco), `nome` nunca lido,
+    # `checksum_fecha == True` como único filtro de plausibilidade.
+    path = _ROOT / "data" / "resultado_final.csv"
     if not path.exists():
         return None
 
-    cols = [
-        "Inscricao", "Ano_Trienio", "Arg_Final",
-        "P1_PAS1", "P2_PAS1", "P1_PAS2", "P2_PAS2", "P1_PAS3", "P2_PAS3",
+    usecols = [
+        "inscricao", "trienio", "argumento_final",
+        "eb_p1_e1", "eb_p2_e1", "eb_p1_e2", "eb_p2_e2", "eb_p1_e3", "eb_p2_e3",
+        "checksum_fecha",
     ]
-    df = pd.read_csv(path, usecols=lambda c: c in cols, dtype={"Inscricao": str})
+    df = pd.read_csv(path, usecols=lambda c: c in usecols, dtype={"inscricao": str})
+    df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
+    df = df.rename(columns={
+        "inscricao": "Inscricao",
+        "trienio": "Ano_Trienio",
+        "argumento_final": "Arg_Final",
+    })
     df["Inscricao"] = df["Inscricao"].astype(str).str.strip()
-    df["EB_PAS1"] = df["P1_PAS1"] + df["P2_PAS1"]
-    df["EB_PAS2"] = df["P1_PAS2"] + df["P2_PAS2"]
-    df["EB_PAS3"] = df["P1_PAS3"] + df["P2_PAS3"]
+    df["Ano_Trienio"] = df["Ano_Trienio"].astype(str).str.replace("/", "-", regex=False)
+    df["EB_PAS1"] = df["eb_p1_e1"] + df["eb_p2_e1"]
+    df["EB_PAS2"] = df["eb_p1_e2"] + df["eb_p2_e2"]
+    df["EB_PAS3"] = df["eb_p1_e3"] + df["eb_p2_e3"]
     _df_pop = df
     return _df_pop
 

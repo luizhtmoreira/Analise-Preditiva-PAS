@@ -30,6 +30,12 @@ from pas_intelligence.model_package import (
     PacoteDeModelo,
     PacoteIndisponivelError,
 )
+from pas_intelligence.pas_constants import OFFICIAL_STATS
+from pas_intelligence.training_dataset import (
+    EstatisticaOficialAusenteError,
+    anos_do_trienio,
+    stats_da_prova,
+)
 
 from api.schemas.gestao import StudentInput, StudentResult, GestaoKpis, GestaoResponse
 
@@ -47,34 +53,6 @@ SEM_PACOTE = (
     "o estado 'previsão sim, largura não' não é representável (ADR-0012)."
 )
 
-# TODO(ticket 04 §9, defeito 1): estes números não são os do Cebraspe. Em 2022-2024 o P2 da
-# Etapa 1 aqui é 20,7094 contra 20,406 do Edital — têm cara de calculados de uma amostra. Hoje
-# eles só alimentam o Reality Check (abaixo), que é opcional; o Argumento previsto não passa
-# mais por aqui. Os valores certos já estão em `pas_constants.OFFICIAL_STATS`.
-TRIENNIUM_STATS = {
-    "2024-2026": {
-        "PAS1": HistoricalStats(mean_p1=2.9552, std_p1=2.4909, mean_p2=25.4272, std_p2=11.3914, mean_red=6.9051, std_red=1.8409),
-        "PAS2": HistoricalStats(mean_p1=3.1320, std_p1=3.0884, mean_p2=28.0855, std_p2=14.6654, mean_red=6.5109, std_red=1.9882),
-        "PAS3": None,
-    },
-    "2023-2025": {
-        "PAS1": HistoricalStats(mean_p1=2.2175, std_p1=2.4766, mean_p2=25.3330, std_p2=14.6860, mean_red=6.0345, std_red=2.4790),
-        "PAS2": HistoricalStats(mean_p1=3.1496, std_p1=3.2475, mean_p2=29.2750, std_p2=14.2913, mean_red=6.8770, std_red=2.0050),
-        "PAS3": HistoricalStats(mean_p1=3.8200, std_p1=2.1000, mean_p2=30.6750, std_p2=13.7520, mean_red=7.6500, std_red=1.8500),
-    },
-    "2022-2024": {
-        "PAS1": HistoricalStats(mean_p1=3.6037, std_p1=3.0053, mean_p2=20.7094, std_p2=13.5819, mean_red=5.8878, std_red=2.7796),
-        "PAS2": HistoricalStats(mean_p1=3.7393, std_p1=2.2378, mean_p2=30.3477, std_p2=13.2532, mean_red=6.9370, std_red=1.9723),
-        "PAS3": HistoricalStats(mean_p1=3.7679, std_p1=2.1778, mean_p2=32.0862, std_p2=14.1289, mean_red=7.5791, std_red=1.7304),
-    },
-}
-
-STATS_PAS3_TREND = HistoricalStats(
-    mean_p1=3.82, std_p1=2.1,
-    mean_p2=33.74, std_p2=14.5,
-    mean_red=7.65, std_red=1.85,
-)
-
 # ---------------------------------------------------------------------------
 # Singleton: recursos carregados uma vez no startup
 # ---------------------------------------------------------------------------
@@ -86,6 +64,16 @@ responde `modelo_disponivel: False` em vez de inventar zeros."""
 
 _df_corte: Optional[pd.DataFrame] = None
 _df_cohort: Optional[pd.DataFrame] = None
+
+
+def _normaliza_campus(campus: str) -> str:
+    """"UnB CEILÂNDIA (FCE)" → "CEILÂNDIA"; "DARCY RIBEIRO" fica como está."""
+    base = str(campus).split(" (")[0].strip()
+    for prefixo in ("UnB ", "UNB "):
+        if base.upper().startswith(prefixo.upper()):
+            base = base[len(prefixo):].strip()
+            break
+    return base.upper()
 
 
 def load_resources() -> None:
@@ -102,27 +90,67 @@ def load_resources() -> None:
         logger.exception("Nenhum pacote de modelo carregado; a API responderá sem previsão.")
         _pacote = None
 
-    # Banco de notas de corte
-    corte_path = data_dir / "notas_corte_pas.csv"
+    # Banco de notas de corte — a frente de extração escreve schema minúsculo
+    # (`trienio`, `sistema_nome`, `curso`, ...) e carrega `inscricao`/`nome` de Alunos reais junto
+    # (ticket 09). A tradução para o schema que o resto do serviço espera (`Trienio`, `Semestre`,
+    # `Sistema_Nome`, `Curso_Limpo`, `Min`) acontece só aqui — o único ponto de carga — e as duas
+    # colunas de PII nunca chegam a ser lidas.
+    corte_path = data_dir / "notas_corte.csv"
     if corte_path.exists():
-        _df_corte = pd.read_csv(corte_path)
-        if "Min" in _df_corte.columns:
-            _df_corte["Min"] = pd.to_numeric(_df_corte["Min"], errors="coerce")
-        if "Curso_Limpo" not in _df_corte.columns and "Curso" in _df_corte.columns:
-            _df_corte["Curso_Limpo"] = _df_corte["Curso"]
+        usecols = [
+            "trienio", "semestre", "campus", "curso", "turno",
+            "sistema_nome", "chamada", "nota_corte", "checksum_fecha",
+        ]
+        df = pd.read_csv(corte_path, usecols=lambda c: c in usecols)
+        # `checksum_fecha == True` é o único filtro necessário: a contaminação de escala (ex.
+        # MEDICINA/Darcy Ribeiro/2020-2022 saindo com corte=199.162,872) sempre falha o checksum.
+        df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
+        df = df.rename(columns={
+            "curso": "Curso_Limpo",
+            "campus": "Campus",
+            "turno": "Turno",
+            "sistema_nome": "Sistema_Nome",
+            "nota_corte": "Min",
+            "chamada": "Chamada",
+        })
+        df["Trienio"] = df["trienio"].astype(str).str.replace("/", "-", regex=False)
+        # `semestre` vem como "1"/"2"/"desconhecido"; sem saber o semestre a linha não pode ser
+        # roteada para nenhum dos dois mapas de corte, então ela sai (perda medida: ~427 de 4.986).
+        df["Semestre"] = df["semestre"].map({"1": "1°", "2": "2°"})
+        df = df.dropna(subset=["Semestre"]).drop(columns=["trienio", "semestre"])
+        # Cursos de período integral (ex. Enfermagem, Farmácia) não têm Turno no Edital.
+        df["Turno"] = df["Turno"].fillna("Integral")
+        # O nome do Sistema Universal mudou de rótulo na extração nova; o resto do serviço (e o
+        # default de `cota` na API) ainda espera o rótulo antigo.
+        df["Sistema_Nome"] = df["Sistema_Nome"].replace({"Universal": "Sistema Universal"})
+        # Campus veio com a sigla da faculdade entre parênteses (ex. "UnB CEILÂNDIA (FCE)"), e a
+        # chave de curso (`_build_cutoff_maps`) já usa parênteses pra embutir o Campus —
+        # `_parse_course_key` faz `rfind("(")` e quebra com parênteses aninhados. Normaliza para
+        # o nome de Campus simples que o resto do sistema sempre assumiu.
+        df["Campus"] = df["Campus"].map(_normaliza_campus)
+        df["Min"] = pd.to_numeric(df["Min"], errors="coerce")
+        _df_corte = df
 
-    # Banco histórico de alunos (Reality Check)
-    cohort_path = data_dir / "banco_alunos_pas_final.csv"
+    # Banco histórico de alunos (Reality Check) — mesma frente de extração, mesma família de
+    # sujeira e o mesmo filtro único (`checksum_fecha == True` deixa 64.298 de 66.313 linhas).
+    cohort_path = data_dir / "resultado_final.csv"
     if cohort_path.exists():
-        cols = ["P1_PAS1", "P2_PAS1", "P1_PAS2", "P2_PAS2", "P1_PAS3", "P2_PAS3", "Arg_Final"]
-        _df_cohort = pd.read_csv(cohort_path, usecols=lambda c: c in cols)
-        if "Arg_Final" in _df_cohort.columns:
-            _df_cohort = _df_cohort.rename(columns={"Arg_Final": "ARG_FINAL_REAL"})
-        if "ARG_FINAL_REAL" in _df_cohort.columns:
-            _df_cohort = _df_cohort[_df_cohort["ARG_FINAL_REAL"] != 0]
+        usecols = [
+            "eb_p1_e1", "eb_p2_e1", "eb_p1_e2", "eb_p2_e2", "eb_p1_e3", "eb_p2_e3",
+            "argumento_final", "checksum_fecha",
+        ]
+        df = pd.read_csv(cohort_path, usecols=lambda c: c in usecols)
+        df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
+        df = df.rename(columns={
+            "eb_p1_e1": "P1_PAS1", "eb_p2_e1": "P2_PAS1",
+            "eb_p1_e2": "P1_PAS2", "eb_p2_e2": "P2_PAS2",
+            "eb_p1_e3": "P1_PAS3", "eb_p2_e3": "P2_PAS3",
+            "argumento_final": "ARG_FINAL_REAL",
+        })
+        df = df[df["ARG_FINAL_REAL"] != 0]
         for col1, col2, dest in [("P1_PAS1", "P2_PAS1", "EB_PAS1"), ("P1_PAS2", "P2_PAS2", "EB_PAS2")]:
-            if col1 in _df_cohort.columns and col2 in _df_cohort.columns:
-                _df_cohort[dest] = _df_cohort[col1] + _df_cohort[col2]
+            df[dest] = df[col1] + df[col2]
+        _df_cohort = df
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +232,18 @@ def _build_cutoff_maps(trienio_sel: str):
     return c1, c2, trienio_ref
 
 
+def _stats_pas3_ancora(lingua: str) -> HistoricalStats:
+    """A Etapa 3 real e já publicada mais recente do `OFFICIAL_STATS`, usada como Ano-Âncora do
+    Reality Check quando o triênio do Aluno ainda não tem a própria (turma viva).
+
+    Substitui a regressão que `STATS_PAS3_TREND` fazia sobre uma prova que ainda não aconteceu
+    — o ticket 04 do treino decidiu contra projetar (decisão 3: Ano-Âncora). Esta é a versão de
+    um ano só; o ticket 12 desta rodada constrói os cinco Anos-Âncora na tela.
+    """
+    ano_mais_recente = max(ano for (ano, etapa) in OFFICIAL_STATS if etapa == 3)
+    return stats_da_prova(ano_mais_recente, 3, lingua)
+
+
 def _classify_risk(prob_1: float, prob_2: float):
     if prob_1 >= 50 or prob_2 >= 75:
         return "green", "Baixo Risco"
@@ -243,11 +283,11 @@ def _prever(s: StudentInput, trienio_padrao: str) -> tuple[object | None, str | 
 # ---------------------------------------------------------------------------
 
 def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -> GestaoResponse:
+    # `cenario` ("padrao" | "tendencia") escolhia entre `TRIENNIUM_STATS` e a regressão de
+    # `STATS_PAS3_TREND`. As duas saíram (este ticket); o Reality Check agora sempre lê o
+    # `OFFICIAL_STATS` pela porta única (`_stats_pas3_ancora`/`stats_da_prova`), então o
+    # parâmetro fica sem efeito até o ticket 12 (Ano-Âncora) lhe dar um uso de novo.
     c1_map, c2_map, trienio_ref = _build_cutoff_maps(trienio)
-
-    stats_p3 = STATS_PAS3_TREND if cenario == "tendencia" else (
-        (TRIENNIUM_STATS.get(trienio) or {}).get("PAS3") or STATS_PAS3_TREND
-    )
 
     results: list[StudentResult] = []
     motivo_sem_previsao: Optional[str] = None
@@ -291,23 +331,32 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
             if (previsao and nota_corte_2sem) else 0.0
         )
 
-        # Reality Check (cohort)
+        # Reality Check (cohort) — mesma porta única do OFFICIAL_STATS que o Preditor usa
+        # (`stats_da_prova`), para que A1 e A2 aqui sejam os mesmos que `previsao` já tem.
         historico_pct = 0.0
         if previsao and _df_cohort is not None and nota_corte_1sem:
             try:
                 from pas_intelligence.target_calculator import TargetCalculator
-                stats_ciclo = TRIENNIUM_STATS.get(s.ano_trienio or trienio)
-                if stats_ciclo:
-                    calc = TargetCalculator()
-                    notas = {
-                        "P1_PAS1": s.p1_pas1, "P2_PAS1": s.p2_pas1, "Red_PAS1": s.red_pas1,
-                        "P1_PAS2": s.p1_pas2, "P2_PAS2": s.p2_pas2, "Red_PAS2": s.red_pas2,
-                    }
-                    cutoff_h = nota_corte_1sem if (prob_1 >= 50 or prob_2 >= 75) else (nota_corte_2sem or nota_corte_1sem)
-                    path = calc.calculate_required_score(notas, cutoff_h, stats_ciclo["PAS1"], stats_ciclo["PAS2"], stats_p3 or STATS_PAS3_TREND)
-                    eb_nec = path.p1_estimado + path.p2_necessario
-                    prob_h, _ = calculate_cohort_evolution_probability({"eb_pas1": eb_p1, "eb_pas2": eb_p2}, eb_nec, _df_cohort)
-                    historico_pct = round(prob_h, 1)
+                ano_e1, ano_e2, ano_e3 = anos_do_trienio(s.ano_trienio or trienio)
+                stats_p1 = stats_da_prova(ano_e1, 1, s.lingua)
+                stats_p2 = stats_da_prova(ano_e2, 2, s.lingua)
+                try:
+                    stats_p3 = stats_da_prova(ano_e3, 3, s.lingua)
+                except EstatisticaOficialAusenteError:
+                    # Turma viva: a Etapa 3 dela ainda não aconteceu. Ano-Âncora de um ano real
+                    # e já publicado no lugar da regressão que `STATS_PAS3_TREND` fazia.
+                    stats_p3 = _stats_pas3_ancora(s.lingua)
+
+                calc = TargetCalculator()
+                notas = {
+                    "P1_PAS1": s.p1_pas1, "P2_PAS1": s.p2_pas1, "Red_PAS1": s.red_pas1,
+                    "P1_PAS2": s.p1_pas2, "P2_PAS2": s.p2_pas2, "Red_PAS2": s.red_pas2,
+                }
+                cutoff_h = nota_corte_1sem if (prob_1 >= 50 or prob_2 >= 75) else (nota_corte_2sem or nota_corte_1sem)
+                path = calc.calculate_required_score(notas, cutoff_h, stats_p1, stats_p2, stats_p3)
+                eb_nec = path.p1_estimado + path.p2_necessario
+                prob_h, _ = calculate_cohort_evolution_probability({"eb_pas1": eb_p1, "eb_pas2": eb_p2}, eb_nec, _df_cohort)
+                historico_pct = round(prob_h, 1)
             except Exception:
                 # O reality check é opcional: sem ele o resto da análise segue válido.
                 # Mas a falha vai para o log — o silêncio anterior escondeu por meses que
