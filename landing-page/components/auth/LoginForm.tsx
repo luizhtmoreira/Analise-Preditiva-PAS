@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,12 +32,10 @@ export function LoginForm() {
   }
 
   return (
-    <div className="rounded-2xl border border-[#E6E6E8] bg-white p-6 shadow-[0_8px_30px_rgba(0,51,102,0.06)]">
+    <div className="vp-card p-6">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block mb-1.5 font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[#6E6E73]">
-            Email institucional
-          </label>
+          <label className="vp-label block mb-1.5">Email institucional</label>
           <Input
             type="email"
             value={email}
@@ -44,12 +43,19 @@ export function LoginForm() {
             placeholder="coord@escola.edu.br"
             required
             autoComplete="email"
+            className="vp-input h-auto"
           />
         </div>
         <div>
-          <label className="block mb-1.5 font-mono text-[0.68rem] tracking-[0.14em] uppercase text-[#6E6E73]">
-            Senha
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="vp-label">Senha</label>
+            <Link
+              href="/auth/esqueci-senha"
+              className="text-xs text-[#00843D] hover:underline font-semibold"
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
           <Input
             type="password"
             value={password}
@@ -57,16 +63,13 @@ export function LoginForm() {
             placeholder="••••••••"
             required
             autoComplete="current-password"
+            className="vp-input h-auto"
           />
         </div>
         {error && (
           <p className="text-sm rounded-lg px-3 py-2 bg-[#FFCDD2] text-[#B71C1C]">{error}</p>
         )}
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full text-white bg-[#003366] hover:bg-[#004080] transition-colors"
-        >
+        <Button type="submit" disabled={loading} className="vp-btn vp-btn-navy w-full">
           {loading ? "Entrando…" : "Entrar →"}
         </Button>
       </form>

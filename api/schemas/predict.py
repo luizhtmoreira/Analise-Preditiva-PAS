@@ -21,6 +21,8 @@ class PredictInput(BaseModel):
     cota: str = "Sistema Universal"
     trienio: str = "2024-2026"
     curso_alvo: Optional[str] = None
+    is_logged_in: bool = False
+    semestre: Optional[str] = "1°"
 
     # As três notas da Etapa 1 iguais a zero significam **Aluno sem Etapa 1** (ADR-0008), não
     # "fez a prova e tirou zero". O formulário tem um botão que preenche os três campos com zero,
@@ -56,3 +58,43 @@ class PredictResponse(BaseModel):
     modelo_disponivel: bool
     # Por que a previsão não saiu, quando `modelo_disponivel` é falso — em vez de zeros mudos.
     motivo_indisponivel: Optional[str] = None
+
+
+class ChamadaCorte(BaseModel):
+    chamada: str
+    campus: str
+    turno: str
+    nota_corte: float
+
+
+class StrategyInput(BaseModel):
+    p1_pas1: float
+    p2_pas1: float
+    red_pas1: float
+    p1_pas2: float
+    p2_pas2: float
+    red_pas2: float
+    nota_alvo: float
+    ciclo_aluno: str
+    # Mesma razão do `PredictInput.lingua`: a Parte 1 é normalizada por língua estrangeira, e a
+    # Calculadora reverte exatamente essa normalização para chegar ao P2 necessário. Sem a língua
+    # certa, o P2 que a tela pede sai deslocado — e sempre na mesma direção, por Aluno.
+    # Obrigatória, sem default, pelo mesmo motivo do Preditor (ticket 04 §5.3).
+    lingua: Literal["inglesa", "francesa", "espanhola"]
+    p1_override: Optional[float] = None
+    red_override: Optional[float] = None
+    base_projecao: str = "Utilizar Projeção Tendência"
+
+
+class StrategyResponse(BaseModel):
+    p1_estimado: float
+    p2_necessario: float
+    red_estimada: float
+    total_pas3: float
+    arg_pas3_necessario: float
+    status: str
+    mensagem: str
+    prob_hist: float
+    amostra: int
+    p1_ia: float
+    red_ia: float

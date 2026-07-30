@@ -353,44 +353,8 @@ def get_reverse_prediction(
         notas, curso_nota_corte, stats_pas1, stats_pas2, stats_pas3
     )
 
-def get_strategy_prediction(
-    notas_existentes: Dict[str, float],
-    nota_alvo: float,
-    ciclo_aluno: str,
-    triennium_stats: Dict[str, Dict[str, HistoricalStats]],
-    stats_pas3_trend: HistoricalStats,
-    p1_override: Optional[float] = None,
-    red_override: Optional[float] = None,
-    base_projecao: str = "Utilizar Projeção Tendência"
-) -> ReverseResult:
-    """
-    Encapsula a lógica completa da Calculadora de Estratégia para 
-    resolver e definir quais estatísticas (stats_pas1, stats_pas2, stats_p3_usado)
-    serão utilizadas com base no ciclo do aluno e configuração de projeção.
-    """
-    calc = TargetCalculator()
-    
-    # 1. Resolve stats for PAS 1 and PAS 2
-    stats_ciclo = triennium_stats.get(ciclo_aluno, triennium_stats.get("2023-2025"))
-    stats_p1 = stats_ciclo["PAS1"]
-    stats_p2 = stats_ciclo["PAS2"]
-    
-    # 2. Resolve stats for PAS 3
-    stats_p3_usado = None
-    if ciclo_aluno == "2024-2026":
-        if base_projecao == "Replicar Padrão 2023-2025":
-            stats_p3_usado = triennium_stats.get("2023-2025", stats_ciclo)["PAS3"]
-        else:
-            stats_p3_usado = stats_pas3_trend
-    elif ciclo_aluno == "2023-2025":
-        stats_p3_usado = stats_ciclo["PAS3"]
-    else:
-        # Fallback para outros ciclos ou missing
-        stats_p3_usado = stats_ciclo.get("PAS3", stats_pas3_trend)
-        
-    return calc.calculate_required_score(
-        notas_existentes, nota_alvo,
-        stats_p1, stats_p2, stats_p3_usado,
-        p1_override=p1_override, red_override=red_override
-    )
-
+# `get_strategy_prediction` morava aqui. Resolvia média e desvio a partir do `TRIENNIUM_STATS`
+# (cópia paralela do `OFFICIAL_STATS`) e da regressão do `STATS_PAS3_TREND` — as duas saíram no
+# ticket 05, e o ADR-0009 descartou projetar a Etapa 3. Quem chama agora resolve as três
+# `HistoricalStats` pela porta única (`stats_da_prova`) e usa `calculate_required_score`
+# direto: ver `api/services/predict_service._stats_do_ciclo`.

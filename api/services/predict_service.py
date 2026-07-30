@@ -12,7 +12,7 @@ traria de volta exatamente a contradição acima.
 """
 import logging
 
-from api.schemas.predict import PredictInput, PredictResponse, CourseResult
+from api.schemas.predict import PredictInput, PredictResponse, CourseResult, StrategyInput, StrategyResponse
 from api.services import gestao_service          # referência ao módulo, não ao valor
 from api.services.gestao_service import SEM_PACOTE, _find_best_match, _build_cutoff_maps
 from pas_intelligence.model_package import (
@@ -21,11 +21,22 @@ from pas_intelligence.model_package import (
     NotasDeEtapa,
 )
 from pas_intelligence.statistics import calculate_approval_probability
+from pas_intelligence.training_dataset import (
+    EstatisticaOficialAusenteError,
+    anos_do_trienio,
+    stats_da_prova,
+)
 
 logger = logging.getLogger(__name__)
 
-TOP_CURSOS_LIMIT = 8
-MIN_PROB_THRESHOLD = 0.30
+# Limite e piso vindos do lado do portal: 10 cursos a partir de 20% de chance. O corte antigo
+# (8 a partir de 30%) devolvia lista vazia para o Aluno que ainda está longe do curso que quer —
+# exatamente quem mais precisa ver a distância.
+TOP_CURSOS_LIMIT = 10
+MIN_PROB_THRESHOLD = 0.20
+
+# Sem login a lista é uma amostra, não a ferramenta: três cursos bastam para o Aluno se situar.
+TOP_CURSOS_DESLOGADO = 3
 
 
 def entrada_de_previsao(inp: PredictInput) -> EntradaDePrevisao:
@@ -35,6 +46,53 @@ def entrada_de_previsao(inp: PredictInput) -> EntradaDePrevisao:
         lingua=inp.lingua,
         trienio=inp.trienio,
     )
+
+
+def _semestres_a_buscar(semestre: str | None, m1: dict, m2: dict) -> list[tuple[str, dict]]:
+    """Os mapas de corte que a busca varre, na ordem em que o Aluno os vê.
+
+    O seletor de semestre é filtro de consulta, não dado do Aluno (ele não escolhe em qual
+    semestre entra): "1°" e "2°" olham um mapa só, e qualquer outro valor — inclusive `None`,
+    que é o Aluno deslogado, que não tem o seletor — olha os dois.
+    """
+    if semestre == "1°":
+        return [("1°", m1)]
+    if semestre == "2°":
+        return [("2°", m2)]
+    return [("1°", m1), ("2°", m2)]
+
+
+def _selecionar_cursos(
+    candidatos: list[tuple[str, float, str]],
+    arg_previsto: float,
+    largura: float,
+    ordem,
+    limite: int,
+) -> list[CourseResult]:
+    """Os `limite` primeiros cursos por `ordem`, sem repetir curso entre os dois semestres.
+
+    A deduplicação é por chave de curso e vem **depois** da ordenação: um curso que abre nos dois
+    semestres entra uma vez só, pelo semestre que a ordem escolheu primeiro.
+    """
+    escolhidos: list[CourseResult] = []
+    vistos: set[str] = set()
+    for chave, nota, semestre in sorted(candidatos, key=ordem):
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        partes = _parse_course_key(chave)
+        prob = calculate_approval_probability(arg_previsto, nota, largura_incerteza=largura)
+        escolhidos.append(CourseResult(
+            curso=partes["curso"],
+            turno=partes["turno"],
+            campus=partes["campus"],
+            nota_corte=round(nota, 3),
+            prob=round(prob * 100, 1),
+            semestre=semestre,
+        ))
+        if len(escolhidos) >= limite:
+            break
+    return escolhidos
 
 
 def predict_student(inp: PredictInput) -> PredictResponse:
@@ -91,7 +149,10 @@ def predict_student(inp: PredictInput) -> PredictResponse:
         all_courses = list(set(list(m1.keys()) + list(m2.keys())))
         curso_matched = _find_best_match(inp.curso_alvo, all_courses, cutoff=0.4) if all_courses else inp.curso_alvo
 
-        for semestre, m in [("1°", m1), ("2°", m2)]:
+        # Sem login não há seletor de semestre na tela, então a busca varre os dois mapas.
+        semestre_filtro = inp.semestre if inp.is_logged_in else None
+
+        for semestre, m in _semestres_a_buscar(semestre_filtro, m1, m2):
             nota = m.get(curso_matched)
             if nota:
                 prob = calculate_approval_probability(arg_previsto, nota, largura_incerteza=largura)
@@ -106,33 +167,38 @@ def predict_student(inp: PredictInput) -> PredictResponse:
                 )
                 break
 
-    # Top cursos acessíveis
-    seen: set[str] = set()
-    top_cursos: list[CourseResult] = []
-
-    for semestre, m in [("1°", m1), ("2°", m2)]:
-        for course_key, nota in sorted(m.items(), key=lambda x: x[1], reverse=True):
-            if course_key in seen:
-                continue
-            prob = calculate_approval_probability(arg_previsto, nota, largura_incerteza=largura)
-            if prob < MIN_PROB_THRESHOLD:
-                continue
-            seen.add(course_key)
-            parts = _parse_course_key(course_key)
-            top_cursos.append(CourseResult(
-                curso=parts["curso"],
-                turno=parts["turno"],
-                campus=parts["campus"],
-                nota_corte=round(nota, 3),
-                prob=round(prob * 100, 1),
-                semestre=semestre,
-            ))
-            if len(top_cursos) >= TOP_CURSOS_LIMIT:
-                break
-        if len(top_cursos) >= TOP_CURSOS_LIMIT:
-            break
-
-    top_cursos.sort(key=lambda c: c.prob, reverse=True)
+    if inp.is_logged_in:
+        # Com login, a lista é aspiracional: dos cursos que ainda estão ao alcance
+        # (chance >= MIN_PROB_THRESHOLD), os TOP_CURSOS_LIMIT **mais difíceis** — ordenar pela
+        # menor probabilidade e cortar é o que faz o Aluno ver até onde dá para mirar, em vez de
+        # uma lista de cursos que ele já passaria com folga. O `reverse` final só põe o mais
+        # difícil no topo da tela.
+        candidatos = [
+            (chave, nota, semestre)
+            for semestre, mapa in _semestres_a_buscar(inp.semestre, m1, m2)
+            for chave, nota in mapa.items()
+            if calculate_approval_probability(arg_previsto, nota, largura_incerteza=largura) >= MIN_PROB_THRESHOLD
+        ]
+        top_cursos = _selecionar_cursos(
+            candidatos, arg_previsto, largura,
+            ordem=lambda c: calculate_approval_probability(arg_previsto, c[1], largura_incerteza=largura),
+            limite=TOP_CURSOS_LIMIT,
+        )
+        top_cursos.reverse()
+    else:
+        # Sem login, a lista é de referência: os TOP_CURSOS_DESLOGADO cursos cujo corte cai mais
+        # perto do Argumento previsto, para os dois semestres. Sem piso de probabilidade — a
+        # graça é mostrar onde o Aluno está, não onde ele já ganhou.
+        candidatos = [
+            (chave, nota, semestre)
+            for semestre, mapa in _semestres_a_buscar(None, m1, m2)
+            for chave, nota in mapa.items()
+        ]
+        top_cursos = _selecionar_cursos(
+            candidatos, arg_previsto, largura,
+            ordem=lambda c: abs(c[1] - arg_previsto),
+            limite=TOP_CURSOS_DESLOGADO,
+        )
 
     return PredictResponse(
         arg_previsto=round(arg_previsto, 1),
@@ -142,7 +208,7 @@ def predict_student(inp: PredictInput) -> PredictResponse:
         largura_incerteza=round(largura, 3),
         etapa_1_ausente=previsao.etapa_1_ausente,
         curso_alvo_result=curso_alvo_result,
-        top_cursos=top_cursos[:TOP_CURSOS_LIMIT],
+        top_cursos=top_cursos,
         trienio_ref=trienio_ref,
         modelo_disponivel=True,
     )
@@ -171,3 +237,171 @@ def _parse_course_key(key: str) -> dict:
         return {"curso": parts[0].strip(), "turno": parts[1].strip(), "campus": campus}
 
     return {"curso": key.strip(), "turno": "", "campus": campus}
+
+
+def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) -> list[dict]:
+    import pandas as pd
+    df_corte = gestao_service._df_corte
+    if df_corte is None or not curso_key:
+        return []
+
+    # Parse course key
+    parts = _parse_course_key(curso_key)
+    curso_nome = parts["curso"]
+    turno = parts["turno"].upper()
+    campus = parts["campus"].upper()
+
+    # Resolve reference triennium if not present in database (e.g. future triennium)
+    trienio_ref = trienio
+    if trienio not in df_corte["Trienio"].dropna().unique():
+        try:
+            start, end = map(int, trienio.split("-"))
+            trienio_ref = f"{start - 1}-{end - 1}"
+            if trienio_ref not in df_corte["Trienio"].dropna().unique():
+                trienio_ref = "2022-2024"
+        except Exception:
+            trienio_ref = "2022-2024"
+
+    # Filter system name
+    available_systems = list(df_corte["Sistema_Nome"].dropna().unique())
+    sistema = _find_best_match(cota, available_systems, cutoff=0.6) if available_systems else cota
+
+    # Filter mask
+    mask = (
+        (df_corte["Curso_Limpo"].str.upper() == curso_nome.upper()) &
+        (df_corte["Turno"].str.upper() == turno) &
+        (df_corte["Campus"].str.upper() == campus) &
+        (df_corte["Sistema_Nome"] == sistema) &
+        (df_corte["Trienio"] == trienio_ref)
+    )
+    
+    # Semestre filter (1° ou 2°)
+    sem_db = "1°" if semestre.startswith("1") else "2°"
+    mask = mask & (df_corte["Semestre"] == sem_db)
+
+    sub = df_corte[mask].copy()
+    if sub.empty:
+        return []
+
+    # Extract digits to sort calls (e.g. "1ª" -> 1, "2ª" -> 2)
+    sub["chamada_num"] = sub["Chamada"].astype(str).str.extract(r"(\d+)").fillna(0).astype(int)
+    sub = sub.sort_values("chamada_num")
+
+    out = []
+    for _, row in sub.iterrows():
+        out.append({
+            "chamada": str(row.get("Chamada", "")),
+            "campus": str(row.get("Campus", "")),
+            "turno": str(row.get("Turno", "")),
+            "nota_corte": float(row.get("Min", 0.0)) if pd.notna(row.get("Min")) else 0.0
+        })
+    return out
+
+
+def _stats_do_ciclo(ciclo_aluno: str, lingua: str):
+    """Média e desvio oficiais das três Etapas do triênio do Aluno, pela porta única.
+
+    `stats_da_prova` é a mesma função que o treino e o Preditor usam (ticket 05): o
+    `TRIENNIUM_STATS` que esta função substitui era uma cópia paralela do `OFFICIAL_STATS`,
+    que podia divergir dele sem que nada avisasse.
+
+    A Etapa 3 do triênio vivo ainda não aconteceu, e a projeção por regressão foi descartada
+    pelo ADR-0009. No lugar dela vai o Ano-Âncora: a Etapa 3 real e publicada mais recente.
+    """
+    ano_e1, ano_e2, ano_e3 = anos_do_trienio(ciclo_aluno)
+    stats_p1 = stats_da_prova(ano_e1, 1, lingua)
+    stats_p2 = stats_da_prova(ano_e2, 2, lingua)
+    try:
+        stats_p3 = stats_da_prova(ano_e3, 3, lingua)
+    except EstatisticaOficialAusenteError:
+        stats_p3 = gestao_service._stats_pas3_ancora(lingua)
+    return stats_p1, stats_p2, stats_p3
+
+
+def predict_strategy(inp: StrategyInput) -> StrategyResponse:
+    """Calculadora de Estratégia: o P2 que o Aluno precisa no PAS 3 para bater a `nota_alvo`.
+
+    `base_projecao` chega do cliente antigo e **não tem efeito**: escolhia entre o
+    `TRIENNIUM_STATS` e a regressão do `STATS_PAS3_TREND`, e as duas saíram no ticket 05. Fica
+    aceito para não quebrar a tela; o ticket 12 lhe dá um uso de novo com os cinco Anos-Âncora.
+
+    Quando o Edital de média e desvio de uma das Etapas já feitas ainda não saiu — o caso do
+    triênio vivo — a rota não é calculável, e a resposta diz isso em `status`/`mensagem` em vez
+    de 500 ou de números inventados. Mesma decisão do Preditor (`motivo_indisponivel`).
+    """
+    from pas_intelligence.target_calculator import TargetCalculator
+    from pas_intelligence.statistics import calculate_cohort_evolution_probability
+
+    notas_validas = {
+        'P1_PAS1': inp.p1_pas1,
+        'P2_PAS1': inp.p2_pas1,
+        'Red_PAS1': inp.red_pas1,
+        'P1_PAS2': inp.p1_pas2,
+        'P2_PAS2': inp.p2_pas2,
+        'Red_PAS2': inp.red_pas2
+    }
+
+    # Calcula as previsões automáticas da IA (p1_ia, red_ia)
+    calc = TargetCalculator()
+    previsao_ia = calc.predict_stable_components(notas_validas)
+    p1_ia = float(previsao_ia.get('p1_pred', 0.0))
+    red_ia = float(previsao_ia.get('red_pred', 0.0))
+
+    try:
+        stats_p1, stats_p2, stats_p3 = _stats_do_ciclo(inp.ciclo_aluno, inp.lingua)
+    except (EstatisticaOficialAusenteError, ValueError) as erro:
+        logger.info("Calculadora recusada por estatística oficial ausente: %s", erro)
+        return StrategyResponse(
+            p1_estimado=0.0, p2_necessario=0.0, red_estimada=0.0,
+            total_pas3=0.0, arg_pas3_necessario=0.0,
+            status="indisponivel",
+            mensagem=(
+                "Ainda não dá para calcular a rota do seu triênio: o Argumento das Etapas que "
+                "você já fez depende da média e do desvio-padrão que o Cebraspe publica no "
+                "Edital de cada Etapa, e o do seu triênio ainda não saiu."
+            ),
+            prob_hist=0.0, amostra=0, p1_ia=p1_ia, red_ia=red_ia,
+        )
+
+    # Executa predição de rota de aprovação
+    result = calc.calculate_required_score(
+        notas_validas,
+        inp.nota_alvo,
+        stats_p1,
+        stats_p2,
+        stats_p3,
+        p1_override=inp.p1_override,
+        red_override=inp.red_override,
+    )
+
+    # Reality Check (coorte histórica)
+    prob_hist = 0.0
+    amostra = 0
+    eb_pas3_necessario = result.p1_estimado + result.p2_necessario
+
+    df_cohort = gestao_service._df_cohort
+    if df_cohort is not None and not df_cohort.empty:
+        try:
+            eb_pas1 = inp.p1_pas1 + inp.p2_pas1
+            eb_pas2 = inp.p1_pas2 + inp.p2_pas2
+            aluno_dados = {'eb_pas1': eb_pas1, 'eb_pas2': eb_pas2}
+            prob_hist, amostra = calculate_cohort_evolution_probability(aluno_dados, eb_pas3_necessario, df_cohort)
+        except Exception:
+            # O reality check é opcional: sem ele a rota calculada segue válida. Mas a falha vai
+            # para o log — o silêncio anterior escondeu por meses que os modelos nem carregavam.
+            logger.exception("Reality check (coorte) falhou na Calculadora; seguindo sem ele.")
+
+    return StrategyResponse(
+        p1_estimado=result.p1_estimado,
+        p2_necessario=result.p2_necessario,
+        red_estimada=result.red_estimada,
+        total_pas3=result.total_pas3,
+        arg_pas3_necessario=result.arg_pas3_necessario,
+        status=result.status,
+        mensagem=result.mensagem,
+        prob_hist=round(prob_hist, 1),
+        amostra=amostra,
+        p1_ia=p1_ia,
+        red_ia=red_ia
+    )
+

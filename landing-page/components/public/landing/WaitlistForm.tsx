@@ -65,8 +65,8 @@ export function WaitlistForm({
         curso_pretendido: curso,
       });
       setSuccess(true);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Ocorreu um erro ao realizar a inscrição.");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Ocorreu um erro ao realizar a inscrição.");
     } finally {
       setLoading(false);
     }

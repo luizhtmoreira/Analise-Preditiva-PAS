@@ -139,6 +139,10 @@ _Avoid_: comparação de cursos, dashboard do aluno
 Cálculo reverso por curso: dado os EBs fixos do PAS 1 e PAS 2 do Aluno Cadastrado, qual EB mínimo ele precisa no PAS 3 para atingir a Nota de Corte. Calculado via `target_calculator`. Disponível para todos os cursos no Painel Multi-Curso.
 _Avoid_: meta, objetivo, score necessário
 
+**Simulador de Itens**:
+Sub-ferramenta da Calculadora de Estratégia/Quanto Falta. Converte o EB necessário ($X$) no PAS 3 em combinações exatas ou simuladas de acertos por tipo de item (Tipo A, Tipo B, Tipo C). Protegida por Soft Gate (exibe preview em teaser para não-cadastrados e exige login para interação completa).
+_Avoid_: simulador de questões, simulador de acertos
+
 **Soft Gate**:
 Mecanismo de conversão do Preditor: o primeiro curso é calculado livremente; ao tentar adicionar um segundo curso, o sistema solicita login/cadastro. O Aluno já viu o valor antes de ser solicitado a criar conta.
 _Avoid_: paywall, bloqueio, gate
@@ -155,12 +159,16 @@ _Avoid_: lead, escola potencial, prospect
 Personalização visual do sistema por Tenant: logo, template PDF e cores. Configurado via campo `tenant` no perfil Supabase.
 _Avoid_: customização, branding, tema
 
+**Tela de Perfil (`/perfil`)**:
+Área exclusiva do Aluno Cadastrado para visualização de dados da conta (e-mail, escola vinculada), atualização da escola e acionamento de logout.
+_Avoid_: página do usuário, minha conta, configurações de usuário
+
 ### Pré-Lançamento & Estratégia de Landing Pages
 
 **Estratégia de Landing Pages & Branches**:
 O projeto gerencia o ciclo de pré-lançamento e o MVP através de duas branches principais de frontend:
 - **`feature/landing-page-temporaria` (Temporária)**: Contém a landing page de pré-lançamento e captura de leads. É a versão ativa na URL de produção (`vetorpas.com.br`) temporariamente.
-- **`feat/nextjs-frontend` (Principal)**: Contém a landing page definitiva e os dashboards do portal do MVP. Em desenvolvimento constante; substituirá a versão temporária quando finalizada.
+- **`feat/nextjs-frontend` (Portal, incorporada)**: trazia a landing definitiva, o Preditor com semestre/curso alvo, a Calculadora de Estratégia, o header público, a recuperação de senha e a tela de perfil. Foi integrada em `feat/pdf-extraction` (ticket 10 da rodada *Publicar o Site*); o tronco unificado é `feat/pdf-extraction`.
 - **`main`**: A landing page atualmente presente nesta branch é obsoleta e não será utilizada.
 
 **Lista de Espera (Waitlist)**:

@@ -484,6 +484,78 @@ class TestProvenienciaEQualidade:
         assert derivar_notas_corte(rf, conv).notas[0].checksum_fecha is None
 
 
+class TestChecksumSuspeitoNaEscolhaDoCorte:
+    """Ticket 14, follow-up ao achado do outlier de Nota de Corte: MEDICINA, Darcy Ribeiro,
+    2020/2022, `argumento_final=199162.872` virava a Nota de Corte por ser o único convocado
+    da chamada, mesmo com `checksum.fecha=False` (delta de ~199 mil). Aqui há alternativa
+    confiável na mesma chamada — o candidato suspeito deixa de vencer só por ter o menor
+    número, mas continua saindo quando é o único (`TestProvenienciaEQualidade`, acima).
+    """
+
+    def test_candidato_com_checksum_reprovado_perde_para_alternativa_confiavel(self):
+        # 30.0 seria o menor Argumento Final e venceria por `min()` puro — mas seu checksum
+        # não fecha (delta 199162.872, a mesma ordem de grandeza do achado real), então a
+        # escolha cai para o único outro candidato confiável da chamada.
+        rf = [
+            _rf("21180001", 30.0, checksum=_checksum(199162.872)),
+            _rf("21180002", 600.0, checksum=_checksum(0.001)),
+        ]
+        conv = [
+            _conv("21180001", sistema=1, chamada="1"),
+            _conv("21180002", sistema=1, chamada="1"),
+        ]
+
+        nota = derivar_notas_corte(rf, conv).notas[0]
+
+        assert nota.inscricao == "21180002"
+        assert nota.argumento_final == 600.0
+        assert nota.checksum_fecha is True
+
+    def test_substituicao_e_contada_por_trienio(self):
+        rf = [
+            _rf("21180001", 30.0, checksum=_checksum(199162.872)),
+            _rf("21180002", 600.0, checksum=_checksum(0.001)),
+        ]
+        conv = [
+            _conv("21180001", sistema=1, chamada="1"),
+            _conv("21180002", sistema=1, chamada="1"),
+        ]
+
+        derivacao = derivar_notas_corte(rf, conv)
+
+        assert derivacao.convocados_com_checksum_suspeito_substituidos == ((TRIENIO, 1),)
+
+    def test_sem_alternativa_confiavel_nada_e_contado_como_substituido(self):
+        # Mesmo cenário de `TestProvenienciaEQualidade.test_checksum_reprovado_...`: o único
+        # convocado da chamada continua definindo o corte (linha não é descartada), e por não
+        # ter havido substituição real, o contador fica vazio.
+        rf = [_rf("21180001", 600.0, checksum=_checksum(3.2))]
+        conv = [_conv("21180001", sistema=1, chamada="1")]
+
+        derivacao = derivar_notas_corte(rf, conv)
+
+        assert derivacao.notas[0].checksum_fecha is False
+        assert derivacao.convocados_com_checksum_suspeito_substituidos == ()
+
+    def test_candidato_sem_checksum_conferido_nao_e_tratado_como_suspeito(self):
+        # `checksum=None` ("não foi possível conferir") não é o mesmo que `fecha=False`
+        # ("conferido e reprovado") — não deve perder para um confiável só por não ter sido
+        # verificado.
+        rf = [
+            _rf("21180001", 30.0, checksum=None),
+            _rf("21180002", 600.0, checksum=_checksum(0.001)),
+        ]
+        conv = [
+            _conv("21180001", sistema=1, chamada="1"),
+            _conv("21180002", sistema=1, chamada="1"),
+        ]
+
+        nota = derivar_notas_corte(rf, conv).notas[0]
+
+        assert nota.inscricao == "21180001"
+        assert nota.argumento_final == 30.0
+
+
 class TestInscricaoAmbiguaNoResultadoFinal:
     """A busca do Argumento Final é por (triênio, inscrição). Se a mesma chave aparecer
     duas vezes com notas diferentes, uma delas define o corte e a outra é ignorada — o que

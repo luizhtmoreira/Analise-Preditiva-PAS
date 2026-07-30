@@ -31,9 +31,9 @@ O ecossistema de branches do Git é dividido estrategicamente para gerenciar o p
 1.  **`main` (Página de Espera - PRODUÇÃO)**:
     *   **Propósito**: Contém o site de pré-lançamento do projeto com o formulário de lista de espera (waitlist) e a história do fundador.
     *   **Status**: **100% Implementado e Implantado**. É a branch de produção oficial conectada à Vercel. Qualquer alteração aqui é implantada automaticamente na URL pública ([vetorpas.com.br](https://vetorpas.com.br)).
-2.  **`feat/nextjs-frontend` (Painel e Landing Page Principal - DESENVOLVIMENTO)**:
-    *   **Propósito**: Contém a landing page principal definitiva e a interface completa de dashboards do portal do aluno e da escola.
-    *   **Status**: **Em desenvolvimento constante (Local)**. Esta branch ainda não foi mergeada para a `main`, portanto suas páginas não estão acessíveis em produção.
+2.  **`feat/nextjs-frontend` (Painel e Landing Page Principal - INCORPORADA)**:
+    *   **Propósito**: Continha a landing page principal definitiva, o Preditor com semestre e curso alvo, a Calculadora de Estratégia, o header público, a recuperação de senha e a tela de perfil.
+    *   **Status**: **Integrada em `feat/pdf-extraction`** (ticket 10 da rodada *Publicar o Site*), que é o tronco unificado — modelo promovido, pipeline de treino, extração e portal no mesmo lugar. Ainda não mergeada para a `main`, portanto suas páginas não estão acessíveis em produção.
 3.  **`feat/grill`**:
     *   **Propósito**: Branch secundária de testes e experimentações.
 
@@ -58,7 +58,7 @@ graph TD
 
 1.  **Frontend (Diretório `landing-page/`)**:
     *   **Tecnologia**: **Next.js (App Router)** com React, TypeScript e TailwindCSS (v4).
-    *   **Status de Deploy**: **Ativo em Produção na Vercel**. A branch `main` serve a Landing Page Temporária de espera. A branch `feat/nextjs-frontend` (portal completo) é executada apenas localmente (`http://localhost:3000`) por enquanto.
+    *   **Status de Deploy**: **Ativo em Produção na Vercel**. A branch `main` serve a Landing Page Temporária de espera. O portal completo vive em `feat/pdf-extraction` e é executado apenas localmente (`http://localhost:3000`) por enquanto. O deploy da Vercel é manual (CLI), sem integração Git: um `git push` na `main` não publica nada.
 2.  **Backend API (Diretório `api/`)**:
     *   **Tecnologia**: **FastAPI** (Python).
     *   **Status de Deploy**: **Apenas Local (localhost:8000)**. A hospedagem no **Hugging Face Spaces** (via Docker) está planejada e decidida na arquitetura (ADR 0004), mas ainda não foi ativada em produção. A URL de produção da Vercel precisará apontar para o link do Space através da variável `API_URL` assim que o deploy for feito.
@@ -135,7 +135,9 @@ As notas no PAS/UnB não são somas simples. O Cebraspe calcula a nota em relaç
     $$AF = NP_1 \times 0.72 + NP_2 \times 8.28 + NP_3 \times 1.00$$
     *Nota: A redação das etapas 1 e 2 não tem peso direto, mas a redação do PAS 3 possui um cálculo integrado ao edital.*
 *   **Engenharia Reversa ("Quanto Falta"):**
-    O módulo `target_calculator.py` recebe a nota de corte alvo (Argumento Final) e os EBs conhecidos do aluno no PAS 1 e PAS 2. Ele resolve a equação reversamente para encontrar o $EB_3$ necessário. Como as médias e desvios oficiais do PAS 3 ainda não foram divulgados, o sistema projeta esses dados usando regressão linear histórica antes de calcular o alvo.
+    O módulo `target_calculator.py` recebe a nota de corte alvo (Argumento Final) e os EBs conhecidos do aluno no PAS 1 e PAS 2. Ele resolve a equação reversamente para encontrar o $EB_3$ necessário.
+
+    As médias e desvios entram pela **porta única** `stats_da_prova(ano, etapa, língua)`, que lê o `OFFICIAL_STATS` — a mesma porta que o treino e o Preditor usam, para que o `A1` que a tela mostra seja o `A1` com que o modelo foi treinado. Quando o PAS 3 do triênio do aluno ainda não aconteceu, entra o **Ano-Âncora**: a Etapa 3 real e já publicada mais recente. A projeção por regressão linear (`STATS_PAS3_TREND`) foi **descartada** — o ADR-0009 registra o porquê: ela colapsa numa precisão fingida uma incerteza que o Ano-Âncora mostra de graça, e produz combinações que nunca existiram, como o corte de um ano com a prova de outro. Se o Edital de uma das Etapas *já feitas* não saiu, a rota não é calculável e a API responde `status: "indisponivel"` com o motivo, em vez de números estimados.
 
 ---
 

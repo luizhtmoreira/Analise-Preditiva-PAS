@@ -250,3 +250,98 @@ def test_lote_misto_conta_os_dois_lados(api_com_pacote):
     assert resposta.kpis.n_sem_previsao == 1
     assert resposta.kpis.total == 2
     assert resposta.modelo_disponivel is True
+
+
+# ─── Merge do portal sobre o modelo (ticket 10) ──────────────────────────────────────────────
+
+
+def _mapa_de_cursos(monkeypatch, m1: dict, m2: dict) -> None:
+    """Fixa as notas de corte dos dois semestres, para que o teste fale de seleção e não de CSV."""
+    # `predict_service` importou a função por valor, então é nele que o patch tem que entrar.
+    monkeypatch.setattr(
+        predict_service,
+        "_build_cutoff_maps",
+        lambda _trienio: ({"Sistema Universal": m1}, {"Sistema Universal": m2}, TRIENIO_COM_EDITAL),
+    )
+
+
+def test_probabilidade_dos_top_cursos_usa_a_largura_do_pacote(api_com_pacote, monkeypatch):
+    """O lado do portal chamava `calculate_approval_probability(..., rmse=ARG_FINAL_MAE)` — uma
+    constante de um modelo aposentado. Depois do merge é a Largura do manifesto, a mesma que o
+    Curso Alvo e a Gestão usam (ADR-0012)."""
+    _mapa_de_cursos(monkeypatch, {"Medicina - Diurno (Darcy Ribeiro)": 10.0}, {})
+
+    resposta = predict_service.predict_student(
+        entrada_predict(is_logged_in=True, curso_alvo="Medicina - Diurno (Darcy Ribeiro)")
+    )
+
+    esperado = calculate_approval_probability(
+        resposta.arg_previsto, 10.0, largura_incerteza=resposta.largura_incerteza
+    )
+    assert resposta.top_cursos[0].prob == pytest.approx(round(esperado * 100, 1), abs=0.1)
+    assert resposta.curso_alvo_result.prob == resposta.top_cursos[0].prob
+
+
+def test_semestre_filtra_so_para_aluno_logado(api_com_pacote, monkeypatch):
+    """As duas evoluções juntas: o semestre veio do portal, e é filtro de consulta — quem não
+    está logado não tem o seletor, então enxerga os dois semestres."""
+    _mapa_de_cursos(
+        monkeypatch,
+        {"Curso Do 1 - Diurno (Darcy Ribeiro)": 10.0},
+        {"Curso Do 2 - Noturno (Darcy Ribeiro)": 10.0},
+    )
+
+    so_primeiro = predict_service.predict_student(entrada_predict(is_logged_in=True, semestre="1°"))
+    assert {c.semestre for c in so_primeiro.top_cursos} == {"1°"}
+
+    deslogado = predict_service.predict_student(entrada_predict(is_logged_in=False, semestre="1°"))
+    assert {c.semestre for c in deslogado.top_cursos} == {"1°", "2°"}
+
+
+def test_calculadora_le_official_stats_e_nao_um_dicionario_proprio():
+    """`get_strategy_prediction` consumia o `TRIENNIUM_STATS` que o ticket 05 apagou. A rota
+    agora resolve média e desvio pela mesma porta única do Preditor e do treino."""
+    from api.schemas.predict import StrategyInput
+    from pas_intelligence.training_dataset import stats_da_prova
+
+    stats_p1, stats_p2, _ = predict_service._stats_do_ciclo(TRIENIO_COM_EDITAL, "espanhola")
+
+    assert stats_p1 == stats_da_prova(2023, 1, "espanhola")
+    assert stats_p2 == stats_da_prova(2024, 2, "espanhola")
+
+    resposta = predict_service.predict_strategy(
+        StrategyInput(
+            p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
+            p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
+            nota_alvo=120.0, ciclo_aluno=TRIENIO_COM_EDITAL, lingua="espanhola",
+        )
+    )
+    assert resposta.status != "indisponivel"
+    assert resposta.p2_necessario > 0
+
+
+def test_calculadora_recusa_o_trienio_sem_edital_em_vez_de_estourar():
+    """O triênio vivo não tem o Edital da Etapa 1. Sem este caminho a rota respondia 500; com
+    um `stats` chutado, responderia um P2 necessário que ninguém mediu."""
+    from api.schemas.predict import StrategyInput
+
+    resposta = predict_service.predict_strategy(
+        StrategyInput(
+            p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
+            p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
+            nota_alvo=120.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua="espanhola",
+        )
+    )
+
+    assert resposta.status == "indisponivel"
+    assert resposta.p2_necessario == 0.0
+    assert "Edital" in resposta.mensagem
+
+
+def test_ensemble_aposentado_nao_voltou_no_merge():
+    """ADR-0011: o ensemble batia seu melhor componente por 0,10%, dentro do ruído de dobra a
+    dobra, e nunca rodou em produção. A branch do portal ainda o trazia."""
+    import importlib
+
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("pas_intelligence.ensemble")

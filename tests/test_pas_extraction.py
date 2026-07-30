@@ -11,6 +11,7 @@ from pypdf import PdfReader  # type: ignore
 
 from pas_extraction import ResultadoExtracao, extrair_edital  # type: ignore
 from pas_extraction.models import (  # type: ignore
+    ContextoEdital,
     FamiliaDesconhecidaError,
     FamiliaEdital,
     Proveniencia,
@@ -21,6 +22,7 @@ from pas_extraction.cotas import CotaDeclarada, deduzir_cota_declarada  # type: 
 from pas_extraction.csv_writer import CSV_COLUMNS, escrever_csv  # type: ignore
 from pas_extraction.schema import canonizar, classificar_familia  # type: ignore
 from pas_extraction.validacao import validar_sequencia_e_ordem  # type: ignore
+from pas_extraction import resultado_final  # type: ignore
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 FIXTURE_RESULTADO_FINAL = FIXTURES_DIR / "resultado_final_22_campos.pdf"
@@ -317,6 +319,85 @@ class TestValidacaoFormatoNumerico:
 
         sinalizados = [r for r in resultado.registros if r.validacao.campos_formato_invalido]
         assert len(sinalizados) == 19
+
+
+class TestValidacaoFormatoClassificacao:
+    """Ticket 14: mesma validação estrutural do ticket 02, agora simétrica no campo de
+    classificação. `_formato_classificacao_valido` (`^-$|^\\d+$`) pega dígito partido por
+    espaço interno no próprio registro, em vez de só normalizar e confiar no valor — a
+    mesma classe de corrupção documentada em `cotas.py` e no achado do ticket 08 (posição
+    de 6 dígitos, Edital 36/2017-2019/MEDICINA, que sem limite explodia o CSV de saída
+    para 6,4 GB; `_buracos_por_sistema` mitigou o sintoma, esta validação sinaliza a
+    causa no registro).
+    """
+
+    ESTADO = {"campus": "Darcy Ribeiro", "curso": "MEDICINA", "turno": "Matutino"}
+    CONTEXTO = ContextoEdital(arquivo_origem="ed36.pdf", edital="36", trienio="2017/2019")
+
+    @staticmethod
+    def _campos(overrides: dict = None) -> list:
+        # 9 notas + argumento final (campos[2:12]) num formato sempre válido — só a
+        # classificação (campos[12:22]) varia por teste; as 10 vêm "1" por padrão.
+        campos = (
+            ["12345678", "Aluno Teste"]
+            + ["56.291", "17.539", "23.000", "45.123", "12.456",
+               "34.789", "56.789", "23.456", "12.345", "178.456"]
+            + ["1"] * 10
+        )
+        for indice, valor in (overrides or {}).items():
+            campos[indice] = valor
+        return campos
+
+    def _montar(self, overrides: dict = None):
+        return resultado_final._montar_registro(
+            self._campos(overrides), self.ESTADO, self.CONTEXTO, pagina=1,
+        )
+
+    def test_classificacao_partida_por_espaco_e_reparada_e_sinalizada(self):
+        # Texto bruto "2 80852" (dígito colado com espaço interno, mesma classe do
+        # protótipo "56.29 1" nos campos numéricos): reparado para o valor utilizável
+        # 280852, mas o formato bruto não bate `^-$|^\d+$` — sinalizado, não descartado.
+        registro = self._montar({12: "2 80852"})
+
+        assert registro is not None
+        assert registro.classificacoes[1] == 280852
+        assert registro.validacao.campos_formato_invalido == ("classificacao_1",)
+        assert not registro.validacao.valido
+
+    def test_classificacao_sem_corrupcao_nao_e_sinalizada(self):
+        registro = self._montar()
+
+        assert registro is not None
+        assert registro.validacao.campos_formato_invalido == ()
+        assert registro.validacao.valido
+
+    def test_traco_continua_valido_para_nao_concorreu(self):
+        registro = self._montar({13: "-"})
+
+        assert registro is not None
+        assert registro.classificacoes[2] is None
+        assert registro.validacao.campos_formato_invalido == ()
+
+    def test_duas_classificacoes_partidas_sao_sinalizadas_juntas(self):
+        registro = self._montar({12: "2 80852", 15: "1 234"})
+
+        assert registro is not None
+        assert set(registro.validacao.campos_formato_invalido) == {
+            "classificacao_1", "classificacao_4",
+        }
+
+    def test_caso_real_conhecido_edital_36_medicina_posicao_de_seis_digitos(self):
+        # Regressão do achado do ticket 08: Edital 36 (2017/2019), MEDICINA, Sistema
+        # Universal leu uma posição de 6 dígitos (~280 mil) num curso com ~900
+        # classificados de verdade. Antes desta validação o valor implausível passava
+        # batido pela camada de parse, e só era neutralizado como efeito colateral em
+        # `_buracos_por_sistema` (ticket 08) — nunca sinalizado no próprio registro.
+        registro = self._montar({12: "2 80852"})
+
+        assert registro is not None
+        assert registro.curso == "MEDICINA"
+        assert registro.classificacoes[1] == 280852
+        assert "classificacao_1" in registro.validacao.campos_formato_invalido
 
 
 class TestCabecalhoDeCursoEngolido:

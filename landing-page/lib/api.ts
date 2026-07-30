@@ -1,3 +1,4 @@
+import type { ChamadaCorte } from "./types";
 // Server-side: process.env.API_URL. Client-side: NEXT_PUBLIC_API_URL.
 const API_URL =
   (typeof window === "undefined"
@@ -42,6 +43,13 @@ export async function fetchCorteEvolucao(curso: string) {
   return res.json();
 }
 
+export async function fetchCourseChamadas(curso: string, cota: string, trienio: string, semestre: string): Promise<ChamadaCorte[]> {
+  const params = new URLSearchParams({ curso, cota, trienio, semestre });
+  const res = await fetch(`${API_URL}/api/courses/chamadas?${params}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export async function fetchEscola(inscricoes: string[], trienio = "") {
   const res = await fetch(`${API_URL}/api/escola/analyze`, {
     method: "POST",
@@ -73,6 +81,8 @@ export async function fetchPredict(body: {
   // Parte 1 de quem fez espanhol ou francês com a estatística de inglês.
   lingua: "inglesa" | "francesa" | "espanhola";
   cota?: string; trienio?: string; curso_alvo?: string;
+  is_logged_in?: boolean;
+  semestre?: string;
 }) {
   const res = await fetch(`${API_URL}/api/predict`, {
     method: "POST",
@@ -82,3 +92,30 @@ export async function fetchPredict(body: {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+export async function fetchCoursesCutoff(curso: string, cota: string, trienio: string, semestre: string): Promise<{ cutoff: number }> {
+  const params = new URLSearchParams({ curso, cota, trienio, semestre });
+  const res = await fetch(`${API_URL}/api/courses/cutoff?${params}`);
+  if (!res.ok) return { cutoff: 0 };
+  return res.json();
+}
+
+export async function fetchStrategy(body: {
+  p1_pas1: number; p2_pas1: number; red_pas1: number;
+  p1_pas2: number; p2_pas2: number; red_pas2: number;
+  nota_alvo: number;
+  ciclo_aluno: string;
+  lingua: "inglesa" | "francesa" | "espanhola";
+  p1_override?: number | null;
+  red_override?: number | null;
+  base_projecao?: string;
+}) {
+  const res = await fetch(`${API_URL}/api/predict/strategy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+

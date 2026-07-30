@@ -18,7 +18,7 @@ export function BrandMark({
       <span className="min-w-0">
         <span
           className={`block font-heading font-bold tracking-tight text-[1.05rem] leading-tight truncate ${
-            light ? "text-white" : "text-[#003366]"
+            light ? "text-white" : "text-[#002147]"
           }`}
         >
           Vetor PAS
@@ -26,7 +26,7 @@ export function BrandMark({
         {sublabel && (
           <span
             className={`block text-[0.68rem] tracking-[0.08em] truncate ${
-              light ? "text-[#7FD8F7]" : "text-[#6E6E73]"
+              light ? "text-[#7FD8F7]" : "text-[#4A5568]"
             }`}
           >
             {sublabel}
