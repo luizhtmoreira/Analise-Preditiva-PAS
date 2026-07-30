@@ -27,12 +27,12 @@ FIXTURE_CAUDA = FIXTURES_DIR / "medias_desvios_cauda.pdf"
 
 _COMANDO_AVULSO = (
     "python -m pas_extraction.cli fixture "
-    "'data/pdfs/ED_34_PAS_3 _2019 -2021_Media_e_desvio_padrao.pdf' 1 1 "
+    "'data/pdfs/medias-e-desvios/ED_34_PAS_3 _2019 -2021_Media_e_desvio_padrao.pdf' 1 1 "
     f"{FIXTURE_AVULSO}"
 )
 _COMANDO_CAUDA = (
     "python -m pas_extraction.cli fixture "
-    "'data/pdfs/Ed_38_2024_PAS_3_2022-2024_Res_final_não_eliminados.pdf' 242 242 "
+    "'data/pdfs/resultado-final-pas3/Ed_38_2024_PAS_3_2022-2024_Res_final_não_eliminados.pdf' 242 242 "
     f"{FIXTURE_CAUDA}"
 )
 

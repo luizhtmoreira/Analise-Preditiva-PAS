@@ -51,7 +51,7 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 #   import sys; sys.path.insert(0, 'src')
 #   from pas_extraction.fixtures import fatiar_paginas
 #   fatiar_paginas(
-#       'data/pdfs/Ed_38_2024_PAS_3_2022-2024_Res_final_não_eliminados.pdf',
+#       'data/pdfs/resultado-final-pas3/Ed_38_2024_PAS_3_2022-2024_Res_final_não_eliminados.pdf',
 #       [1, 2, 3, 4, 5, 6, 242],
 #       'tests/fixtures/resultado_final_com_checksum.pdf',
 #   )"
@@ -67,7 +67,7 @@ FIXTURE_SEM_TABELA = FIXTURES_DIR / "resultado_final_22_campos.pdf"
 # Resultado Final é a mesma do ticket 06 (páginas 1, 82 e 83 do Ed_31). A avulsa foi gerada
 # com:
 #   python -m pas_extraction.cli fixture \
-#     'data/pdfs/Ed_32_2016-2018_PAS_3_media_e_desvio_padrao.pdf' 1 1 \
+#     'data/pdfs/medias-e-desvios/Ed_32_2016-2018_PAS_3_media_e_desvio_padrao.pdf' 1 1 \
 #     tests/fixtures/medias_desvios_avulso_2016_2018.pdf
 FIXTURE_OUTRO_TRIENIO = FIXTURES_DIR / "resultado_final_cota_suspeita.pdf"
 FIXTURE_MEDIAS_AVULSO_2016_2018 = FIXTURES_DIR / "medias_desvios_avulso_2016_2018.pdf"

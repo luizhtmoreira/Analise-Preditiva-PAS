@@ -26,7 +26,7 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 FIXTURE_RESULTADO_FINAL = FIXTURES_DIR / "resultado_final_22_campos.pdf"
 
 # Contagem observada ao gerar a fixture com `python -m pas_extraction.cli fixture
-# 'data/pdfs/Ed_38_2024_PAS_3_2022-2024_Res_final_não_eliminados.pdf' 1 6 <destino>`.
+# 'data/pdfs/resultado-final-pas3/Ed_38_2024_PAS_3_2022-2024_Res_final_não_eliminados.pdf' 1 6 <destino>`.
 # Páginas 1-6 (acima do "3 a 5" sugerido) de propósito: é o intervalo mais curto que
 # inclui uma troca real de curso (ADMINISTRAÇÃO -> AGRONOMIA, na página 6), que é o
 # comportamento que este ticket pede para os cabeçalhos intercalados no fluxo.
@@ -68,7 +68,7 @@ CURSO_COM_PADRAO_RICO = "ARQUIVOLOGIA (BACHARELADO)"
 #   import sys; sys.path.insert(0, 'src')
 #   from pas_extraction.fixtures import fatiar_paginas
 #   fatiar_paginas(
-#       'data/pdfs/Ed_31_2016-2018_PAS_3_Res_final_nao_eliminados.pdf',
+#       'data/pdfs/resultado-final-pas3/Ed_31_2016-2018_PAS_3_Res_final_nao_eliminados.pdf',
 #       [1, 82, 83],
 #       'tests/fixtures/resultado_final_cota_suspeita.pdf',
 #   )"
@@ -86,7 +86,7 @@ FIXTURE_COTA_SUSPEITA = FIXTURES_DIR / "resultado_final_cota_suspeita.pdf"
 #   import sys; sys.path.insert(0, 'src')
 #   from pas_extraction.fixtures import fatiar_paginas
 #   fatiar_paginas(
-#       'data/pdfs/Ed_27_PAS_3_2021_2023_Res_final_tipo_D_redação.pdf',
+#       'data/pdfs/resultado-final-pas3/Ed_27_PAS_3_2021_2023_Res_final_tipo_D_redação.pdf',
 #       [1, 99, 100, 101],
 #       'tests/fixtures/resultado_final_duas_secoes.pdf',
 #   )"
@@ -131,7 +131,7 @@ def _pular_se_fixture_ausente(caminho: Path) -> None:
             f"Fixture {caminho.relative_to(Path(__file__).parent.parent)} não encontrada. "
             "Gere localmente (requer data/pdfs completo) com: "
             "python -m pas_extraction.cli fixture "
-            "'data/pdfs/Ed_38_2024_PAS_3_2022-2024_Res_final_não_eliminados.pdf' "
+            "'data/pdfs/resultado-final-pas3/Ed_38_2024_PAS_3_2022-2024_Res_final_não_eliminados.pdf' "
             f"1 4 {caminho}"
         )
 

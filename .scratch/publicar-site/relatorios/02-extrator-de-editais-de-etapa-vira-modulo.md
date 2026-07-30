@@ -240,3 +240,38 @@ O ticket 07 do mapa `publicar-site` ("Preditor responde para a Turma viva") é q
 `medias_desvios_etapa.csv` produzido aqui para preencher `(2024, Etapa 1)` e `(2025, Etapa 2)`
 no `OFFICIAL_STATS`, depois de o ticket 01 decidir a forma do `ExamStats` (Parte 1 misturada
 marcada como derivada) e o ticket 06 calibrar o Deslocamento medido no Passo 1.
+
+---
+
+## 8. Adendo (2026-07-30) — o módulo se perdeu e foi reconstruído
+
+**O que aconteceu.** `src/pas_extraction/etapa.py` e a função `gerar_pdf_texto_sintetico` de
+`fixtures.py` sumiram do disco depois que este ticket foi dado por concluído. `tests/` é
+versionado e sobreviveu; `src/pas_extraction/` está no `.gitignore` — decisão da rodada em
+que a PII e o parser saíram da história do git — então o código nunca entrou em nenhum
+commit e não havia de onde restaurar. O sintoma foi `pytest tests/` parando na coleta com
+`ModuleNotFoundError: No module named 'pas_extraction.etapa'`. De todos os tickets da onda,
+o 02 foi o único que criou arquivo dentro dessa pasta ignorada, e foi o único que se perdeu.
+
+**Como foi reconstruído.** A partir do que sobrou versionado: os 19 testes de
+`tests/test_pas_extraction_etapa.py` (que são a especificação executável da interface), a
+§2 deste relatório (a lista de tipos e funções públicas) e a §3.1 (o bug do cabeçalho da
+página 1). O script original em `.scratch/publicar-site/medicao-passo-1/extrair_etapa.py`
+serviu de base para o parsing, como serviu da primeira vez.
+
+**Como sabemos que a reconstrução é fiel.** Os 19 testes são sintéticos e provariam pouco
+sozinhos. O que prova é rodar contra os Editais reais e reencontrar as contagens que este
+relatório já tinha registrado, uma a uma:
+
+| Edital | n reconstruído | registrado aqui antes |
+|---|---:|---|
+| Ed_8/2024 (2024, Etapa 1) | 19.128 | 19.128 (§3.1) |
+| Ed_15 (2024, Etapa 2) | 16.340 | 16.340 (§3.1) |
+| Retificação 2022 (2022, Etapa 1) | 18.382 | 18.382 (§6, glossário) |
+| Ed_12 (2025, Etapa 2) | 16.991 | 16.990 + 1 do cabeçalho (§5) |
+| Retificação 2023 | recusada, 828 | recusada, 828 (§5) |
+
+**Risco que continua de pé.** Nada mudou na causa: o parser segue fora do git por decisão, e
+some de novo se o diretório de trabalho for limpo. O que existe hoje é uma cópia só, neste
+disco. Proteger isso sem desfazer a decisão de privacidade exigiria backup fora do
+repositório — está fora do escopo deste adendo e é decisão do dono do produto.

@@ -62,6 +62,12 @@ código — o portão só a torna visível antes de publicar, em vez de depois.
 três ou quatro triênios fechados, em `data/pdfs`. Não há automação de download aqui, e o extrator do
 ticket 02 já roda nessa família de documento sem alteração — é só o arquivo que falta.
 
+Jogue o download em `data/pdfs/` e rode `.venv/bin/python scripts/organizar_pdfs.py --aplicar`: ele
+lê a primeira página, arquiva cada Edital na subpasta da família e reescreve `data/pdfs/INDICE.md`.
+Não confie no nome do arquivo para saber o que baixou — 10 dos 83 vieram nomeados com o hash do
+download. **Os triênios que já têm o Edital oficial de média e desvio, e portanto só precisam do par
+de Etapa:** 2016/2018, 2017/2019, 2018/2020, 2019/2021 e 2020/2022.
+
 Os 6 que já estão em disco: `(2022, Etapa 1)`, `(2023, Etapa 1)`, `(2024, Etapa 2)` servem de
 validação; `(2024, Etapa 1)` e `(2025, Etapa 2)` são as entradas de produção; e o Edital 8 de 2023
 é o parcial que não serve.

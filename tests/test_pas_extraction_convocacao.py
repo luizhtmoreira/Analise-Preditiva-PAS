@@ -20,7 +20,7 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 FIXTURE_CONVOCACAO = FIXTURES_DIR / "convocacao_registro.pdf"
 
 # Contagem observada ao gerar a fixture com `python -m pas_extraction.cli fixture
-# 'data/pdfs/Ed_28_PAS_3_2021_2023_Conv_RA_1ª_Chamada.pdf' 1 5 <destino>`.
+# 'data/pdfs/convocacoes/Ed_28_PAS_3_2021_2023_Conv_RA_1ª_Chamada.pdf' 1 5 <destino>`.
 # Páginas 1-5 (acima do "3 a 5" sugerido no ticket, no limite de cima) de propósito: é
 # o intervalo mais curto que cruza 7 trocas de curso (mesmo espírito da fixture do
 # ticket 01 — cobrir de fato o critério de aceite de campus/curso/turno como estado, não
@@ -44,7 +44,7 @@ def _pular_se_fixture_ausente(caminho: Path) -> None:
             f"Fixture {caminho.relative_to(Path(__file__).parent.parent)} não encontrada. "
             "Gere localmente (requer data/pdfs completo) com: "
             "python -m pas_extraction.cli fixture "
-            "'data/pdfs/Ed_28_PAS_3_2021_2023_Conv_RA_1ª_Chamada.pdf' "
+            "'data/pdfs/convocacoes/Ed_28_PAS_3_2021_2023_Conv_RA_1ª_Chamada.pdf' "
             f"1 5 {caminho}"
         )
 
