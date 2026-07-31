@@ -764,9 +764,10 @@ export function PreditorPage() {
 
         <PublicHeader />
 
-        {/* ── Cabeçalho, sobre a lavagem radial branca do topo ── */}
-        <div className="vp-wash relative bg-white border-b border-[#E2E8F0]">
-          <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "56px 24px 48px" }}>
+        {/* ── Lavagem radial estendida por toda a página ── */}
+        <div className="vp-wash relative bg-white overflow-hidden min-h-[calc(100vh-65px)]">
+          {/* Cabeçalho */}
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "56px 24px 24px" }}>
             <span className="vp-eyebrow">Análise preditiva · PAS/UnB</span>
             <h1 className="heading" style={{ fontSize: "clamp(34px, 7vw, 44px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.08, margin: "24px 0 12px", color: C.text }}>
               Preditor <span style={{ color: C.green }}>PAS 3</span>
@@ -775,10 +776,9 @@ export function PreditorPage() {
               Insira suas notas do PAS 1 e 2 — o modelo prevê seu Argumento Final e suas chances nos cursos da UnB.
             </p>
           </div>
-        </div>
 
-        {/* ── Conteúdo ── */}
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px 96px" }}>
+          {/* ── Conteúdo ── */}
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "16px 24px 96px" }}>
 
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
@@ -1002,6 +1002,7 @@ export function PreditorPage() {
               </div>
             )}
 
+          </div>
         </div>
       </div>
     </>
