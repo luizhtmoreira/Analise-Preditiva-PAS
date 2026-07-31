@@ -197,7 +197,17 @@ export function CalculadoraPage() {
   const [pas2, setPas2] = useState(emptyScores());
   const [cota, setCota] = useState("Sistema Universal");
   const [trienio, setTrienio] = useState("2024-2026");
-  const [lingua, setLingua] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
+  const [linguaE1, setLinguaE1] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
+  const [linguaE2, setLinguaE2] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
+  const [linguaE2Tocada, setLinguaE2Tocada] = useState(false);
+  function handleLinguaE1(v: "inglesa" | "francesa" | "espanhola") {
+    setLinguaE1(v);
+    if (!linguaE2Tocada) setLinguaE2(v);
+  }
+  function handleLinguaE2(v: "inglesa" | "francesa" | "espanhola") {
+    setLinguaE2Tocada(true);
+    setLinguaE2(v);
+  }
   const [semestre, setSemestre] = useState("1°");
   const [cursoAlvo, setCursoAlvo] = useState("");
   const [notaAlvo, setNotaAlvo] = useState<string>("0");
@@ -295,7 +305,7 @@ export function CalculadoraPage() {
         p1_pas2, p2_pas2, red_pas2,
         nota_alvo: 0,
         ciclo_aluno: trienio,
-        lingua,
+        lingua: linguaE1,
       })
         .then((res) => {
           setIaEstimates({ p1: res.p1_ia, red: res.red_ia });
@@ -305,7 +315,7 @@ export function CalculadoraPage() {
         })
         .catch((err) => console.error("Erro ao buscar estimativas da IA:", err));
     }
-  }, [pas1, pas2, trienio, lingua]);
+  }, [pas1, pas2, trienio, linguaE1]);
 
   async function handleRouteCalculate(e: React.FormEvent) {
     e.preventDefault();
@@ -322,7 +332,7 @@ export function CalculadoraPage() {
       red_pas2: Number(pas2.red) || 0,
       nota_alvo: Number(notaAlvo) || 0,
       ciclo_aluno: trienio,
-      lingua,
+      lingua: linguaE1,
       p1_override: p1Override !== null ? p1Override : undefined,
       red_override: redOverride !== null ? redOverride : undefined,
       base_projecao: trienio === "2024-2026" ? baseProjecao : undefined,
@@ -377,7 +387,6 @@ export function CalculadoraPage() {
         desc: `Perfil estatisticamente consolidado. Historicamente, ${ph}% dos candidatos com este perfil de nota obtiveram a vaga.`,
         bg: "#C8E6C9",
         border: "rgba(0,132,61,0.25)",
-        icon: "🟢"
       };
     } else if (ph >= 5.0) {
       return {
@@ -386,7 +395,6 @@ export function CalculadoraPage() {
         desc: `Zona de concorrência acirrada. A taxa de aprovação histórica para este perfil de nota é de ${ph}%. Requer esforço acima da média.`,
         bg: "#FFF9C4",
         border: "rgba(245,127,23,0.25)",
-        icon: "🟡"
       };
     } else {
       return {
@@ -395,7 +403,6 @@ export function CalculadoraPage() {
         desc: `Cenário estatisticamente atípico. Apenas ${ph}% da base histórica com estas notas atingiu este resultado. Requer desempenho significativamente acima da média.`,
         bg: "#FFCDD2",
         border: "rgba(183,28,28,0.25)",
-        icon: "🔴"
       };
     }
   }, [result]);
@@ -409,9 +416,10 @@ export function CalculadoraPage() {
       >
         <PublicHeader />
 
-        {/* Cabeçalho, sobre a lavagem radial branca do topo */}
-        <div className="vp-wash relative bg-white border-b border-[#E2E8F0]">
-          <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "56px 24px 48px" }}>
+        {/* ── Lavagem radial estendida por toda a página ── */}
+        <div className="vp-wash relative bg-white overflow-hidden min-h-[calc(100vh-65px)]">
+          {/* Cabeçalho */}
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "56px 24px 24px" }}>
             <span className="vp-eyebrow">Estratégia de normalização · PAS 3</span>
             <h1 className="heading" style={{ fontSize: "clamp(32px, 7vw, 42px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.08, margin: "24px 0 12px", color: C.text }}>
               Calculadora de <span style={{ color: C.green }}>Estratégia</span>
@@ -420,10 +428,9 @@ export function CalculadoraPage() {
               Defina seu curso objetivo e analise qual a nota de conhecimentos <span style={{ whiteSpace: "nowrap" }}>(Parte 2)</span> você precisa atingir na prova do PAS 3.
             </p>
           </div>
-        </div>
 
-        {/* Content */}
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px 96px" }}>
+          {/* ── Conteúdo ── */}
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "16px 24px 96px" }}>
             <form onSubmit={handleRouteCalculate} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
               {/* Configuração do Candidato */}
@@ -449,13 +456,6 @@ export function CalculadoraPage() {
                   </div>
 
                   <div>
-                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Língua Estrangeira</p>
-                    <select value={lingua} onChange={(e) => setLingua(e.target.value as typeof lingua)} className="calc-select">
-                      {LINGUAS.map((l) => <option key={l.valor} value={l.valor}>{l.rotulo}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
                     <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Sistema de Concorrência</p>
                     <select value={cota} onChange={(e) => setCota(e.target.value)} className="calc-select">
                       {COTAS.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -467,14 +467,26 @@ export function CalculadoraPage() {
               {/* Notas do PAS 1 & 2 */}
               <div className="calc-grid-2">
                 {[
-                  { title: "Notas do PAS 1", state: pas1, set: setPas1 },
-                  { title: "Notas do PAS 2", state: pas2, set: setPas2 },
-                ].map(({ title, state, set }) => (
+                  { title: "Notas do PAS 1", stageLabel: "PAS 1", state: pas1, set: setPas1, lingua: linguaE1, onLingua: handleLinguaE1 },
+                  { title: "Notas do PAS 2", stageLabel: "PAS 2", state: pas2, set: setPas2, lingua: linguaE2, onLingua: handleLinguaE2 },
+                ].map(({ title, stageLabel, state, set, lingua, onLingua }) => (
                   <div key={title} className="calc-card" style={{ padding: "22px 20px" }}>
                     <p className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: C.label, marginBottom: 16 }}>
                       {title}
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div>
+                        <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                          Língua Estrangeira — {stageLabel}
+                        </p>
+                        <select
+                          value={lingua}
+                          onChange={(e) => onLingua(e.target.value as typeof lingua)}
+                          className="calc-select"
+                        >
+                          {LINGUAS.map((l) => <option key={l.valor} value={l.valor}>{l.rotulo}</option>)}
+                        </select>
+                      </div>
                       <StepperInput label="P1 — Língua Estrangeira" value={state.p1}
                         onChange={(v) => set((s) => ({ ...s, p1: v }))} step={0.5} min={-20} max={20} />
                       <StepperInput label="P2 — Conhecimentos" value={state.p2}
@@ -522,7 +534,7 @@ export function CalculadoraPage() {
                   onClick={() => setShowOverrides(!showOverrides)}
                   style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", padding: 0, cursor: "pointer", outline: "none" }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>⚙️ Customizar Projeções (Parte 1 e Redação)</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Customizar Projeções (Parte 1 e Redação)</span>
                   <span style={{ fontSize: 12, color: C.label, fontWeight: 700 }}>{showOverrides ? "Recolher ▲" : "Expandir ▼"}</span>
                 </button>
 
@@ -584,7 +596,7 @@ export function CalculadoraPage() {
                 className="calc-cta vp-btn vp-btn-cyan"
                 style={{ height: 52, fontSize: 15, fontWeight: 700 }}
               >
-                {loading ? "Calculando rota de aprovação..." : "🚀 Traçar Rota de Aprovação"}
+                {loading ? "Calculando rota de aprovação..." : "Traçar Rota de Aprovação"}
               </button>
             </form>
 
@@ -623,7 +635,6 @@ export function CalculadoraPage() {
                     gap: 14,
                   }}
                 >
-                  <span style={{ fontSize: 24, lineHeight: 1 }}>{semaphor.icon}</span>
                   <div>
                     <h3 className="heading" style={{ fontSize: 16, fontWeight: 800, margin: "0 0 4px", color: semaphor.color }}>
                       {semaphor.title}
@@ -746,14 +757,13 @@ export function CalculadoraPage() {
                       alignItems: "center",
                     }}
                   >
-                    <span style={{ fontSize: 18 }}>📊</span>
                     <p style={{ fontSize: 12.5, color: C.dim, margin: 0, lineHeight: 1.5 }}>
                       <strong style={{ color: C.text }}>Reality Check:</strong> Encontramos <strong style={{ color: C.text }}>{result.amostra} alunos</strong> no histórico com perfil similar de escore bruto (PAS 1 + PAS 2). A probabilidade foi estimada analisando a taxa de conversão deles na prova final.
                     </p>
                   </div>
                 ) : (
                   <p style={{ fontSize: 11.5, color: C.faint, textAlign: "center", margin: 0 }}>
-                    ℹ️ Amostra histórica insuficiente para gerar análise de coorte de alunos similares.
+                    Amostra histórica insuficiente para gerar análise de coorte de alunos similares.
                   </p>
                 )}
 
@@ -781,7 +791,6 @@ export function CalculadoraPage() {
                     <div className="sim-gate sim-in" style={{ marginTop: 8 }}>
                       {/* Header */}
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                        <span style={{ fontSize: 20 }}>🎯</span>
                         <div>
                           <p className="heading" style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: 0 }}>
                             Simulador de Itens (Meta PAS 3)
@@ -827,7 +836,6 @@ export function CalculadoraPage() {
                               alignItems: "flex-start",
                             }}
                           >
-                            <span style={{ fontSize: 22, lineHeight: 1 }}>🔒</span>
                             <div>
                               <p className="heading" style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: "0 0 4px" }}>
                                 Recurso Exclusivo para Alunos Cadastrados
@@ -841,7 +849,7 @@ export function CalculadoraPage() {
 
                           {/* Prévia bloqueada */}
                           <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.faint, marginBottom: 10 }}>
-                            👁️ Prévia — Acesso Bloqueado
+                            Prévia — Acesso Bloqueado
                           </p>
                           <div className="sim-gate-blur">
                             <div className="calc-grid-2" style={{ marginBottom: 12 }}>
@@ -870,7 +878,7 @@ export function CalculadoraPage() {
 
                           <Link href="/login" style={{ display: "block", marginTop: 18, textDecoration: "none" }}>
                             <button className="sim-unlock-btn">
-                              🔑 Entrar ou Criar Conta Grátis
+                              Entrar ou Criar Conta Grátis
                             </button>
                           </Link>
                         </>
@@ -890,7 +898,6 @@ export function CalculadoraPage() {
                               gap: 8,
                             }}
                           >
-                            <span style={{ fontSize: 16 }}>{atingiu ? "🟢" : "🟡"}</span>
                             <p style={{ fontSize: 12.5, color: C.text, margin: 0, fontWeight: 700 }}>
                               {atingiu
                                 ? `Meta Atingida! P2 Simulado: ${pontos.toFixed(2)} pts (+${diff.toFixed(2)} pts de folga)`
@@ -967,6 +974,7 @@ export function CalculadoraPage() {
                 })()}
               </div>
             )}
+          </div>
         </div>
       </div>
     </>

@@ -376,7 +376,7 @@ function TopCursosTable({ cursos, isLoggedIn }: { cursos: CourseResult[]; isLogg
           <div style={{ flex: "1 1 280px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
               <span className="vp-eyebrow vp-eyebrow-cyan" style={{ fontSize: "0.68rem" }}>
-                ✨ Painel Multi-Curso
+                Painel Multi-Curso
               </span>
             </div>
             <h4 className="heading" style={{ fontSize: 15, fontWeight: 800, color: C.text, margin: "0 0 4px 0" }}>
@@ -895,7 +895,7 @@ export function PreditorPage() {
                       >
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
                           <span className="vp-eyebrow vp-eyebrow-cyan" style={{ fontSize: "0.68rem" }}>
-                            <span>✨</span> Recurso para Aluno Cadastrado
+                            Recurso para Aluno Cadastrado
                           </span>
                         </div>
 
@@ -904,7 +904,7 @@ export function PreditorPage() {
                         </h4>
 
                         <p style={{ fontSize: 12.5, color: C.dim, margin: "0 0 14px 0", lineHeight: 1.5 }}>
-                          Selecione seu curso pretendido para calcular a probabilidade exata de aprovação e ter acesso ao <strong style={{ color: C.text }}>Painel Multi-Curso</strong> + <strong style={{ color: C.text }}>Quanto Falta</strong>.
+                          Selecione seu curso pretendido para calcular a probabilidade exata de aprovação, conferir as notas de corte para cada chamada e ver os 10 cursos que você está mais bem colocado.
                         </p>
 
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, paddingTop: 4 }}>

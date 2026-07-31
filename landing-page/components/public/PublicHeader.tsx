@@ -132,7 +132,6 @@ export function PublicHeader() {
                   {/* Account Summary Header */}
                   <div className="p-3 mb-1 rounded-xl bg-[#F8F9FA] border border-black/5">
                     <p className="text-[11px] font-mono uppercase tracking-wider text-[#00843D] font-bold flex items-center gap-1.5">
-                      <Sparkles size={12} />
                       {isCoordinator ? "Coordenador Pedagógico" : "Aluno Cadastrado"}
                     </p>
                     <p className="text-xs font-bold text-[#002147] truncate mt-1">{userEmail}</p>
@@ -147,22 +146,13 @@ export function PublicHeader() {
                   {/* Options */}
                   <div className="space-y-0.5">
                     {!isCoordinator ? (
-                      <>
-                        <Link
-                          href="/perfil"
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#4A5568] hover:text-[#002147] hover:bg-[#F8F9FA] transition-colors font-semibold"
-                        >
-                          <User size={14} className="text-[#00AEEF]" />
-                          <span>Meu Perfil</span>
-                        </Link>
-                        <Link
-                          href="/predict"
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#4A5568] hover:text-[#002147] hover:bg-[#F8F9FA] transition-colors font-semibold"
-                        >
-                          <Target size={14} className="text-[#00AEEF]" />
-                          <span>Preditor PAS 3</span>
-                        </Link>
-                      </>
+                      <Link
+                        href="/perfil"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#4A5568] hover:text-[#002147] hover:bg-[#F8F9FA] transition-colors font-semibold"
+                      >
+                        <User size={14} className="text-[#00AEEF]" />
+                        <span>Meu Perfil</span>
+                      </Link>
                     ) : (
                       <Link
                         href="/gestao"

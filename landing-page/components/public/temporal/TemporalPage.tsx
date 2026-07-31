@@ -51,17 +51,16 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function CursoCombobox({ value, onChange, cursos }: {
   value: string; onChange: (v: string) => void; cursos: string[];
 }) {
-  const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return cursos.slice(0, 12);
+    if (!value.trim()) return cursos.slice(0, 12);
     const norm = (s: string) =>
       s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    const q = norm(query);
+    const q = norm(value);
     return cursos.filter((c) => norm(c).includes(q)).slice(0, 12);
-  }, [query, cursos]);
+  }, [value, cursos]);
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
@@ -70,23 +69,24 @@ function CursoCombobox({ value, onChange, cursos }: {
   }, []);
 
   return (
-    <div ref={ref} className="relative max-w-lg">
+    <div ref={ref} className="relative max-w-lg z-30">
       <input
         type="text"
-        value={open ? query : value || query}
+        value={value}
         placeholder="Buscar curso (ex.: Medicina, Direito…)"
-        onFocus={() => { setOpen(true); setQuery(""); }}
-        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         className="vp-input text-[0.85rem] font-medium"
       />
       {open && filtered.length > 0 && (
-        <div className="vp-dropdown absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 overflow-y-auto">
+        <div className="vp-dropdown absolute top-[calc(100%+6px)] left-0 right-0 z-50 max-h-60 overflow-y-auto shadow-2xl">
           {filtered.map((c) => (
             <button
               key={c}
               type="button"
-              onMouseDown={() => { onChange(c); setOpen(false); setQuery(""); }}
-              className="vp-dropdown-item block w-full text-left"
+              onMouseDown={() => { onChange(c); setOpen(false); }}
+              className="vp-dropdown-item block w-full text-left truncate"
+              title={c}
             >
               {c}
             </button>
@@ -143,9 +143,10 @@ export function TemporalPage({ data }: { data: TemporalResponse }) {
     <div className="min-h-screen bg-[#F8F9FA] text-[#1D1D1F] selection:bg-[#00843D] selection:text-white antialiased">
       <PublicHeader />
 
-      {/* Cabeçalho da página, sobre a lavagem radial branca do topo */}
-      <div className="vp-wash relative bg-white border-b border-[#E2E8F0]">
-        <div className="relative z-10 max-w-3xl mx-auto px-6 pt-14 pb-12">
+      {/* ── Lavagem radial estendida por toda a página ── */}
+      <div className="vp-wash relative bg-white overflow-hidden min-h-[calc(100vh-65px)]">
+        {/* Cabeçalho da página */}
+        <div className="relative z-10 max-w-3xl mx-auto px-6 pt-14 pb-6">
           <span className="landing-reveal vp-eyebrow">
             Séries históricas oficiais · Cebraspe
           </span>
@@ -163,120 +164,89 @@ export function TemporalPage({ data }: { data: TemporalResponse }) {
             que isso significa para a sua etapa.
           </p>
         </div>
-      </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-14 pb-24">
-        {/* ── 1. Nota de corte por curso ── */}
-        <section className="landing-reveal mb-16" style={{ animationDelay: "270ms" }}>
-          <SectionLabel>Evolução da nota de corte</SectionLabel>
-          <p className="text-sm text-[#4A5568] leading-relaxed mb-5 max-w-lg">
-            Escolha um curso e veja como o corte (Sistema Universal) variou
-            entre os triênios — 1º e 2º semestre.
-          </p>
-          <CursoCombobox value={curso} onChange={setCurso} cursos={data.cursos} />
+        {/* Conteúdo */}
+        <div className="relative z-10 max-w-3xl mx-auto px-6 py-6 pb-24">
+          {/* ── 1. Nota de corte por curso ── */}
+          <section className="landing-reveal mb-16 relative z-20" style={{ animationDelay: "270ms" }}>
+            <SectionLabel>Evolução da nota de corte</SectionLabel>
+            <p className="text-sm text-[#4A5568] leading-relaxed mb-5 max-w-lg">
+              Escolha um curso e veja como o corte (Sistema Universal) variou
+              entre os triênios — 1º e 2º semestre.
+            </p>
+            <CursoCombobox value={curso} onChange={setCurso} cursos={data.cursos} />
 
-          {curso && (
-            <div className="mt-6 vp-card border-t-4 border-t-[#00AEEF] p-5 sm:p-6">
-              <p className="font-heading text-sm font-bold text-[#002147] mb-4">{curso}</p>
-              {/* O gráfico vai dentro de um wrapper de altura explícita, e não só com a altura na
-                  `ResponsiveContainer`: sem ele o Recharts entra em laço de resize ao trocar de
-                  curso (fix 5700fde). Vale para os dois gráficos desta página. */}
-              {loadingCorte ? (
-                <p className="text-sm text-[#718096] py-16 text-center">Carregando…</p>
-              ) : cortes.length === 0 ? (
-                <p className="text-sm text-[#718096] py-16 text-center">Sem dados de corte para este curso.</p>
-              ) : (
-                <div className="w-full h-[280px] relative">
+            {curso && (
+              <div className="mt-6 vp-card border-t-4 border-t-[#00AEEF] p-5 sm:p-6">
+                <p className="font-heading text-sm font-bold text-[#002147] mb-4">{curso}</p>
+                {/* O gráfico vai dentro de um wrapper de altura explícita, e não só com a altura na
+                    `ResponsiveContainer`: sem ele o Recharts entra em laço de resize ao trocar de
+                    curso (fix 5700fde). Vale para os dois gráficos desta página. */}
+                {loadingCorte ? (
+                  <p className="text-sm text-[#718096] py-16 text-center">Carregando…</p>
+                ) : cortes.length === 0 ? (
+                  <p className="text-sm text-[#718096] py-16 text-center">Sem dados de corte para este curso.</p>
+                ) : (
+                  <div className="w-full h-[280px] relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={cortes} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                        <CartesianGrid stroke={LIGHT.grid} vertical={false} />
+                        <XAxis dataKey="trienio" tick={{ fill: LIGHT.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: LIGHT.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Legend wrapperStyle={{ fontSize: 12, color: LIGHT.dim }} iconType="circle" iconSize={8} />
+                        <Line type="monotone" dataKey="corte_1sem" name="Corte 1º semestre" stroke={LIGHT.cyan} strokeWidth={2.5} dot={{ r: 4, fill: LIGHT.cyan }} connectNulls />
+                        <Line type="monotone" dataKey="corte_2sem" name="Corte 2º semestre" stroke={LIGHT.amber} strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: LIGHT.amber }} connectNulls />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <p className="mt-8 text-sm text-[#718096]">
+              Quer saber sua chance contra esse corte?{" "}
+              <Link href="/predict" className="text-[#00843D] font-semibold hover:underline">
+                Calcule sua previsão →
+              </Link>
+            </p>
+          </section>
+
+          {/* ── 2. Dificuldade das provas ── */}
+          <section className="landing-reveal mb-14 relative z-10" style={{ animationDelay: "360ms" }}>
+            <SectionLabel>Escore Bruto médio por etapa</SectionLabel>
+            <p className="text-sm text-[#4A5568] leading-relaxed mb-6 max-w-lg">
+              A média de P1 + P2 de todos os candidatos, ano a ano. Quedas indicam
+              provas mais difíceis; o PAS 3 costuma puxar a média para cima.
+            </p>
+            <div className="vp-card border-t-4 border-t-[#00843D] p-5 sm:p-6">
+                <div className="w-full h-[320px] relative">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={cortes} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                    <LineChart data={porAno} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
                       <CartesianGrid stroke={LIGHT.grid} vertical={false} />
-                      <XAxis dataKey="trienio" tick={{ fill: LIGHT.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="ano" tick={{ fill: LIGHT.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: LIGHT.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
                       <Tooltip content={<ChartTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 12, color: LIGHT.dim }} iconType="circle" iconSize={8} />
-                      <Line type="monotone" dataKey="corte_1sem" name="Corte 1º semestre" stroke={LIGHT.cyan} strokeWidth={2.5} dot={{ r: 4, fill: LIGHT.cyan }} connectNulls />
-                      <Line type="monotone" dataKey="corte_2sem" name="Corte 2º semestre" stroke={LIGHT.amber} strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3, fill: LIGHT.amber }} connectNulls />
+                      <Line type="monotone" dataKey="e1" name="PAS 1" stroke={LIGHT.cyan} strokeWidth={2.5} dot={{ r: 3, fill: LIGHT.cyan }} connectNulls />
+                      <Line type="monotone" dataKey="e2" name="PAS 2" stroke={LIGHT.green} strokeWidth={2.5} dot={{ r: 3, fill: LIGHT.green }} connectNulls />
+                      <Line type="monotone" dataKey="e3" name="PAS 3" stroke={LIGHT.amber} strokeWidth={2.5} dot={{ r: 3, fill: LIGHT.amber }} connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              )}
             </div>
-          )}
-
-          <p className="mt-8 text-sm text-[#718096]">
-            Quer saber sua chance contra esse corte?{" "}
-            <Link href="/predict" className="text-[#00843D] font-semibold hover:underline">
-              Calcule sua previsão →
-            </Link>
-          </p>
-        </section>
-
-        {/* ── 2. Dificuldade das provas ── */}
-        <section className="landing-reveal mb-14" style={{ animationDelay: "360ms" }}>
-          <SectionLabel>Escore Bruto médio por etapa</SectionLabel>
-          <p className="text-sm text-[#4A5568] leading-relaxed mb-6 max-w-lg">
-            A média de P1 + P2 de todos os candidatos, ano a ano. Quedas indicam
-            provas mais difíceis; o PAS 3 costuma puxar a média para cima.
-          </p>
-          <div className="vp-card border-t-4 border-t-[#00843D] p-5 sm:p-6">
-              <div className="w-full h-[320px] relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={porAno} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-                    <CartesianGrid stroke={LIGHT.grid} vertical={false} />
-                    <XAxis dataKey="ano" tick={{ fill: LIGHT.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: LIGHT.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<ChartTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 12, color: LIGHT.dim }} iconType="circle" iconSize={8} />
-                    <Line type="monotone" dataKey="e1" name="PAS 1" stroke={LIGHT.cyan} strokeWidth={2.5} dot={{ r: 3, fill: LIGHT.cyan }} connectNulls />
-                    <Line type="monotone" dataKey="e2" name="PAS 2" stroke={LIGHT.green} strokeWidth={2.5} dot={{ r: 3, fill: LIGHT.green }} connectNulls />
-                    <Line type="monotone" dataKey="e3" name="PAS 3" stroke={LIGHT.amber} strokeWidth={2.5} dot={{ r: 3, fill: LIGHT.amber }} connectNulls />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-          </div>
-          {insight && (
-            <p className="mt-4 text-sm text-[#4A5568] leading-relaxed border-l-4 border-[#00AEEF] pl-4">
-              No PAS 3 de <span className="font-mono font-bold text-[#002147]">{insight.ano}</span>, o escore bruto médio foi{" "}
-              <span className="font-mono font-bold text-[#002147]">{insight.valor.toFixed(1)}</span> —{" "}
-              <span className={`font-mono font-bold ${insight.delta >= 0 ? "text-[#00843D]" : "text-[#F57F17]"}`}>
-                {insight.delta >= 0 ? "+" : ""}{insight.delta.toFixed(1)} pts
-              </span>{" "}
-              em relação à média histórica da etapa.
-            </p>
-          )}
-        </section>
-
-        {/* ── 3. Redação ── (desativado; descomente para reativar)
-        <section className="landing-reveal" style={{ animationDelay: "450ms" }}>
-          <SectionLabel>Redação média por ano</SectionLabel>
-          <p className="text-sm text-[#4A5568] leading-relaxed mb-6 max-w-lg">
-            Média entre as etapas aplicadas em cada ano (escala 0–10).
-          </p>
-          <div className="vp-card border-t-4 border-t-[#002147] p-5 sm:p-6">
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart
-                data={porAno.map((r) => {
-                  const reds = [r.r1, r.r2, r.r3].filter((v): v is number => v != null);
-                  return { ano: r.ano, red: reds.length ? +(reds.reduce((s, v) => s + v, 0) / reds.length).toFixed(2) : null };
-                })}
-                margin={{ top: 8, right: 12, bottom: 0, left: -24 }}
-              >
-                <defs>
-                  <linearGradient id="redFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={LIGHT.cyan} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={LIGHT.cyan} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke={LIGHT.grid} vertical={false} />
-                <XAxis dataKey="ano" tick={{ fill: LIGHT.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 10]} tick={{ fill: LIGHT.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ChartTooltip />} />
-                <Area type="monotone" dataKey="red" name="Redação média" stroke={LIGHT.cyan} strokeWidth={2.5} fill="url(#redFill)" connectNulls />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-        */}
+            {insight && (
+              <p className="mt-4 text-sm text-[#4A5568] leading-relaxed border-l-4 border-[#00AEEF] pl-4">
+                No PAS 3 de <span className="font-mono font-bold text-[#002147]">{insight.ano}</span>, o escore bruto médio foi{" "}
+                <span className="font-mono font-bold text-[#002147]">{insight.valor.toFixed(1)}</span> —{" "}
+                <span className={`font-mono font-bold ${insight.delta >= 0 ? "text-[#00843D]" : "text-[#F57F17]"}`}>
+                  {insight.delta >= 0 ? "+" : ""}{insight.delta.toFixed(1)} pts
+                </span>{" "}
+                em relação à média histórica da etapa.
+              </p>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

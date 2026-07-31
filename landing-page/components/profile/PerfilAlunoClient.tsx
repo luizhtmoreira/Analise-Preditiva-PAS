@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Building2, Target, LogOut, ShieldCheck, CheckCircle2, ArrowRight, Save, KeyRound } from "lucide-react";
+import { User, Building2, LogOut, ShieldCheck, CheckCircle2, Save, KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { EscolaCombobox } from "@/components/auth/AlunoSignupForm";
@@ -141,24 +140,6 @@ export function PerfilAlunoClient() {
               {savingEscola ? "Salvando…" : "Salvar Alterações"}
             </button>
           </form>
-        </div>
-
-        {/* Predictor Shortcut Card */}
-        <div className="vp-card border-t-4 border-t-[#00AEEF] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1 max-w-md">
-            <h3 className="text-base font-bold text-[#002147] flex items-center gap-2">
-              <Target size={18} className="text-[#00AEEF]" />
-              Preditor PAS 3
-            </h3>
-            <p className="text-xs text-[#4A5568] leading-relaxed">
-              Simule suas notas no PAS 3 e acompanhe sua probabilidade matemática de aprovação na UnB.
-            </p>
-          </div>
-
-          <Link href="/predict" className="vp-btn vp-btn-cyan px-5 py-3 text-xs flex-shrink-0">
-            <span>Ir para o Preditor</span>
-            <ArrowRight size={15} />
-          </Link>
         </div>
 
         {/* Security & Account Actions Card */}
