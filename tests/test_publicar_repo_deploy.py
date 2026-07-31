@@ -105,8 +105,16 @@ def test_repo_de_deploy_diz_que_nao_deve_ser_editado_a_mao(
 ) -> None:
     publicar_snapshot(monorepo_falso, str(repo_deploy_vazio))
 
-    publicados = _arquivos_publicados(repo_deploy_vazio)
-    assert "README.md" in publicados
+    checkout = repo_deploy_vazio.parent / "checkout-conteudo-readme"
+    subprocess.run(
+        ["git", "clone", "--branch", "main", str(repo_deploy_vazio), str(checkout)],
+        check=True,
+        capture_output=True,
+    )
+    conteudo = (checkout / "README.md").read_text(encoding="utf-8").lower()
+
+    assert "gerado" in conteudo
+    assert "não edite" in conteudo or "nao edite" in conteudo
 
 
 def test_publicar_duas_vezes_produz_segundo_commit_sem_conflito(

@@ -1,5 +1,5 @@
 """Busca o pacote de modelo e os CSVs no Hugging Face Hub — roda só na etapa `fetch` do
-Dockerfile (ticket 08), nunca no boot do Space.
+Dockerfile (ticket 08), nunca no boot do serviço.
 
 Lê `ponteiro.json` (repo_id + revisão exata de cada artefato) e baixa os arquivos daquela
 revisão para o diretório de destino, na mesma estrutura que `model_package.DIRETORIO_PADRAO` e
@@ -28,9 +28,9 @@ def _token() -> str:
     token = os.environ.get("HF_TOKEN")
     if not token:
         sys.exit(
-            "HF_TOKEN ausente. No Space isto vem do secret de build (Settings → Repository "
-            "secrets); localmente, exporte um token de leitura antes de `docker build` "
-            "(ver deploy/README.md)."
+            "HF_TOKEN ausente. No Render isto vem do Secret File de build (montado em "
+            "/etc/secrets/HF_TOKEN); localmente, exporte um token de leitura antes de "
+            "`docker build` (ver deploy/README.md)."
         )
     return token
 
