@@ -349,3 +349,15 @@ OFFICIAL_STATS = {
         origem=Origem.DERIVADA,
     ),
 }
+
+
+def anos_ancora(etapa: int = 3, quantidade: int = 5) -> list[int]:
+    """Os `quantidade` anos mais recentes de uma Etapa em `OFFICIAL_STATS`, do mais novo ao mais
+    velho — os Anos-Âncora do ticket 12: cenários reais e já publicados para uma prova que o
+    Aluno ainda não sentou (*"e se a minha Etapa 3 for como a de 2023?"*).
+
+    Derivada do dado, não uma constante: quando o Edital de um ano novo entra em
+    `OFFICIAL_STATS`, o ano mais antigo cai fora sozinho, sem editar esta função.
+    """
+    anos = sorted((ano for (ano, e) in OFFICIAL_STATS if e == etapa), reverse=True)
+    return anos[:quantidade]

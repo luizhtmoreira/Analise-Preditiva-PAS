@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Query
 from api.schemas.predict import PredictInput, PredictResponse, ChamadaCorte, StrategyInput, StrategyResponse
-from api.services.predict_service import predict_student, get_courses, get_course_chamadas, predict_strategy
+from api.services.predict_service import (
+    predict_student,
+    get_courses,
+    get_course_chamadas,
+    get_course_cutoff,
+    predict_strategy,
+)
 
 router = APIRouter(tags=["predict"])
 
@@ -41,12 +47,5 @@ def course_cutoff(
     trienio: str = "2024-2026",
     semestre: str = "1°",
 ) -> dict:
-    calls = get_course_chamadas(curso, cota, trienio, semestre)
-    if not calls:
-        return {"cutoff": 0.0}
-    scores = [c["nota_corte"] for c in calls if c["nota_corte"] > 0]
-    if not scores:
-        return {"cutoff": 0.0}
-    cutoff = min(scores) if semestre == "1°" else max(scores)
-    return {"cutoff": round(cutoff, 3)}
+    return {"cutoff": round(get_course_cutoff(curso, cota, trienio, semestre), 3)}
 

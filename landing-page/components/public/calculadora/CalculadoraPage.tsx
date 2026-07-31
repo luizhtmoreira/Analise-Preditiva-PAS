@@ -326,6 +326,11 @@ export function CalculadoraPage() {
       p1_override: p1Override !== null ? p1Override : undefined,
       red_override: redOverride !== null ? redOverride : undefined,
       base_projecao: trienio === "2024-2026" ? baseProjecao : undefined,
+      // Ticket 12 (Ano-Âncora): o backend precisa do curso e do sistema de concorrência para
+      // buscar a Nota de Corte de cada um dos cinco cenários no triênio correspondente.
+      curso_alvo: cursoAlvo.trim() || undefined,
+      cota,
+      semestre,
     };
 
     try {
@@ -680,6 +685,53 @@ export function CalculadoraPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Ano-Âncora: cinco anos reais e já publicados, no lugar de um único ano
+                    extrapolado — a faixa entre eles é a incerteza do Aluno sobre a Etapa 3 que
+                    ele ainda não fez (só existe quando a Etapa 3 do próprio triênio ainda não
+                    aconteceu; caso contrário a resposta acima já é exata). */}
+                {result.anos_ancora.length > 0 && (
+                  <div className="calc-card" style={{ padding: "18px 20px" }}>
+                    <p className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: C.label, marginBottom: 4 }}>
+                      Se a Etapa 3 for como…
+                    </p>
+                    <p style={{ fontSize: 12, color: C.faint, margin: "0 0 14px", lineHeight: 1.5 }}>
+                      Sua Etapa 3 ainda não aconteceu. Em vez de um número só, veja o P2 necessário
+                      contra cinco anos reais e já publicados — a diferença entre eles é a própria
+                      incerteza sobre a prova que falta.
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {result.anos_ancora.map((cenario, i) => (
+                        <div
+                          key={cenario.ano}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            padding: i === 0 ? "12px 14px" : "9px 14px",
+                            borderRadius: 10,
+                            background: i === 0 ? "rgba(0,132,61,0.08)" : "transparent",
+                            border: i === 0 ? "1px solid rgba(0,132,61,0.22)" : `1px solid ${C.hairline}`,
+                          }}
+                        >
+                          <span
+                            className="mono"
+                            style={{ fontSize: i === 0 ? 13 : 12, fontWeight: i === 0 ? 800 : 600, color: i === 0 ? C.text : C.dim }}
+                          >
+                            {cenario.ano} {i === 0 && <span style={{ color: C.label }}>· mais recente</span>}
+                          </span>
+                          <span
+                            className="mono"
+                            style={{ fontSize: i === 0 ? 18 : 14, fontWeight: 900, color: i === 0 ? C.green : C.text }}
+                          >
+                            {cenario.p2_necessario.toFixed(1)} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Reality Check Details */}
                 {result.amostra > 0 ? (

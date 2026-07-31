@@ -111,6 +111,12 @@ export async function fetchStrategy(body: {
   p1_override?: number | null;
   red_override?: number | null;
   base_projecao?: string;
+  // Ticket 12 (Ano-Âncora): sem elas os cinco cenários caem de volta a comparar contra o único
+  // `nota_alvo` já resolvido — cada Ano-Âncora precisa da Nota de Corte do curso no *seu* próprio
+  // triênio (2025 → 2023-2025), e só o backend sabe montar essa combinação.
+  curso_alvo?: string;
+  cota?: string;
+  semestre?: string;
 }) {
   const res = await fetch(`${API_URL}/api/predict/strategy`, {
     method: "POST",

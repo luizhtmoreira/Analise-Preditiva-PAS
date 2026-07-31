@@ -378,10 +378,12 @@ def test_calculadora_le_official_stats_e_nao_um_dicionario_proprio():
     from api.schemas.predict import StrategyInput
     from pas_intelligence.training_dataset import stats_da_prova
 
-    stats_p1, stats_p2, _ = predict_service._stats_do_ciclo(TRIENIO_COM_EDITAL, "espanhola")
+    stats_p1, stats_p2, _, e3_e_ancora = predict_service._stats_do_ciclo(TRIENIO_COM_EDITAL, "espanhola")
 
     assert stats_p1 == stats_da_prova(2023, 1, "espanhola")
     assert stats_p2 == stats_da_prova(2024, 2, "espanhola")
+    # 2025 (Etapa 3 de 2023-2025) já está publicada em OFFICIAL_STATS — nenhum Ano-Âncora aqui.
+    assert e3_e_ancora is False
 
     resposta = predict_service.predict_strategy(
         StrategyInput(
@@ -392,6 +394,8 @@ def test_calculadora_le_official_stats_e_nao_um_dicionario_proprio():
     )
     assert resposta.status != "indisponivel"
     assert resposta.p2_necessario > 0
+    # Etapa 3 de 2023-2025 já é real (2025 publicado): nenhum Ano-Âncora precisa ser simulado.
+    assert resposta.anos_ancora == []
 
 
 def test_calculadora_preve_para_a_turma_viva_apoiada_em_estatistica_derivada():
@@ -409,6 +413,68 @@ def test_calculadora_preve_para_a_turma_viva_apoiada_em_estatistica_derivada():
 
     assert resposta.status != "indisponivel"
     assert resposta.p2_necessario > 0
+
+
+def test_calculadora_turma_viva_traz_os_cinco_anos_ancora_mais_recentes():
+    """Ticket 12: sem a própria Etapa 3 publicada (turma viva), a Calculadora troca o cenário
+    único do ticket 11 por cinco — um por Ano-Âncora, do mais recente ao mais antigo — em vez de
+    reviver a regressão do `STATS_PAS3_TREND` que o ticket 05 apagou."""
+    from api.schemas.predict import StrategyInput
+    from pas_intelligence.pas_constants import anos_ancora
+
+    resposta = predict_service.predict_strategy(
+        StrategyInput(
+            p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
+            p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
+            nota_alvo=120.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua="espanhola",
+        )
+    )
+
+    anos_esperados = anos_ancora()
+    assert len(resposta.anos_ancora) == 5
+    assert [a.ano for a in resposta.anos_ancora] == anos_esperados
+    assert all(a.status != "" for a in resposta.anos_ancora)
+    # O primeiro Ano-Âncora (o mais recente) é o que os campos de topo replicam, para o cliente
+    # que ainda não sabe do ticket 12.
+    primeiro = resposta.anos_ancora[0]
+    assert resposta.p1_estimado == primeiro.p1_estimado
+    assert resposta.p2_necessario == primeiro.p2_necessario
+    assert resposta.status == primeiro.status
+    assert resposta.arg_pas3_necessario == primeiro.arg_pas3_necessario
+    assert resposta.arg_pas3_necessario != 0.0
+    # Sem `curso_alvo`, os cinco cenários caem de volta no único `nota_alvo` do cliente — mas
+    # cada um usa a *sua própria* estatística de Etapa 3, então P2 necessário varia entre eles.
+    assert len({a.p2_necessario for a in resposta.anos_ancora}) > 1
+
+
+def test_calculadora_ano_ancora_varia_a_nota_de_corte_por_trienio(monkeypatch):
+    """Cada Ano-Âncora deve usar a Nota de Corte do curso no *seu* triênio (Ano-Âncora 2025 →
+    triênio 2023-2025), não o `nota_alvo` de um triênio só — a decisão do relatório 04 §7.2."""
+    from api.schemas.predict import StrategyInput
+    from pas_intelligence.pas_constants import anos_ancora
+
+    cortes_por_trienio = {
+        f"{ano - 2}-{ano}": float(ano) for ano in anos_ancora()
+    }
+
+    def _get_course_cutoff_falso(curso, cota, trienio, semestre):
+        assert curso == "Medicina - Diurno (Darcy Ribeiro)"
+        return cortes_por_trienio.get(trienio, 0.0)
+
+    monkeypatch.setattr(predict_service, "get_course_cutoff", _get_course_cutoff_falso)
+
+    resposta = predict_service.predict_strategy(
+        StrategyInput(
+            p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
+            p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
+            nota_alvo=999.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua="espanhola",
+            curso_alvo="Medicina - Diurno (Darcy Ribeiro)",
+        )
+    )
+
+    for resultado in resposta.anos_ancora:
+        assert resultado.nota_corte == float(resultado.ano)
+        assert resultado.trienio_corte == f"{resultado.ano - 2}-{resultado.ano}"
 
 
 def test_calculadora_recusa_o_trienio_sem_edital_em_vez_de_estourar():

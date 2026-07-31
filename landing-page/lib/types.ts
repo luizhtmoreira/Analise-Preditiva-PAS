@@ -166,6 +166,19 @@ export interface StudentRow {
   red_pas2: number;
 }
 
+export interface AnoAncoraResultado {
+  ano: number;
+  trienio_corte: string;
+  nota_corte: number;
+  p1_estimado: number;
+  p2_necessario: number;
+  red_estimada: number;
+  total_pas3: number;
+  arg_pas3_necessario: number;
+  status: string;
+  mensagem: string;
+}
+
 export interface StrategyResponse {
   p1_estimado: number;
   p2_necessario: number;
@@ -178,5 +191,9 @@ export interface StrategyResponse {
   amostra: number;
   p1_ia: number;
   red_ia: number;
+  // Ticket 12 — Ano-Âncora: cinco cenários (o mais recente primeiro), um por Etapa 3 real e já
+  // publicada, quando a do próprio triênio do Aluno ainda não aconteceu. Vazio quando a Etapa 3
+  // do triênio já é real — aí os campos únicos acima já são exatos, nenhum cenário é simulado.
+  anos_ancora: AnoAncoraResultado[];
 }
 

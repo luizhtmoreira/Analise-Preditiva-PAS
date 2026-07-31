@@ -94,6 +94,33 @@ class StrategyInput(BaseModel):
     p1_override: Optional[float] = None
     red_override: Optional[float] = None
     base_projecao: str = "Utilizar Projeção Tendência"
+    # Ticket 12 (Ano-Âncora): quando a Etapa 3 do Aluno ainda não aconteceu, cada um dos cinco
+    # cenários precisa da Nota de Corte do curso no **triênio correspondente ao Ano-Âncora**
+    # (Ano-Âncora 2025 → triênio 2023-2025), não só do `nota_alvo` de um triênio só. Opcionais e
+    # com default retrocompatível: sem `curso_alvo`, os cinco cenários caem de volta a comparar
+    # contra o único `nota_alvo` que o cliente já resolveu — a mesma resposta de antes do ticket.
+    curso_alvo: Optional[str] = None
+    cota: str = "Sistema Universal"
+    semestre: str = "1°"
+
+
+class AnoAncoraResultado(BaseModel):
+    """Um cenário do Ano-Âncora (ticket 12): "e se a minha Etapa 3 for como a de `ano`?".
+
+    Amarra junto a estatística da Etapa 3 daquele ano (dificuldade da prova) e a Nota de Corte do
+    curso no triênio correspondente (concorrência) — as duas variam juntas, nunca uma combinação
+    que não aconteceu.
+    """
+    ano: int
+    trienio_corte: str
+    nota_corte: float
+    p1_estimado: float
+    p2_necessario: float
+    red_estimada: float
+    total_pas3: float
+    arg_pas3_necessario: float
+    status: str
+    mensagem: str
 
 
 class StrategyResponse(BaseModel):
@@ -108,3 +135,8 @@ class StrategyResponse(BaseModel):
     amostra: int
     p1_ia: float
     red_ia: float
+    # Os cinco cenários do Ano-Âncora, mais recente primeiro — vazio quando a Etapa 3 do próprio
+    # triênio do Aluno já foi publicada (aí a resposta acima já é exata, nenhum cenário precisa
+    # ser simulado). Os campos únicos acima replicam `anos_ancora[0]` quando ele existe, para que
+    # um cliente que não sabe do ticket 12 continue lendo a mesma forma de sempre.
+    anos_ancora: list[AnoAncoraResultado] = []
