@@ -8,29 +8,49 @@ gravada em [`ponteiro.json`](./ponteiro.json) — a Decisão 3/4 do
 `.scratch/treino-modelos-pas3/issues/03-formato-e-versionamento-do-artefato.md`, construída
 aqui pela primeira vez.
 
+> **Pendente após o ticket 08a:** `ponteiro.json` da chave `dados` já aponta para o repositório
+> novo do Derivado (`vetor-pas-dados-derivado`), mas com `"revision": ""` — ninguém rodou o
+> publicador contra um token real ainda. **Não faça deploy até rodar isto uma vez:**
+> `python deploy/publicar_pacote.py cru` (backup do cru) seguido de
+> `python deploy/publicar_pacote.py dados` (publica o Derivado e grava a revisão), depois commite
+> o `ponteiro.json` atualizado. Sem isso, `buscar_artefatos.py` falha no build com "ponteiro.json
+> não tem revisão para 'dados'" — mensagem clara, não crash genérico, mas ainda um bloqueio real.
+
 `assets/` (templates whitelabel) fica fora desta rodada — não entra na imagem.
 
-## As três peças
+## As quatro peças
 
 | Repositório HF | Tipo | Conteúdo | Script que publica |
 |---|---|---|---|
 | `Luiz1912/vetor-pas3-modelo` | model | `modelo_pas3.txt` + `manifest.json` | `publicar_pacote.py modelo` |
-| `Luiz1912/vetor-pas-dados` | dataset | `notas_corte.csv` + `resultado_final.csv` | `publicar_pacote.py dados` |
+| `Luiz1912/vetor-pas-dados-derivado` | dataset | `notas_corte.csv` + `resultado_final.csv` **sem `nome`**, reduzidos às colunas de `pas_intelligence.derivado_deploy.COLUNAS_DERIVADO` — o que o Ponteiro aponta e o build baixa | `publicar_pacote.py dados` |
+| `Luiz1912/vetor-pas-dados` | dataset | os mesmos dois CSVs **crus** (com `nome`) — backup explícito, fora do Ponteiro, nenhuma etapa de build o lê | `publicar_pacote.py cru` |
 | `Luiz1912/vetor-pas-api` | space (Docker) | snapshot de `api/`, `src/pas_intelligence/`, `Dockerfile` | `publicar_space.py` |
 
-Os dois primeiros existem só para os artefatos gitignored. O terceiro é o Space de verdade —
+Os três primeiros existem só para os artefatos gitignored. O quarto é o Space de verdade —
 ele nunca recebe um `git push` deste monorepo (ver o porquê no topo de `publicar_space.py`): a
 história deste repositório já passou por PII em commits órfãos (ticket 15), e replicá-la para um
 terceiro host seria repetir o problema. Cada publicação sobe só os arquivos permitidos, direto
 pela API do Hub.
 
+**Por que dois repositórios de dados, e não um.** `Luiz1912/vetor-pas-dados` acumulava dois
+papéis — backup dos CSVs de extração e insumo de deploy. Cortar `nome` na origem destruiria o
+backup, então o Derivado passou a ter um lar próprio (ADR-0014, ticket 08a). `cru` nunca aparece
+em `ponteiro.json`: se aparecesse, `buscar_artefatos.py` o baixaria no build — exatamente o que
+este desenho existe para impedir. Rode `publicar_pacote.py cru` quando `data/` mudar; ele não faz
+parte do alvo default (`publicar_pacote.py` sem argumento sobe só `modelo` + `dados`).
+
 ## Setup (uma vez) e promoção (sempre que o modelo ou os CSVs mudam)
 
 ```bash
-pip install -r deploy/requirements.txt   # huggingface_hub, só para estes scripts
+pip install -r deploy/requirements.txt   # huggingface_hub + pandas, só para estes scripts
 hf auth login                            # uma vez, com um token de ESCRITA da conta Luiz1912
 
-# 1. Sobe o(s) artefato(s) e grava a revisão nova em deploy/ponteiro.json
+# 0. Uma vez, ou sempre que data/ mudar: backup do cru (fora do Ponteiro, nunca lido por build)
+python deploy/publicar_pacote.py cru
+
+# 1. Sobe o(s) artefato(s) — "dados" primeiro reduz aos CSVs sem `nome` (o Derivado) — e grava a
+# revisão nova em deploy/ponteiro.json
 python deploy/publicar_pacote.py            # modelo + dados
 # ou, para promover só um dos dois:
 python deploy/publicar_pacote.py modelo

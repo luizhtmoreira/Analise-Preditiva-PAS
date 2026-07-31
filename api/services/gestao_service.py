@@ -30,6 +30,7 @@ from pas_intelligence.model_package import (
     PacoteDeModelo,
     PacoteIndisponivelError,
 )
+from pas_intelligence.derivado_deploy import COLUNAS_NOTAS_CORTE, COLUNAS_RESULTADO_FINAL
 from pas_intelligence.pas_constants import OFFICIAL_STATS
 from pas_intelligence.training_dataset import (
     EstatisticaOficialAusenteError,
@@ -97,11 +98,7 @@ def load_resources() -> None:
     # colunas de PII nunca chegam a ser lidas.
     corte_path = data_dir / "notas_corte.csv"
     if corte_path.exists():
-        usecols = [
-            "trienio", "semestre", "campus", "curso", "turno",
-            "sistema_nome", "chamada", "nota_corte", "checksum_fecha",
-        ]
-        df = pd.read_csv(corte_path, usecols=lambda c: c in usecols)
+        df = pd.read_csv(corte_path, usecols=lambda c: c in COLUNAS_NOTAS_CORTE)
         # `checksum_fecha == True` é o único filtro necessário: a contaminação de escala (ex.
         # MEDICINA/Darcy Ribeiro/2020-2022 saindo com corte=199.162,872) sempre falha o checksum.
         df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
@@ -135,11 +132,7 @@ def load_resources() -> None:
     # sujeira e o mesmo filtro único (`checksum_fecha == True` deixa 64.298 de 66.313 linhas).
     cohort_path = data_dir / "resultado_final.csv"
     if cohort_path.exists():
-        usecols = [
-            "eb_p1_e1", "eb_p2_e1", "eb_p1_e2", "eb_p2_e2", "eb_p1_e3", "eb_p2_e3",
-            "argumento_final", "checksum_fecha",
-        ]
-        df = pd.read_csv(cohort_path, usecols=lambda c: c in usecols)
+        df = pd.read_csv(cohort_path, usecols=lambda c: c in COLUNAS_RESULTADO_FINAL)
         df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
         df = df.rename(columns={
             "eb_p1_e1": "P1_PAS1", "eb_p2_e1": "P2_PAS1",

@@ -10,9 +10,9 @@
     "destino": "models/pas3"
   },
   "dados": {
-    "repo_id": "Luiz1912/vetor-pas-dados",
+    "repo_id": "Luiz1912/vetor-pas-dados-derivado",
     "repo_type": "dataset",
-    "revision": "12cdb7def60a9a6e0a8e228accf84acde66f0c3d",
+    "revision": "",
     "arquivos": [
       "notas_corte.csv",
       "resultado_final.csv"

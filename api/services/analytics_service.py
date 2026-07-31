@@ -13,6 +13,7 @@ _ROOT = Path(__file__).parent.parent.parent
 if str(_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_ROOT / "src"))
 
+from pas_intelligence.derivado_deploy import COLUNAS_RESULTADO_FINAL
 from pas_intelligence.pas_constants import OFFICIAL_STATS
 from pas_intelligence.ab_testing import compare_groups
 
@@ -47,12 +48,7 @@ def _load_population() -> Optional[pd.DataFrame]:
     if not path.exists():
         return None
 
-    usecols = [
-        "inscricao", "trienio", "argumento_final",
-        "eb_p1_e1", "eb_p2_e1", "eb_p1_e2", "eb_p2_e2", "eb_p1_e3", "eb_p2_e3",
-        "checksum_fecha",
-    ]
-    df = pd.read_csv(path, usecols=lambda c: c in usecols, dtype={"inscricao": str})
+    df = pd.read_csv(path, usecols=lambda c: c in COLUNAS_RESULTADO_FINAL, dtype={"inscricao": str})
     df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
     df = df.rename(columns={
         "inscricao": "Inscricao",
