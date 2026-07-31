@@ -48,16 +48,16 @@ Conhecimento de modelo sobre preço, cota e caminho de plataforma envelhece em s
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done — commit `85365fe`
 
-- [ ] A imagem sobe e `/health` responde com a porta vindo do ambiente, e continua respondendo com
+- [x] A imagem sobe e `/health` responde com a porta vindo do ambiente, e continua respondendo com
       o default quando a variável não existe
-- [ ] O secret de build é lido de onde o Render o monta, e a etapa de busca falha com mensagem
+- [x] O secret de build é lido de onde o Render o monta, e a etapa de busca falha com mensagem
       clara — não com crash genérico — quando ele falta
-- [ ] Nenhum comentário no Dockerfile afirma que o destino é Hugging Face Spaces; o que é convenção
+- [x] Nenhum comentário no Dockerfile afirma que o destino é Hugging Face Spaces; o que é convenção
       herdada e ficou por mérito próprio está marcado como tal
-- [ ] O Repo de Deploy recebe exatamente os padrões de `PERMITIDOS` e nada além — verificado sobre o
+- [x] O Repo de Deploy recebe exatamente os padrões de `PERMITIDOS` e nada além — verificado sobre o
       repositório publicado
-- [ ] O Repo de Deploy não tem nenhum commit vindo da história do monorepo
-- [ ] Publicar duas vezes seguidas produz um segundo commit de snapshot, não um conflito
-- [ ] O Repo de Deploy diz, nele mesmo, que é gerado e não deve ser editado à mão
+- [x] O Repo de Deploy não tem nenhum commit vindo da história do monorepo
+- [x] Publicar duas vezes seguidas produz um segundo commit de snapshot, não um conflito
+- [x] O Repo de Deploy diz, nele mesmo, que é gerado e não deve ser editado à mão
