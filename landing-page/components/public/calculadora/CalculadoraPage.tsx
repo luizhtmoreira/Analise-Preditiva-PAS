@@ -652,7 +652,7 @@ export function CalculadoraPage() {
                       P1 PAS 3 (Est.)
                     </p>
                     <p className="mono" style={{ fontSize: 20, fontWeight: 900, color: C.text, margin: 0 }}>
-                      {result.p1_estimado.toFixed(2)}
+                      {(result.p1_estimado ?? 0).toFixed(2)}
                     </p>
                   </div>
 
@@ -661,7 +661,7 @@ export function CalculadoraPage() {
                       Redação (Est.)
                     </p>
                     <p className="mono" style={{ fontSize: 20, fontWeight: 900, color: C.text, margin: 0 }}>
-                      {result.red_estimada.toFixed(2)}
+                      {(result.red_estimada ?? 0).toFixed(2)}
                     </p>
                   </div>
 
@@ -678,7 +678,7 @@ export function CalculadoraPage() {
                       P2 NECESSÁRIA
                     </p>
                     <p className="mono" style={{ fontSize: 22, fontWeight: 900, color: C.text, margin: 0 }}>
-                      {result.p2_necessario.toFixed(2)}
+                      {(result.p2_necessario ?? 0).toFixed(2)}
                     </p>
                     <span
                       style={{
@@ -686,13 +686,13 @@ export function CalculadoraPage() {
                         fontWeight: 700,
                         padding: "2px 8px",
                         borderRadius: 20,
-                        background: result.p2_necessario < 30 ? "#C8E6C9" : (result.p2_necessario < 60 ? "#FFF9C4" : "#FFCDD2"),
-                        color: result.p2_necessario < 30 ? C.green : (result.p2_necessario < 60 ? C.amber : C.red),
+                        background: (result.p2_necessario ?? 0) < 30 ? "#C8E6C9" : ((result.p2_necessario ?? 0) < 60 ? "#FFF9C4" : "#FFCDD2"),
+                        color: (result.p2_necessario ?? 0) < 30 ? C.green : ((result.p2_necessario ?? 0) < 60 ? C.amber : C.red),
                         marginTop: 6,
                         display: "inline-block",
                       }}
                     >
-                      {result.p2_necessario < 30 ? "Nota Acessível" : (result.p2_necessario < 60 ? "Nota Desafiadora" : "Nota Muito Alta")}
+                      {(result.p2_necessario ?? 0) < 30 ? "Nota Acessível" : ((result.p2_necessario ?? 0) < 60 ? "Nota Desafiadora" : "Nota Muito Alta")}
                     </span>
                   </div>
                 </div>
@@ -701,7 +701,7 @@ export function CalculadoraPage() {
                     extrapolado — a faixa entre eles é a incerteza do Aluno sobre a Etapa 3 que
                     ele ainda não fez (só existe quando a Etapa 3 do próprio triênio ainda não
                     aconteceu; caso contrário a resposta acima já é exata). */}
-                {result.anos_ancora.length > 0 && (
+                {Array.isArray(result.anos_ancora) && result.anos_ancora.length > 0 && (
                   <div className="calc-card" style={{ padding: "18px 20px" }}>
                     <p className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: C.label, marginBottom: 4 }}>
                       Se a Etapa 3 for como…
@@ -736,7 +736,7 @@ export function CalculadoraPage() {
                             className="mono"
                             style={{ fontSize: i === 0 ? 18 : 14, fontWeight: 900, color: i === 0 ? C.green : C.text }}
                           >
-                            {cenario.p2_necessario.toFixed(1)} pts
+                            {(cenario.p2_necessario ?? 0).toFixed(1)} pts
                           </span>
                         </div>
                       ))}
@@ -745,7 +745,7 @@ export function CalculadoraPage() {
                 )}
 
                 {/* Reality Check Details */}
-                {result.amostra > 0 ? (
+                {(result.amostra ?? 0) > 0 ? (
                   <div
                     className="calc-card"
                     style={{
@@ -771,7 +771,7 @@ export function CalculadoraPage() {
                     SIMULADOR DE ITENS — Soft Gate
                 ═══════════════════════════════════════════════════ */}
                 {(() => {
-                  const metaP2 = Math.max(0, result.p2_necessario);
+                  const metaP2 = Math.max(0, result.p2_necessario ?? 0);
                   const redEst = result.red_estimada ?? 0;
 
                   // Cálculo em tempo real (apenas para logados)
