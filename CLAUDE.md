@@ -19,6 +19,40 @@ pytest tests/test_pas_intelligence.py
 .venv/bin/python scripts/treinar_pipeline.py <resultado_final.csv> --saida <dir>
 ```
 
+## INVARIANTE: backup dos parsers após qualquer modificação
+
+`src/pas_extraction/` está inteiramente no `.gitignore` por decisão de privacidade (a pasta
+contém PDFs e CSVs com dados de alunos reais). Isso significa que **nenhum arquivo dessa pasta
+está versionado no repo principal** — se o diretório for limpo, o código some sem como restaurar.
+
+O backup vive em https://github.com/luizhtmoreira/vetor-pas-parsers (repo privado).
+
+**Sempre que você modificar qualquer arquivo em `src/pas_extraction/` ou `src/pdf_generator.py`,
+execute o sync abaixo antes de encerrar a tarefa:**
+
+```bash
+cd .scratch/parser-backup
+cp ../../src/pas_extraction/*.py .
+cp ../../src/pdf_generator.py .
+git add -A
+git commit -m "sync: $(date '+%Y-%m-%d') — <descreva o que mudou>"
+git push
+cd ../..
+```
+
+Se `.scratch/parser-backup/` não existir no disco (ex.: máquina nova):
+
+```bash
+git clone https://github.com/luizhtmoreira/vetor-pas-parsers.git .scratch/parser-backup
+```
+
+Se precisar restaurar `src/pas_extraction/` a partir do backup:
+
+```bash
+cp .scratch/parser-backup/*.py src/pas_extraction/
+cp .scratch/parser-backup/pdf_generator.py src/
+```
+
 ## Architecture
 
 The public backend lives in `src/pas_intelligence/`; it reads from Supabase and serialized ML models under `models/`. The original Streamlit dashboard (`app/streamlit_app.py`) is deprecated and gitignored — it still runs locally via `streamlit run app/streamlit_app.py` if present on disk, but it is not tracked in git or published, since it's being superseded by the Next.js frontend (`landing-page/`) + FastAPI backend (`api/`).
