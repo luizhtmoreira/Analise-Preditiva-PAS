@@ -341,11 +341,7 @@ def predict_strategy(inp: StrategyInput) -> StrategyResponse:
         'Red_PAS2': inp.red_pas2
     }
 
-    # Calcula as previsões automáticas da IA (p1_ia, red_ia)
     calc = TargetCalculator()
-    previsao_ia = calc.predict_stable_components(notas_validas)
-    p1_ia = float(previsao_ia.get('p1_pred', 0.0))
-    red_ia = float(previsao_ia.get('red_pred', 0.0))
 
     try:
         stats_p1, stats_p2, stats_p3 = _stats_do_ciclo(inp.ciclo_aluno, inp.lingua)
@@ -360,8 +356,14 @@ def predict_strategy(inp: StrategyInput) -> StrategyResponse:
                 "você já fez depende da média e do desvio-padrão que o Cebraspe publica no "
                 "Edital de cada Etapa, e o do seu triênio ainda não saiu."
             ),
-            prob_hist=0.0, amostra=0, p1_ia=p1_ia, red_ia=red_ia,
+            prob_hist=0.0, amostra=0, p1_ia=0.0, red_ia=0.0,
         )
+
+    # Previsões automáticas do Estimador Auxiliar (p1_ia, red_ia) — precisam das três
+    # estatísticas, por isso só dá para calcular depois que `_stats_do_ciclo` responde.
+    previsao_ia = calc.predict_stable_components(notas_validas, stats_p1, stats_p2, stats_p3)
+    p1_ia = float(previsao_ia.get('p1_pred', 0.0))
+    red_ia = float(previsao_ia.get('red_pred', 0.0))
 
     # Executa predição de rota de aprovação
     result = calc.calculate_required_score(

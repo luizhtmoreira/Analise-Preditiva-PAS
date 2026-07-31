@@ -205,26 +205,57 @@ class TestIntegration:
 class TestTargetCalculator:
     """Testes para a calculadora de meta (Reverse Prediction)."""
     
-    def test_predict_weighted_avg_fallback(self):
-        """Previsão deve usar média ponderada quando modelos ML não disponíveis."""
+    def test_estimador_auxiliar_pondera_z_scores_1_para_2(self):
+        """Estimador Auxiliar: média ponderada (1:2) dos z-scores de Etapa 1 e 2, reconvertida
+        para a escala da Etapa 3 — não mais média ponderada de notas cruas (ticket 11)."""
         from pas_intelligence.target_calculator import TargetCalculator  # type: ignore
-        
+        from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
+
         calc = TargetCalculator()
-        # Força falha no carregamento de ML para testar fallback
-        calc.model_p1 = None
-        calc.model_red = None
-        
+
         notas = {
             'P1_PAS1': 5.0, 'P2_PAS1': 0.0, 'Red_PAS1': 6.0,
             'P1_PAS2': 6.0, 'P2_PAS2': 0.0, 'Red_PAS2': 7.0,
         }
-        
-        # Média Pon: (5*1 + 6*2)/3 = 5.667 | (6*1 + 7*2)/3 = 6.667
-        result = calc.predict_stable_components(notas)
-        
-        assert result['p1_pred'] == pytest.approx(5.667, abs=0.001)
-        assert result['red_pred'] == pytest.approx(6.667, abs=0.001)
-        assert result['method'] == 'weighted_avg'
+        stats_pas1 = HistoricalStats(mean_p1=4.0, std_p1=2.0, mean_p2=25, std_p2=10, mean_red=5.0, std_red=1.0)
+        stats_pas2 = HistoricalStats(mean_p1=5.0, std_p1=2.0, mean_p2=25, std_p2=10, mean_red=6.0, std_red=1.0)
+        stats_pas3 = HistoricalStats(mean_p1=6.0, std_p1=3.0, mean_p2=25, std_p2=10, mean_red=7.0, std_red=1.5)
+
+        # z_p1_e1 = (5-4)/2 = 0.5 | z_p1_e2 = (6-5)/2 = 0.5 -> z_p1 = (0.5+2*0.5)/3 = 0.5
+        # p1_pred = 0.5*3 + 6 = 7.5
+        # z_red_e1 = (6-5)/1 = 1.0 | z_red_e2 = (7-6)/1 = 1.0 -> z_red = 1.0
+        # red_pred = 1.0*1.5 + 7 = 8.5
+        result = calc.predict_stable_components(notas, stats_pas1, stats_pas2, stats_pas3)
+
+        assert result['p1_pred'] == pytest.approx(7.5, abs=0.001)
+        assert result['red_pred'] == pytest.approx(8.5, abs=0.001)
+
+    def test_estimador_auxiliar_pesa_etapa_2_o_dobro_da_etapa_1(self):
+        """Um desvio isolado na Etapa 2 move o z-score final o dobro do mesmo desvio na Etapa 1
+        — é o peso 1:2 que a média ponderada anterior já usava (ticket 11 mantém a proporção)."""
+        from pas_intelligence.target_calculator import TargetCalculator  # type: ignore
+        from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
+
+        calc = TargetCalculator()
+        stats = HistoricalStats(mean_p1=5.0, std_p1=2.0, mean_p2=25, std_p2=10, mean_red=6.0, std_red=1.0)
+
+        notas_desvio_e1 = {
+            'P1_PAS1': 7.0, 'P2_PAS1': 0.0, 'Red_PAS1': 6.0,
+            'P1_PAS2': 5.0, 'P2_PAS2': 0.0, 'Red_PAS2': 6.0,
+        }
+        notas_desvio_e2 = {
+            'P1_PAS1': 5.0, 'P2_PAS1': 0.0, 'Red_PAS1': 6.0,
+            'P1_PAS2': 7.0, 'P2_PAS2': 0.0, 'Red_PAS2': 6.0,
+        }
+
+        base = calc.predict_stable_components(
+            {'P1_PAS1': 5.0, 'P2_PAS1': 0.0, 'Red_PAS1': 6.0, 'P1_PAS2': 5.0, 'P2_PAS2': 0.0, 'Red_PAS2': 6.0},
+            stats, stats, stats,
+        )
+        efeito_e1 = calc.predict_stable_components(notas_desvio_e1, stats, stats, stats)['p1_pred'] - base['p1_pred']
+        efeito_e2 = calc.predict_stable_components(notas_desvio_e2, stats, stats, stats)['p1_pred'] - base['p1_pred']
+
+        assert efeito_e2 == pytest.approx(2 * efeito_e1, rel=0.01)
 
     def test_override_parcial_e_respeitado(self):
         """Um override sozinho vale — não é descartado por o outro campo estar vazio.
@@ -237,8 +268,6 @@ class TestTargetCalculator:
         from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
 
         calc = TargetCalculator()
-        calc.model_p1 = None
-        calc.model_red = None
 
         notas = {
             'P1_PAS1': 5.0, 'P2_PAS1': 20.0, 'Red_PAS1': 6.0,
@@ -247,7 +276,9 @@ class TestTargetCalculator:
         stats = HistoricalStats(
             mean_p1=3.8, std_p1=2.1, mean_p2=30.7, std_p2=13.8, mean_red=7.6, std_red=1.9
         )
-        # Fallback de média ponderada: P1 = (5+2·6)/3 = 5.667, Red = (6+2·7)/3 = 6.667
+        # As três Etapas usam a mesma `stats`, então o Estimador Auxiliar (média ponderada de
+        # z-scores) reduz à mesma aritmética da antiga média ponderada de notas:
+        # P1 = (5+2·6)/3 = 5.667, Red = (6+2·7)/3 = 6.667
         kwargs = dict(notas_existentes=notas, arg_alvo=50.0,
                       stats_pas1=stats, stats_pas2=stats, stats_pas3=stats)
 
@@ -274,100 +305,38 @@ class TestTargetCalculator:
         assert ambos.p1_estimado == pytest.approx(8.0)
         assert ambos.red_estimada == pytest.approx(9.0)
 
-    def test_ml_model_integration(self):
-        """Deve carregar modelos ML e retornar método 'ml' se arquivos existirem."""
-        from pas_intelligence.target_calculator import TargetCalculator
-        import joblib
-        from pathlib import Path
-        
-        # Só roda se modelos existirem (ambiente de dev)
-        base_dir = Path(__file__).parent.parent
-        if not (base_dir / "models/p1_pas3_model.joblib").exists():
-            pytest.skip("Modelos ML não encontrados. Pulando teste de integração.")
-            
-        calc = TargetCalculator()
-        
-        notas = {
-            'P1_PAS1': 5.0, 'P2_PAS1': 20.0, 'Red_PAS1': 6.0,
-            'P1_PAS2': 6.0, 'P2_PAS2': 25.0, 'Red_PAS2': 7.0,
-        }
-        
-        result = calc.predict_stable_components(notas)
+    def test_calculadora_nao_usa_joblib(self):
+        """`TargetCalculator` não tem mais superfície de modelo serializado: nada de
+        `model_p1`/`model_red`/`model_load_error`/`ModelLoadError`/`PAS_STRICT_MODELS` — o
+        Estimador Auxiliar é aritmética (ticket 11, resolve por remoção o defeito 3 de
+        `defeitos-pendentes.md`)."""
+        import pas_intelligence.target_calculator as tc  # type: ignore
 
-        # Se carregou modelos, deve usar 'ml'
-        if calc.model_p1 and calc.model_red:
-            assert result['method'] == 'ml'
-            assert result['fallback_reason'] is None
-            assert calc.model_load_error is None
-            assert 0 <= result['p1_pred'] <= 20
-            assert 0 <= result['red_pred'] <= 10
-        else:
-            # Se não carregou (ex.: artefato serializado com outra versão de sklearn), a
-            # degradação tem que ser declarada — não pode passar por previsão de ML.
-            assert result['method'] == 'weighted_avg'
-            assert calc.model_load_error, "degradação silenciosa: nenhum motivo registrado"
-            assert result['fallback_reason'] == calc.model_load_error
+        calc = tc.TargetCalculator()
 
-    def test_degradacao_nao_e_silenciosa(self, caplog):
-        """Modelo que não carrega tem que gritar no log em nível ERROR."""
-        import logging
-        from pas_intelligence.target_calculator import TargetCalculator  # type: ignore
-
-        with caplog.at_level(logging.ERROR, logger="pas_intelligence.target_calculator"):
-            calc = TargetCalculator()
-
-        if calc.model_p1 and calc.model_red:
-            pytest.skip("Modelos ML carregaram normalmente — nada a degradar.")
-
-        assert caplog.records, "modelo indisponível não gerou registro em log"
-        assert any("média ponderada" in r.getMessage() for r in caplog.records)
-
-    def test_modo_estrito_derruba_em_vez_de_degradar(self, monkeypatch, tmp_path):
-        """Com PAS_STRICT_MODELS ativo, modelo indisponível levanta em vez de cair no fallback."""
-        from pas_intelligence.target_calculator import (  # type: ignore
-            TargetCalculator,
-            ModelLoadError,
-        )
-
-        monkeypatch.setenv("PAS_STRICT_MODELS", "1")
-
-        # tmp_path está vazio: indisponibilidade determinística, mesmo numa máquina
-        # onde models/ esteja íntegro.
-        with pytest.raises(ModelLoadError):
-            TargetCalculator(models_dir=tmp_path)
-
-    def test_modo_estrito_desligado_por_padrao(self, monkeypatch, tmp_path):
-        """Sem a variável, o comportamento é degradar — a máquina de dev pode não ter models/."""
-        from pas_intelligence.target_calculator import TargetCalculator  # type: ignore
-
-        monkeypatch.delenv("PAS_STRICT_MODELS", raising=False)
-
-        calc = TargetCalculator(models_dir=tmp_path)  # não levanta
-
-        notas = {
-            'P1_PAS1': 5.0, 'P2_PAS1': 20.0, 'Red_PAS1': 6.0,
-            'P1_PAS2': 6.0, 'P2_PAS2': 25.0, 'Red_PAS2': 7.0,
-        }
-        resultado = calc.predict_stable_components(notas)
-
-        assert resultado['method'] == 'weighted_avg'
-        assert 'não encontrado' in resultado['fallback_reason']
+        assert not hasattr(calc, 'model_p1')
+        assert not hasattr(calc, 'model_red')
+        assert not hasattr(calc, 'model_load_error')
+        assert not hasattr(tc, 'ModelLoadError')
+        assert not hasattr(tc, 'joblib')
 
     def test_predict_stable_components_bounds(self):
-        """Previsão deve respeitar limites (P1: 0-20, Red: 0-10) no fallback."""
+        """Previsão deve respeitar limites físicos (P1: [-20,20], Red: [0,10]) mesmo com
+        z-scores extremos."""
         from pas_intelligence.target_calculator import TargetCalculator  # type: ignore
-        
+        from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
+
         calc = TargetCalculator()
-        calc.model_p1 = None # Força fallback
-        
-        # Testando limite superior com valores altos
+        stats = HistoricalStats(mean_p1=5.0, std_p1=2.0, mean_p2=25, std_p2=10, mean_red=6.0, std_red=2.0)
+
+        # Notas muito acima da média das Etapas 1 e 2 -> z-score alto -> estoura o teto.
         notas = {
             'P1_PAS1': 25.0, 'P2_PAS1': 0.0, 'Red_PAS1': 12.0,
             'P1_PAS2': 25.0, 'P2_PAS2': 0.0, 'Red_PAS2': 12.0,
         }
-        
-        result = calc.predict_stable_components(notas)
-        
+
+        result = calc.predict_stable_components(notas, stats, stats, stats)
+
         assert result['p1_pred'] == 20.0
         assert result['red_pred'] == 10.0
 
@@ -399,8 +368,7 @@ class TestTargetCalculator:
         from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
         
         calc = TargetCalculator()
-        calc.model_p1 = None # Forçar fallback para determinismo
-        
+
         # Estatísticas dummy
         stats = HistoricalStats(mean_p1=5, std_p1=2, mean_p2=25, std_p2=10, mean_red=6, std_red=2)
         
@@ -434,10 +402,9 @@ class TestTargetCalculator:
         from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
         
         calc = TargetCalculator()
-        calc.model_p1 = None
-        
+
         stats = HistoricalStats(mean_p1=5, std_p1=2, mean_p2=25, std_p2=10, mean_red=6, std_red=2)
-        
+
         notas = {'P1_PAS1': 0, 'P2_PAS1': 0, 'Red_PAS1': 0, 'P1_PAS2': 0, 'P2_PAS2': 0, 'Red_PAS2': 0}
         
         # Arg alvo muito alto para quem tirou zeros
@@ -456,7 +423,6 @@ class TestTargetCalculator:
         from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
 
         calc = TargetCalculator()
-        calc.model_p1 = None
 
         stats = HistoricalStats(mean_p1=5, std_p1=2, mean_p2=25, std_p2=10, mean_red=6, std_red=2)
 
@@ -468,25 +434,26 @@ class TestTargetCalculator:
         assert res.p2_necessario == P2_MINIMO
 
     def test_alvo_baixo_mas_dentro_da_faixa_ainda_e_possivel_nao_garantido(self):
-        """A fronteira do 'garantido' — o caso que o teste anterior confundia com zero.
-
-        Com `arg_alvo=-100`, a P2 necessária dá ≈ −99,4: quase qualquer desempenho serve, mas
-        ainda existe um pior dentro da faixa, então não é garantido. É `'possivel'`, e a
-        distinção só faz sentido porque o piso da prova é negativo.
+        """A fronteira do 'garantido' com a faixa medida (ticket 11) — mudou de valor porque a
+        faixa mudou. Com o piso antigo (−100), `arg_alvo=-100` dava p2≈−99,4 e ainda cabia dentro
+        da faixa ('possivel'). Com o piso medido (`P2_MINIMO=0,24`), esse mesmo cenário agora cai
+        em 'garantido' — é exatamente a correção de comunicação que o ticket 11 documenta (ver
+        `test_guaranteed_scenario`). Este teste fixa a nova fronteira: um `arg_alvo` alto o
+        bastante para deixar a P2 necessária pouco acima do piso medido, ainda 'possivel'.
         """
-        from pas_intelligence.target_calculator import TargetCalculator, P2_MINIMO  # type: ignore
+        from pas_intelligence.target_calculator import TargetCalculator, P2_MINIMO, P2_MAXIMO  # type: ignore
         from pas_intelligence.argument_calculator import HistoricalStats  # type: ignore
 
         calc = TargetCalculator()
-        calc.model_p1 = None
 
         stats = HistoricalStats(mean_p1=5, std_p1=2, mean_p2=25, std_p2=10, mean_red=6, std_red=2)
         notas = {'P1_PAS1': 10, 'P2_PAS1': 100, 'Red_PAS1': 10, 'P1_PAS2': 10, 'P2_PAS2': 100, 'Red_PAS2': 10}
 
-        res = calc.calculate_required_score(notas, arg_alvo=-100.0, stats_pas1=stats, stats_pas2=stats, stats_pas3=stats)
+        # Vizinho do piso: p2_necessario ≈ 1,2 — acima de P2_MINIMO (0,24), abaixo de P2_MAXIMO.
+        res = calc.calculate_required_score(notas, arg_alvo=150.0, stats_pas1=stats, stats_pas2=stats, stats_pas3=stats)
 
         assert res.status == 'possivel'
-        assert P2_MINIMO < res.p2_necessario < 0
+        assert P2_MINIMO < res.p2_necessario < P2_MAXIMO
 
 
 # =============================================================================
@@ -514,20 +481,30 @@ class TestExamStats:
         assert stats.m_p1 == pytest.approx(4.0)  # (3 + 6 + 3) / 3
         assert stats.dp_p1 == pytest.approx(2.2)  # (2.0 + 2.6 + 2.0) / 3
 
-    def test_official_stats_tem_24_entradas_com_tres_linguas_cada(self):
-        """As 21 entradas antigas mais o triênio 2023/2025 (3 Etapas), todas com Parte 1
-        completa — nenhuma ficou com estimativa parcial de língua.
+    def test_official_stats_tem_26_entradas(self):
+        """As 24 entradas de Edital mais as duas `DERIVADA` da Turma viva (ticket 07):
+        `(2024, 1)` e `(2025, 2)`, ainda sem Edital de médias e desvios do Cebraspe.
+        """
+        from pas_intelligence.pas_constants import OFFICIAL_STATS  # type: ignore
 
-        A checagem é pelo **tipo**, não pelo conjunto de chaves: desde o ticket 01 a forma
-        misturada também tem as três, então contar chaves deixou de discriminar.
+        assert len(OFFICIAL_STATS) == 26
+        assert (2023, 1) in OFFICIAL_STATS and (2024, 2) in OFFICIAL_STATS and (2025, 3) in OFFICIAL_STATS
+        assert (2024, 1) in OFFICIAL_STATS and (2025, 2) in OFFICIAL_STATS
+
+    def test_as_24_entradas_de_edital_tem_parte_1_por_lingua_completa(self):
+        """A checagem é pelo **tipo**, não pelo conjunto de chaves: desde o ticket 01 a forma
+        misturada também tem as três, então contar chaves deixou de discriminar. As duas
+        entradas `DERIVADA` do ticket 07 ficam de fora — a delas é misturada, de propósito.
         """
         from pas_intelligence.pas_constants import (  # type: ignore
-            LINGUAS_OFICIAIS, OFFICIAL_STATS, Parte1PorLingua,
+            LINGUAS_OFICIAIS, OFFICIAL_STATS, Origem, Parte1PorLingua,
         )
 
-        assert len(OFFICIAL_STATS) == 24
-        assert (2023, 1) in OFFICIAL_STATS and (2024, 2) in OFFICIAL_STATS and (2025, 3) in OFFICIAL_STATS
-        for chave, stats in OFFICIAL_STATS.items():
+        entradas_de_edital = {
+            chave: stats for chave, stats in OFFICIAL_STATS.items() if stats.origem is Origem.EDITAL
+        }
+        assert len(entradas_de_edital) == 24
+        for chave, stats in entradas_de_edital.items():
             assert isinstance(stats.parte_1, Parte1PorLingua), chave
             assert set(stats.parte_1) == set(LINGUAS_OFICIAIS), chave
 
@@ -607,10 +584,15 @@ class TestProcedencia:
     """Quando o Edital de verdade sair, esses números serão substituídos e as previsões vão
     mexer — a origem precisa estar registrada, não descoberta depois."""
 
-    def test_as_24_entradas_existentes_sao_de_edital(self):
+    def test_as_24_entradas_de_edital_sao_de_edital(self):
         from pas_intelligence.pas_constants import OFFICIAL_STATS, Origem  # type: ignore
 
-        assert all(s.origem is Origem.EDITAL for s in OFFICIAL_STATS.values())
+        entradas_de_edital = [
+            chave for chave, s in OFFICIAL_STATS.items()
+            if chave not in {(2024, 1), (2025, 2)}
+        ]
+        assert len(entradas_de_edital) == 24
+        assert all(OFFICIAL_STATS[chave].origem is Origem.EDITAL for chave in entradas_de_edital)
 
     def test_entrada_pode_declarar_se_derivada(self):
         from pas_intelligence.pas_constants import Origem  # type: ignore
@@ -625,6 +607,19 @@ class TestProcedencia:
 
         assert stats.parte_1.misturada is True
         assert stats.origem is Origem.EDITAL
+
+    def test_turma_viva_2024_1_e_2025_2_sao_derivadas_e_misturadas(self):
+        """As duas entradas que o ticket 07 escreveu — a Turma viva 2024-2026 ainda não tem
+        Edital de médias e desvios de nenhuma Etapa. Quando ele sair, `origem` muda para
+        `EDITAL` e a Parte 1 deixa de ser misturada; até lá a API precisa saber que é derivada."""
+        from pas_intelligence.pas_constants import (  # type: ignore
+            OFFICIAL_STATS, Origem, Parte1Misturada,
+        )
+
+        for chave in [(2024, 1), (2025, 2)]:
+            stats = OFFICIAL_STATS[chave]
+            assert stats.origem is Origem.DERIVADA, chave
+            assert isinstance(stats.parte_1, Parte1Misturada), chave
 
 
 if __name__ == "__main__":

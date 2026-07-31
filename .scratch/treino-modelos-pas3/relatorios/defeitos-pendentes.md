@@ -10,12 +10,13 @@ defeito**, **O que falta fazer** e **Severidade** (impacto nos dados/produto, n�
 
 ---
 
-## 1. ⏳ A faixa `[−100, 100]` da P2 não tem procedência — **aguardando o dono do produto**
+## 1. ~~A faixa `[−100, 100]` da P2 não tem procedência~~ — **CORRIGIDO em 2026-07-31 (ticket 11)**
 
-> **O que falta é uma resposta, não investigação.** Quantos itens tem a Parte 2, e como o desconto
-> por erro fecha o piso? Perguntado em 2026-07-28; o dono do produto vai olhar junto das outras
-> pendências. Enquanto isso o código roda com `P2_MAXIMO = 100.0` / `P2_MINIMO = -100.0`, que são
-> chute herdado. A parte do teste deste defeito **já está corrigida** (ver "O que falta fazer").
+> A resposta chegou por medição, não pelo dono do produto: 8 triênios, ~64 mil Alunos de Etapa 3.
+> `P2_MAXIMO = 85.6` (recorde histórico) e `P2_MINIMO = 0.24` (piso — 0% de P2 negativa em 8
+> triênios de Etapa 3). O `'impossível'` deixou de ser a constante fixa: agora é `100 − P1̂`,
+> porque é `P1 + P2` que não pode passar de 100, não a P2 sozinha. Ver
+> `relatorios/11-calculadora-sem-joblib-estimador-auxiliar-e-faixa-medida.md`.
 
 **Onde foi encontrado:** `pytest tests/test_pas_intelligence.py` —
 `TestTargetCalculator::test_guaranteed_scenario` falha. Confirmado por `git stash` em
@@ -125,34 +126,28 @@ válida. Fica para o ticket 13, junto da promoção.
 
 ---
 
-## 3. `p1_pas3_model` e `red_pas3_model` não carregam (causa raiz pendente)
+## 3. ~~`p1_pas3_model` e `red_pas3_model` não carregam~~ — **RESOLVIDO POR REMOÇÃO em 2026-07-31 (ticket 11)**
 
 **Onde foi encontrado:** ticket 03, seção 2.1. Já registrado no ADR-0007 em 2026-07-20 como
 nota de rodapé (`⚠ Modelo não carregado — incompatibilidade de versão do sklearn`) sem
 tratamento.
 
-**O defeito:** ambos falham com `ModuleNotFoundError: No module named '_loss'` no ambiente
+**O defeito:** ambos falhavam com `ModuleNotFoundError: No module named '_loss'` no ambiente
 atual (`python 3.14.3`, `scikit-learn 1.9.0`). Foram serializados quando o `sklearn` ainda
-tinha o módulo interno `_loss` em outro lugar. Os números seguem íntegros no arquivo; a receita
-de remontagem é que aponta para o vazio.
+tinha o módulo interno `_loss` em outro lugar. Os números seguiam íntegros no arquivo; a receita
+de remontagem é que apontava para o vazio.
 
-**Estado atual — mitigado, não corrigido (2026-07-26):** a degradação deixou de ser silenciosa.
-`target_calculator.py` agora registra o motivo em `self.model_load_error`, devolve
-`fallback_reason` junto de `method`, grita em log `ERROR`, e levanta `ModelLoadError` com
-`PAS_STRICT_MODELS=1`. O `except Exception: pass` de `api/services/gestao_service.py:268` virou
-`logger.exception`. **Mas a calculadora reversa continua respondendo por média ponderada em vez
-de ML** — a feature segue degradada, agora com aviso.
+**A saída não foi consertar, foi remover.** O ticket 11 tirou os dois `.joblib` do caminho da
+calculadora reversa — junto com `_carregar_modelo`, `model_load_error`, `_registrar_degradacao`,
+`ModelLoadError` e `PAS_STRICT_MODELS`, que existiam só para gerenciar essa degradação. No lugar
+entrou o **Estimador Auxiliar** (relatório 04 §2.1/§7.1): P1 e Redação da Etapa 3 saem de uma
+média ponderada (1:2) dos z-scores de Etapa 1 e 2, reconvertida para a escala da Etapa 3 —
+aritmética, sem artefato serializado, então não há mais o que degradar. Ver
+`relatorios/11-calculadora-sem-joblib-estimador-auxiliar-e-faixa-medida.md`.
 
-**O que falta fazer:** ticket 12 regera os artefatos sob o esquema decidido no ticket 03
-(manifesto com versões, portão de carregamento no build). A partir daí, ligar
-`PAS_STRICT_MODELS=1` em produção. Também revisar o contrato de features de
-`predict_stable_components` (`target_calculator.py:96-119`): ele monta 11 colunas — 6 base mais
-`delta_p1`, `delta_red`, `delta_p2`, `mean_p1`, `mean_red` — cuja ordem só está registrada num
-**comentário**. É exatamente a fragilidade do defeito 2 esperando para se repetir; essa ordem
-tem que passar a viver no `manifest.json`.
-
-**Severidade: média.** A feature degrada em vez de mentir, e agora avisa. Mas a calculadora
-reversa é um dos produtos anunciados e está sem ML há meses.
+**Severidade: era média, zerada.** A classe inteira de defeito ("artefato serializado com outra
+versão de biblioteca") saiu do módulo. Os `.joblib` continuam em `models/`, aposentados; nada os
+carrega mais em produção.
 
 ---
 
@@ -439,7 +434,7 @@ mecanismo errado.
 
 ---
 
-## 11. O Aluno tem **uma** língua no produto e **uma por Etapa** no PAS — 13,9% trocam
+## 11. ~~O Aluno tem **uma** língua no produto e **uma por Etapa** no PAS — 13,9% trocam~~ — **CORRIGIDO em 2026-07-31 (ticket 13)**
 
 **Onde foi encontrado:** 2026-07-29, ao avaliar o pacote promovido contra o triênio 2023/2025.
 Achado ao montar as features pelo caminho do treino em vez de por `model_package.prever`, e notar
@@ -517,6 +512,19 @@ declara **exata**, onde nenhum erro deveria existir e nada compensa; (b) é **si
 mesma família do defeito 6 desta lista (média/desvio errados no denominador do z-score); (c)
 atinge **13,9% da base**, concentrado numa direção só (`inglesa → espanhola`), o que faz dele
 viés e não ruído — exatamente o viés contra a minoria que o ticket 04 §5.3 se propôs a eliminar.
+
+**Correção (ticket 13, 2026-07-31):** `EntradaDePrevisao` (`model_package.py`) carrega
+`lingua_e1`/`lingua_e2`, e `_argumentos_exatos` normaliza cada Etapa com a estatística da sua
+própria língua. `PredictInput` (`predict.py`) troca `lingua` por `lingua_e1`/`lingua_e2`, ambas
+obrigatórias e sem default — faltar qualquer uma devolve 422 nomeando o campo, sem alias de
+compatibilidade (o único cliente é o próprio frontend, reescrito na mesma rodada). O formulário do
+Preditor pergunta a língua dentro de cada card de Etapa, com o segundo campo pré-preenchido pelo
+primeiro e editável. `StudentInput` (`gestao.py`) ganhou o mesmo split, com o default
+`"inglesa"` preservado por Etapa — a dívida do relatório 13 §6.2 não mudou de natureza.
+`test_o_runtime_monta_as_mesmas_features_que_o_treino` ganhou o caso "língua trocada entre
+Etapas", que falha sem a correção. O item 4 (`lingua_e3`) segue em aberto: nem o runtime nem o
+Reality Check calculam `A3` exato, e o Reality Check usa `lingua_e2` como aproximação da língua
+da Etapa 3 — decisão que precisa ser revisitada se algum dia `A3` exato entrar em jogo.
 
 **Nota de método:** a medição acima veio de recalcular `A1`/`A2` das 64.298 linhas com a língua
 trocada de propósito, comparando com o cálculo correto do treino. Nenhum dado de Aluno entra
