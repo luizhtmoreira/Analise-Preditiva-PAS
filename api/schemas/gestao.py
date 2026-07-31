@@ -10,13 +10,16 @@ class StudentInput(BaseModel):
     curso_alvo: str = ""
     cota: str = "Sistema Universal"
     ano_trienio: str = "2024-2026"
-    # A Parte 1 é normalizada por língua estrangeira e o Aluno declara a dele (ticket 04 §5.3).
+    # A Parte 1 é normalizada por língua estrangeira, **por Etapa** — o Cebraspe registra uma
+    # língua por Etapa, não uma por Aluno (defeito 11 de `defeitos-pendentes.md`, ticket 13).
     # Aqui — e **só** aqui — o default sobrevive: a planilha que a escola envia não tem a coluna,
     # e exigi-la deixaria o lote inteiro sem resposta. O custo está medido e é conhecido: o Aluno
     # de espanhol ou francês tem a Parte 1 calculada com a estatística de inglês, o que move 7,2%
     # do peso do Argumento de Etapa sempre na mesma direção. Dívida declarada no relatório 13 §6,
-    # não descuido; some quando a planilha ganhar a coluna.
-    lingua: Literal["inglesa", "francesa", "espanhola"] = "inglesa"
+    # não descuido; some quando a planilha ganhar a coluna. O default virou por Etapa junto com o
+    # campo, sem mudar a natureza da dívida.
+    lingua_e1: Literal["inglesa", "francesa", "espanhola"] = "inglesa"
+    lingua_e2: Literal["inglesa", "francesa", "espanhola"] = "inglesa"
     # As seis notas são obrigatórias e não têm default. `red_pas1`/`red_pas2` já tiveram
     # default 6.0 — uma Redação mediana inventada onde a nota não foi informada, que inflava
     # o Argumento da Etapa em ~3,3 pontos na direção do otimismo, sem deixar rastro.

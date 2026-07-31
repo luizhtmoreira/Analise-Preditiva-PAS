@@ -77,9 +77,11 @@ export async function compareGroups(body: {
 export async function fetchPredict(body: {
   p1_pas1: number; p2_pas1: number; red_pas1: number;
   p1_pas2: number; p2_pas2: number; red_pas2: number;
-  // Obrigatória: o backend a exige (422 se faltar), porque um default silencioso calcularia a
-  // Parte 1 de quem fez espanhol ou francês com a estatística de inglês.
-  lingua: "inglesa" | "francesa" | "espanhola";
+  // Uma por Etapa, ambas obrigatórias: o backend as exige (422 se faltar qualquer uma), porque
+  // o Cebraspe registra a língua por Etapa — 13,9% dos Alunos trocam entre a Etapa 1 e a 2 — e
+  // um default silencioso calcularia a Parte 1 de quem trocou com a estatística errada.
+  lingua_e1: "inglesa" | "francesa" | "espanhola";
+  lingua_e2: "inglesa" | "francesa" | "espanhola";
   cota?: string; trienio?: string; curso_alvo?: string;
   is_logged_in?: boolean;
   semestre?: string;

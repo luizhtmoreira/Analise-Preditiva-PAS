@@ -269,7 +269,8 @@ def _prever(s: StudentInput, trienio_padrao: str) -> tuple[object | None, str | 
             EntradaDePrevisao(
                 etapa_1=NotasDeEtapa(p1=s.p1_pas1, p2=s.p2_pas1, redacao=s.red_pas1),
                 etapa_2=NotasDeEtapa(p1=s.p1_pas2, p2=s.p2_pas2, redacao=s.red_pas2),
-                lingua=s.lingua,
+                lingua_e1=s.lingua_e1,
+                lingua_e2=s.lingua_e2,
                 trienio=s.ano_trienio or trienio_padrao,
             )
         ), None
@@ -338,14 +339,17 @@ def analyze_students(students: list[StudentInput], trienio: str, cenario: str) -
             try:
                 from pas_intelligence.target_calculator import TargetCalculator
                 ano_e1, ano_e2, ano_e3 = anos_do_trienio(s.ano_trienio or trienio)
-                stats_p1 = stats_da_prova(ano_e1, 1, s.lingua)
-                stats_p2 = stats_da_prova(ano_e2, 2, s.lingua)
+                stats_p1 = stats_da_prova(ano_e1, 1, s.lingua_e1)
+                stats_p2 = stats_da_prova(ano_e2, 2, s.lingua_e2)
+                # A Etapa 3 não tem campo próprio (`StudentInput` não a pergunta); a língua da
+                # Etapa 2 é a melhor aproximação disponível, por ser a mais recente que o Aluno
+                # declarou — a mesma lógica do Ano-Âncora logo abaixo.
                 try:
-                    stats_p3 = stats_da_prova(ano_e3, 3, s.lingua)
+                    stats_p3 = stats_da_prova(ano_e3, 3, s.lingua_e2)
                 except EstatisticaOficialAusenteError:
                     # Turma viva: a Etapa 3 dela ainda não aconteceu. Ano-Âncora de um ano real
                     # e já publicado no lugar da regressão que `STATS_PAS3_TREND` fazia.
-                    stats_p3 = _stats_pas3_ancora(s.lingua)
+                    stats_p3 = _stats_pas3_ancora(s.lingua_e2)
 
                 calc = TargetCalculator()
                 notas = {

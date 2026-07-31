@@ -64,14 +64,14 @@ escrever o formulário duas vezes.
 
 **Status:** ready-for-agent
 
-- [ ] `EntradaDePrevisao` carrega a língua por Etapa e o cálculo usa cada uma na sua Etapa
-- [ ] O schema do Preditor exige `lingua_e1` e `lingua_e2`, sem default; faltar qualquer uma devolve
+- [x] `EntradaDePrevisao` carrega a língua por Etapa e o cálculo usa cada uma na sua Etapa
+- [x] O schema do Preditor exige `lingua_e1` e `lingua_e2`, sem default; faltar qualquer uma devolve
       422 nomeando o campo
-- [ ] O formulário tem dois campos, com o segundo pré-preenchido pelo primeiro e editável
-- [ ] O schema da Gestão tem o default por Etapa
-- [ ] `test_o_runtime_monta_as_mesmas_features_que_o_treino` ganha um caso de **língua trocada** e
+- [x] O formulário tem dois campos, com o segundo pré-preenchido pelo primeiro e editável
+- [x] O schema da Gestão tem o default por Etapa
+- [x] `test_o_runtime_monta_as_mesmas_features_que_o_treino` ganha um caso de **língua trocada** e
       falharia sem a correção
-- [ ] Um Aluno com línguas diferentes produz o mesmo `A1`/`A2` pelo caminho do treino e pelo caminho
+- [x] Um Aluno com línguas diferentes produz o mesmo `A1`/`A2` pelo caminho do treino e pelo caminho
       do runtime
-- [ ] O defeito 11 de `defeitos-pendentes.md` é marcado como corrigido
-- [ ] `pytest tests/`, `eslint` e `tsc --noEmit` verdes
+- [x] O defeito 11 de `defeitos-pendentes.md` é marcado como corrigido
+- [x] `pytest tests/`, `eslint` e `tsc --noEmit` verdes (432 passam, 0 falham — ver relatório 13 §6)
