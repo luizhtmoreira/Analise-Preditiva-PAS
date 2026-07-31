@@ -2,15 +2,21 @@
   "modelo": {
     "repo_id": "Luiz1912/vetor-pas3-modelo",
     "repo_type": "model",
-    "revision": null,
-    "arquivos": ["modelo_pas3.txt", "manifest.json"],
+    "revision": "3c468487f5a1d966282c9ad958b4593545cc40a4",
+    "arquivos": [
+      "modelo_pas3.txt",
+      "manifest.json"
+    ],
     "destino": "models/pas3"
   },
   "dados": {
     "repo_id": "Luiz1912/vetor-pas-dados",
     "repo_type": "dataset",
-    "revision": null,
-    "arquivos": ["notas_corte.csv", "resultado_final.csv"],
+    "revision": "12cdb7def60a9a6e0a8e228accf84acde66f0c3d",
+    "arquivos": [
+      "notas_corte.csv",
+      "resultado_final.csv"
+    ],
     "destino": "data"
   }
 }
