@@ -32,11 +32,12 @@ import pandas as pd  # type: ignore
 
 from .argument_calculator import calculate_argument_etapa
 from .dataset_pas3 import FEATURES_CANONICAS, montar_features
-from .pas_constants import LINGUAS_OFICIAIS
+from .pas_constants import LINGUAS_OFICIAIS, Origem
 from .training_dataset import (
     EstatisticaOficialAusenteError,
     anos_do_trienio,
     etapa_1_ausente as _detectar_etapa_1_ausente,
+    origem_da_prova,
     stats_da_prova,
 )
 
@@ -82,13 +83,19 @@ class NotasDeEtapa:
 class EntradaDePrevisao:
     """Tudo o que o modelo precisa saber sobre um Aluno — e nada além disso.
 
-    `lingua` está aqui, e não num default do módulo, porque a Parte 1 é normalizada por língua e
-    um default silencioso é exatamente o viés que o ticket 04 §5 mediu.
+    `lingua_e1`/`lingua_e2` estão aqui, e não num default do módulo, porque a Parte 1 é
+    normalizada por língua e um default silencioso é exatamente o viés que o ticket 04 §5 mediu.
+
+    São dois campos, não um, porque o Cebraspe registra a língua **por Etapa**: 13,9% da base
+    trocam de língua entre a Etapa 1 e a Etapa 2 (majoritariamente inglês → espanhol), e aplicar
+    a língua de uma Etapa na estatística da outra normaliza a Parte 1 com a média e o desvio
+    errados (defeito 11 de `defeitos-pendentes.md`).
     """
 
     etapa_1: NotasDeEtapa
     etapa_2: NotasDeEtapa
-    lingua: str
+    lingua_e1: str
+    lingua_e2: str
     trienio: str
 
     @property
@@ -114,6 +121,10 @@ class Previsao:
     largura_a3: float
     largura_argumento_final: float
     etapa_1_ausente: bool
+    # Ticket 07: `A1` e/ou `A2` deste Aluno vieram de estatística `DERIVADA` (Edital isolado de
+    # Etapa corrigido, não o Edital de médias e desvios do Cebraspe). Quando o Edital de verdade
+    # sair, `OFFICIAL_STATS` troca de valor e esta previsão muda — por isso a tela precisa saber.
+    usa_estatistica_derivada: bool
 
 
 class PacoteDeModelo:
@@ -169,16 +180,23 @@ class PacoteDeModelo:
 
     # ─── Previsão ──────────────────────────────────────────────────────────────────────────
 
-    def _argumentos_exatos(self, entrada: EntradaDePrevisao) -> tuple[float, float]:
-        if entrada.lingua not in LINGUAS_OFICIAIS:
-            raise ValueError(
-                f"língua {entrada.lingua!r} não é uma das três oficiais: "
-                f"{', '.join(LINGUAS_OFICIAIS)}."
-            )
+    def _argumentos_exatos(self, entrada: EntradaDePrevisao) -> tuple[float, float, bool]:
+        for lingua in (entrada.lingua_e1, entrada.lingua_e2):
+            if lingua not in LINGUAS_OFICIAIS:
+                raise ValueError(
+                    f"língua {lingua!r} não é uma das três oficiais: "
+                    f"{', '.join(LINGUAS_OFICIAIS)}."
+                )
         ano_e1, ano_e2, _ = anos_do_trienio(entrada.trienio)
         try:
-            stats_e1 = stats_da_prova(ano_e1, 1, entrada.lingua)
-            stats_e2 = stats_da_prova(ano_e2, 2, entrada.lingua)
+            stats_e1 = stats_da_prova(ano_e1, 1, entrada.lingua_e1)
+            stats_e2 = stats_da_prova(ano_e2, 2, entrada.lingua_e2)
+            # `stats_da_prova` já confere que a chave existe — `origem_da_prova` só lê a mesma
+            # entrada de novo, então não pode levantar aqui.
+            usa_estatistica_derivada = (
+                origem_da_prova(ano_e1, 1) is Origem.DERIVADA
+                or origem_da_prova(ano_e2, 2) is Origem.DERIVADA
+            )
         except EstatisticaOficialAusenteError as erro:
             raise EstatisticasIndisponiveisError(str(erro)) from erro
 
@@ -188,7 +206,7 @@ class PacoteDeModelo:
         a2 = calculate_argument_etapa(
             entrada.etapa_2.p1, entrada.etapa_2.p2, entrada.etapa_2.redacao, stats_e2
         )
-        return a1, a2
+        return a1, a2, usa_estatistica_derivada
 
     def montar_features(self, entrada: EntradaDePrevisao) -> pd.DataFrame:
         """A linha única que vai ao modelo, montada pelas funções do treino.
@@ -196,7 +214,8 @@ class PacoteDeModelo:
         Público porque é o que se inspeciona quando uma previsão parece absurda — e porque o
         teste que garante a paridade com o treino precisa vê-la.
         """
-        return self._linha_de_features(entrada, *self._argumentos_exatos(entrada))
+        a1, a2, _ = self._argumentos_exatos(entrada)
+        return self._linha_de_features(entrada, a1, a2)
 
     def _linha_de_features(
         self, entrada: EntradaDePrevisao, a1: float, a2: float
@@ -226,7 +245,7 @@ class PacoteDeModelo:
         return float(self._incerteza[chave])
 
     def prever(self, entrada: EntradaDePrevisao) -> Previsao:
-        a1, a2 = self._argumentos_exatos(entrada)
+        a1, a2, usa_estatistica_derivada = self._argumentos_exatos(entrada)
         a3 = float(self._booster.predict(self._linha_de_features(entrada, a1, a2))[0])
         largura_a3 = self.largura_de_incerteza(entrada.etapa_1_ausente)
 
@@ -238,4 +257,5 @@ class PacoteDeModelo:
             largura_a3=largura_a3,
             largura_argumento_final=3 * largura_a3,
             etapa_1_ausente=entrada.etapa_1_ausente,
+            usa_estatistica_derivada=usa_estatistica_derivada,
         )

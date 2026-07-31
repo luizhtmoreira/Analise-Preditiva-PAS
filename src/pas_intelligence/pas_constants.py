@@ -319,4 +319,33 @@ OFFICIAL_STATS = {
             "espanhola": ValorLingua(4.218, 1.839),
         }),
     ),
+    # --- Turma viva (2024-2026), ticket 07 -------------------------------------------------
+    #
+    # O Cebraspe só publica o Edital de médias e desvios depois do PAS 3 de um triênio — para
+    # 2024-2026 isso sai em 2026. Até lá, `(2024, Etapa 1)` e `(2025, Etapa 2)` vêm do Edital
+    # isolado de Etapa (que lista nota por candidato, sem dizer a língua de ninguém) corrigido
+    # pela calibração do ticket 06: `Correcao.aplicar(StatsEmpiricos)`, com a correção vinda de
+    # `montar_calibracao(...).correcao()` sobre os 6 triênios já extraídos — a mesma porta que
+    # `scripts/medir_deslocamento.py` usa para medir o portão (relatório 06, resíduo máx 4,366).
+    #
+    # A Parte 1 **não é corrigida** (decisão medida do ticket 06: corrigi-la piora o resíduo) e
+    # entra misturada, como o Edital isolado a publica. P2 e Redação **são** corrigidas — média
+    # e desvio, não só média — e o valor bruto (antes da correção) é o que
+    # `scripts/gerar_stats_turma_viva.py` imprime, para que a conta continue rastreável:
+    #
+    #   (2024, 1) bruto: n=19.128, m_p2=23.906, dp_p2=11.398, m_red=6.471, dp_red=2.292
+    #   (2025, 2) bruto: n=16.991, m_p2=27.643, dp_p2=14.752, m_red=6.316, dp_red=2.251
+    #
+    # `origem=DERIVADA` é o que a API lê para avisar o Aluno que a previsão dele se apoia em
+    # estatística estimada — e o que muda, sem tocar mais nada, quando o Edital de verdade sair.
+    (2024, 1): ExamStats(
+        m_p2=26.056, dp_p2=13.073, m_red=6.576, dp_red=2.637,
+        parte_1=Parte1Misturada(ValorLingua(2.787, 2.466)),
+        origem=Origem.DERIVADA,
+    ),
+    (2025, 2): ExamStats(
+        m_p2=31.872, dp_p2=14.701, m_red=6.968, dp_red=1.874,
+        parte_1=Parte1Misturada(ValorLingua(3.066, 3.100)),
+        origem=Origem.DERIVADA,
+    ),
 }

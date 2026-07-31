@@ -43,7 +43,8 @@ def entrada_de_previsao(inp: PredictInput) -> EntradaDePrevisao:
     return EntradaDePrevisao(
         etapa_1=NotasDeEtapa(p1=inp.p1_pas1, p2=inp.p2_pas1, redacao=inp.red_pas1),
         etapa_2=NotasDeEtapa(p1=inp.p1_pas2, p2=inp.p2_pas2, redacao=inp.red_pas2),
-        lingua=inp.lingua,
+        lingua_e1=inp.lingua_e1,
+        lingua_e2=inp.lingua_e2,
         trienio=inp.trienio,
     )
 
@@ -211,6 +212,7 @@ def predict_student(inp: PredictInput) -> PredictResponse:
         top_cursos=top_cursos,
         trienio_ref=trienio_ref,
         modelo_disponivel=True,
+        usa_estatistica_derivada=previsao.usa_estatistica_derivada,
     )
 
 

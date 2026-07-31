@@ -229,3 +229,36 @@ def test_stats_da_prova_continua_por_lingua_quando_a_entrada_e_por_lingua():
         assert stats_da_prova(2022, 1, lingua).mean_p1 == pytest.approx(
             oficial.parte_1[lingua].media
         )
+
+
+def test_origem_da_prova_le_a_procedencia_da_etapa(monkeypatch):
+    """Ticket 07: `origem_da_prova` é a porta que `model_package` usa para saber se `A1`/`A2`
+    vieram de estatística `DERIVADA` — sem depender de língua, porque a procedência é da
+    `(Ano, Etapa)` inteira."""
+    from pas_intelligence import training_dataset as td
+    from pas_intelligence.pas_constants import ExamStats, Origem, Parte1Misturada, ValorLingua
+
+    sintetico = {
+        (2024, 1): ExamStats(
+            m_p2=26.0, dp_p2=13.5, m_red=6.5, dp_red=2.0,
+            parte_1=Parte1Misturada(ValorLingua(4.2, 2.3)),
+            origem=Origem.DERIVADA,
+        ),
+    }
+    monkeypatch.setattr(td, "OFFICIAL_STATS", sintetico)
+
+    assert td.origem_da_prova(2024, 1) is Origem.DERIVADA
+
+
+def test_origem_da_prova_das_entradas_reais_de_edital_e_edital():
+    from pas_intelligence.training_dataset import origem_da_prova
+    from pas_intelligence.pas_constants import Origem
+
+    assert origem_da_prova(2022, 1) is Origem.EDITAL
+
+
+def test_origem_da_prova_ausente_levanta_o_mesmo_erro_de_stats_da_prova():
+    from pas_intelligence.training_dataset import EstatisticaOficialAusenteError, origem_da_prova
+
+    with pytest.raises(EstatisticaOficialAusenteError, match="2025"):
+        origem_da_prova(2025, 1)

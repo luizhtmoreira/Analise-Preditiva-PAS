@@ -258,6 +258,17 @@ function ArgCard({ result }: { result: PredictResponse }) {
             uma leitura própria para quem entrou no programa na Etapa 2.
           </p>
         )}
+
+        {/* Ticket 07: a Turma viva ainda não tem o Edital de médias e desvios do Cebraspe de
+            nenhuma Etapa — A1/A2 saem de uma estimativa (ticket 06), não da conta oficial, e
+            vão mudar quando o Edital sair. Sem isso o Aluno descobre a mudança sozinho depois. */}
+        {result.usa_estatistica_derivada && (
+          <p style={{ marginTop: 16, fontSize: 11, color: C.faint, lineHeight: 1.5 }}>
+            Sua turma ainda não tem o Edital oficial de médias e desvios do Cebraspe — este
+            Argumento usa uma <strong style={{ color: C.dim }}>estimativa</strong> para PAS 1
+            e/ou PAS 2, que será atualizada quando o Edital sair.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -606,7 +617,20 @@ export function PreditorPage() {
   const router = useRouter();
   const [pas1, setPas1] = useState(emptyScores());
   const [pas2, setPas2] = useState(emptyScores());
-  const [lingua, setLingua] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
+  const [linguaE1, setLinguaE1] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
+  const [linguaE2, setLinguaE2] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
+  // O Cebraspe registra a língua por Etapa, não por Aluno — 13,9% trocam entre a Etapa 1 e a 2.
+  // O segundo campo começa pré-preenchido pelo primeiro (86% não trocam) mas fica editável; uma
+  // vez que o Aluno mexe nele diretamente, ele para de seguir o primeiro.
+  const [linguaE2Tocada, setLinguaE2Tocada] = useState(false);
+  function handleLinguaE1(v: "inglesa" | "francesa" | "espanhola") {
+    setLinguaE1(v);
+    if (!linguaE2Tocada) setLinguaE2(v);
+  }
+  function handleLinguaE2(v: "inglesa" | "francesa" | "espanhola") {
+    setLinguaE2Tocada(true);
+    setLinguaE2(v);
+  }
   const [cota, setCota] = useState("Sistema Universal");
   const [trienio, setTrienio] = useState("2024-2026");
   const [cursoAlvo, setCursoAlvo] = useState("");
@@ -698,7 +722,7 @@ export function PreditorPage() {
       const data = await fetchPredict({
         p1_pas1: Number(pas1.p1), p2_pas1: Number(pas1.p2), red_pas1: Number(pas1.red),
         p1_pas2: Number(pas2.p1), p2_pas2: Number(pas2.p2), red_pas2: Number(pas2.red),
-        lingua, cota, trienio,
+        lingua_e1: linguaE1, lingua_e2: linguaE2, cota, trienio,
         curso_alvo: isLoggedIn ? (cursoAlvo.trim() || undefined) : undefined,
         is_logged_in: isLoggedIn,
         semestre: isLoggedIn ? semestre : "Ambos",
@@ -761,12 +785,27 @@ export function PreditorPage() {
               {/* PAS 1 + PAS 2 grid */}
               <div className="pred-grid-2">
                 {[
-                  { title: "PAS 1", state: pas1, set: setPas1 },
-                  { title: "PAS 2", state: pas2, set: setPas2 },
-                ].map(({ title, state, set }) => (
+                  { title: "PAS 1", state: pas1, set: setPas1, lingua: linguaE1, onLingua: handleLinguaE1 },
+                  { title: "PAS 2", state: pas2, set: setPas2, lingua: linguaE2, onLingua: handleLinguaE2 },
+                ].map(({ title, state, set, lingua, onLingua }) => (
                   <div key={title} className="pred-card" style={{ padding: "22px 20px" }}>
                     <div className="section-label">{title}</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div>
+                        <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                          Língua Estrangeira — {title}
+                        </p>
+                        <div style={{ position: "relative" }}>
+                          <select
+                            value={lingua}
+                            onChange={(e) => onLingua(e.target.value as typeof lingua)}
+                            className="pred-select"
+                          >
+                            {LINGUAS.map((l) => <option key={l.valor} value={l.valor}>{l.rotulo}</option>)}
+                          </select>
+                          <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.faint, pointerEvents: "none", fontSize: 12 }}>▾</span>
+                        </div>
+                      </div>
                       <StepperInput label="P1 — Língua Estrangeira" value={state.p1}
                         onChange={(v) => set((s) => ({ ...s, p1: v }))} step={0.5} min={-20} max={20} />
                       <StepperInput label="P2 — Conhecimentos" value={state.p2}
@@ -806,15 +845,6 @@ export function PreditorPage() {
                     <div style={{ position: "relative" }}>
                       <select value={trienio} onChange={(e) => setTrienio(e.target.value)} className="pred-select">
                         {TRIENIOS.map((t) => <option key={t}>{t}</option>)}
-                      </select>
-                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.faint, pointerEvents: "none", fontSize: 12 }}>▾</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Língua Estrangeira</p>
-                    <div style={{ position: "relative" }}>
-                      <select value={lingua} onChange={(e) => setLingua(e.target.value as typeof lingua)} className="pred-select">
-                        {LINGUAS.map((l) => <option key={l.valor} value={l.valor}>{l.rotulo}</option>)}
                       </select>
                       <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.faint, pointerEvents: "none", fontSize: 12 }}>▾</span>
                     </div>

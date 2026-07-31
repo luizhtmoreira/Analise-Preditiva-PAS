@@ -25,7 +25,13 @@ from pas_intelligence.statistics import calculate_approval_probability
 
 TRIENIO_COM_EDITAL = "2023-2025"
 TRIENIO_DA_TURMA_VIVA = "2024-2026"
-"""`(2024, Etapa 1)` e `(2025, Etapa 2)` ainda não foram extraídos do Edital de Etapa."""
+"""Ticket 07: `(2024, Etapa 1)` e `(2025, Etapa 2)` entraram em `OFFICIAL_STATS` como
+`DERIVADA` — o Preditor responde, apoiado em estatística estimada (ticket 06), não recusa
+mais."""
+TRIENIO_SEM_EDITAL = "2025-2027"
+"""O triênio seguinte à Turma viva: nem Edital nem derivada cobrem `(2025, Etapa 1)`. É o que
+resta para testar a política de recusa — ela não foi afrouxada, só parou de disparar para
+2024-2026."""
 
 
 @pytest.fixture
@@ -43,7 +49,7 @@ def entrada_predict(**alteracoes) -> PredictInput:
     padrao = dict(
         p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
         p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
-        lingua="inglesa", trienio=TRIENIO_COM_EDITAL,
+        lingua_e1="inglesa", lingua_e2="inglesa", trienio=TRIENIO_COM_EDITAL,
     )
     return PredictInput(**{**padrao, **alteracoes})
 
@@ -91,14 +97,35 @@ def test_aluno_sem_etapa_1_e_declarado_e_recebe_a_largura_da_classe_dele(api_com
     )
 
 
-def test_turma_viva_sem_edital_de_etapa_devolve_indisponivel_com_motivo(api_com_pacote):
-    """`A1` e `A2` são a parte **exata** da conta. Sem o Edital daquela Etapa a resposta honesta
-    é recusar dizendo qual chave falta — nunca aproximar em silêncio (ticket 04 §9)."""
+def test_turma_viva_responde_apoiada_em_estatistica_derivada(api_com_pacote):
+    """Ticket 07: `(2024, Etapa 1)` e `(2025, Etapa 2)` entraram em `OFFICIAL_STATS` como
+    `DERIVADA` (Edital isolado de Etapa corrigido pelo ticket 06) — o Preditor deixa de recusar
+    a Turma viva, e a resposta carrega o aviso de que a previsão se apoia em estimativa."""
     resposta = predict_service.predict_student(entrada_predict(trienio=TRIENIO_DA_TURMA_VIVA))
+
+    assert resposta.modelo_disponivel is True
+    assert resposta.motivo_indisponivel is None
+    assert resposta.usa_estatistica_derivada is True
+
+
+def test_trienio_com_edital_nao_carrega_aviso_de_estatistica_derivada(api_com_pacote):
+    """Um triênio cujas duas Etapas já têm Edital de médias e desvios do Cebraspe não é
+    estimativa — a tela não pode mostrar o aviso onde ele não se aplica."""
+    resposta = predict_service.predict_student(entrada_predict())
+
+    assert resposta.modelo_disponivel is True
+    assert resposta.usa_estatistica_derivada is False
+
+
+def test_trienio_sem_edital_de_etapa_continua_devolvendo_indisponivel_com_motivo(api_com_pacote):
+    """A política de recusa não foi afrouxada pelo ticket 07 — só deixou de disparar para
+    2024-2026. `A1` e `A2` são a parte **exata** da conta: sem o Edital (nem derivada) daquela
+    Etapa, a resposta honesta é recusar dizendo qual chave falta (ticket 04 §9)."""
+    resposta = predict_service.predict_student(entrada_predict(trienio=TRIENIO_SEM_EDITAL))
 
     assert resposta.modelo_disponivel is False
     assert resposta.top_cursos == []
-    assert "2024" in (resposta.motivo_indisponivel or "")
+    assert "2025" in (resposta.motivo_indisponivel or "")
 
 
 def test_sem_pacote_nao_ha_previsao_nem_largura(api_sem_pacote):
@@ -125,7 +152,41 @@ def test_lingua_fora_das_tres_e_recusada_pelo_schema():
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError):
-        entrada_predict(lingua="alema")
+        entrada_predict(lingua_e1="alema")
+    with pytest.raises(ValidationError):
+        entrada_predict(lingua_e2="alema")
+
+
+def test_lingua_e_por_etapa_faltando_qualquer_uma_e_422():
+    """`lingua_e1` e `lingua_e2` são obrigatórias, sem default (ticket 13, defeito 11): o Aluno
+    é quem troca de língua entre Etapas, não um dado só do Aluno. Faltar qualquer uma nomeia o
+    campo, como as seis notas — nunca um default silencioso que embutiria viés."""
+    from pydantic import ValidationError
+
+    from api.schemas.predict import PredictInput
+
+    base = dict(
+        p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
+        p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5, trienio=TRIENIO_COM_EDITAL,
+    )
+    with pytest.raises(ValidationError, match="lingua_e1"):
+        PredictInput(**base, lingua_e2="inglesa")
+    with pytest.raises(ValidationError, match="lingua_e2"):
+        PredictInput(**base, lingua_e1="inglesa")
+
+
+def test_lingua_por_etapa_produz_a1_e_a2_diferentes(api_com_pacote):
+    """O Aluno que fez inglês na Etapa 1 e espanhol na Etapa 2 tem `A1` e `A2` normalizados cada
+    um pela sua língua — não os dois pela mesma, que era o defeito 11."""
+    resposta = predict_service.predict_student(
+        entrada_predict(lingua_e1="inglesa", lingua_e2="espanhola")
+    )
+    resposta_so_ingles = predict_service.predict_student(
+        entrada_predict(lingua_e1="inglesa", lingua_e2="inglesa")
+    )
+
+    assert resposta.a1 == pytest.approx(resposta_so_ingles.a1)
+    assert resposta.a2 != pytest.approx(resposta_so_ingles.a2)
 
 
 def test_a_faixa_sem_rotulo_nao_esta_na_resposta():
@@ -159,16 +220,17 @@ def test_probabilidade_do_curso_alvo_usa_a_largura_do_pacote(api_com_pacote, mon
 
 def test_aluno_sem_previsao_nao_vira_alto_risco(api_com_pacote):
     """Zerar o Argumento faria a tela da coordenação afirmar "Alto Risco" sobre um Aluno que
-    ninguém mediu. `grey` diz "não sei", que é a verdade."""
+    ninguém mediu. `grey` diz "não sei", que é a verdade. `TRIENIO_SEM_EDITAL` (não a Turma viva,
+    que o ticket 07 passou a atender) é o triênio que ainda não tem cobertura nenhuma."""
     resposta = gestao_service.analyze_students(
-        [aluno_gestao(ano_trienio=TRIENIO_DA_TURMA_VIVA)], TRIENIO_DA_TURMA_VIVA, "padrao"
+        [aluno_gestao(ano_trienio=TRIENIO_SEM_EDITAL)], TRIENIO_SEM_EDITAL, "padrao"
     )
 
     assert resposta.results[0].status == "grey"
     assert resposta.results[0].status_label == "Sem previsão"
     assert resposta.results[0].chance_display == "—"
     assert resposta.kpis.n_sem_previsao == 1
-    assert "2024" in (resposta.motivo_sem_previsao or "")
+    assert "2025" in (resposta.motivo_sem_previsao or "")
 
 
 def test_modelo_disponivel_diz_so_que_o_pacote_carregou(api_com_pacote):
@@ -176,11 +238,23 @@ def test_modelo_disponivel_diz_so_que_o_pacote_carregou(api_com_pacote):
     opera o sistema; "o Edital desta turma ainda não saiu" é espera. Um booleano só, cobrindo os
     dois, mandaria a coordenação procurar o problema errado."""
     resposta = gestao_service.analyze_students(
-        [aluno_gestao(ano_trienio=TRIENIO_DA_TURMA_VIVA)], TRIENIO_DA_TURMA_VIVA, "padrao"
+        [aluno_gestao(ano_trienio=TRIENIO_SEM_EDITAL)], TRIENIO_SEM_EDITAL, "padrao"
     )
 
     assert resposta.modelo_disponivel is True  # o pacote está lá
     assert resposta.kpis.n_sem_previsao == 1  # o Edital é que não está
+
+
+def test_gestao_preve_para_a_turma_viva_apoiada_em_estatistica_derivada(api_com_pacote):
+    """Ticket 07: a Gestão de Ativos usa a mesma `stats_da_prova` do Preditor público — as duas
+    entradas `DERIVADA` de `OFFICIAL_STATS` a atendem sem qualquer mudança neste módulo."""
+    resposta = gestao_service.analyze_students(
+        [aluno_gestao(ano_trienio=TRIENIO_DA_TURMA_VIVA)], TRIENIO_DA_TURMA_VIVA, "padrao"
+    )
+
+    assert resposta.results[0].status != "grey"
+    assert resposta.kpis.n_sem_previsao == 0
+    assert resposta.modelo_disponivel is True
 
 
 def test_sem_pacote_a_gestao_diz_que_o_modelo_nao_carregou(api_sem_pacote):
@@ -242,7 +316,7 @@ def test_lote_misto_conta_os_dois_lados(api_com_pacote):
     """Uma planilha de escola pode trazer turmas de triênios diferentes; a que não dá para prever
     não pode contaminar a que dá."""
     resposta = gestao_service.analyze_students(
-        [aluno_gestao(), aluno_gestao(ano_trienio=TRIENIO_DA_TURMA_VIVA)],
+        [aluno_gestao(), aluno_gestao(ano_trienio=TRIENIO_SEM_EDITAL)],
         TRIENIO_COM_EDITAL,
         "padrao",
     )
@@ -320,9 +394,9 @@ def test_calculadora_le_official_stats_e_nao_um_dicionario_proprio():
     assert resposta.p2_necessario > 0
 
 
-def test_calculadora_recusa_o_trienio_sem_edital_em_vez_de_estourar():
-    """O triênio vivo não tem o Edital da Etapa 1. Sem este caminho a rota respondia 500; com
-    um `stats` chutado, responderia um P2 necessário que ninguém mediu."""
+def test_calculadora_preve_para_a_turma_viva_apoiada_em_estatistica_derivada():
+    """Ticket 07: a Calculadora de Estratégia lê `OFFICIAL_STATS` pela mesma porta única
+    (`stats_da_prova`) que o Preditor — as duas entradas `DERIVADA` a atendem de graça."""
     from api.schemas.predict import StrategyInput
 
     resposta = predict_service.predict_strategy(
@@ -330,6 +404,23 @@ def test_calculadora_recusa_o_trienio_sem_edital_em_vez_de_estourar():
             p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
             p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
             nota_alvo=120.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua="espanhola",
+        )
+    )
+
+    assert resposta.status != "indisponivel"
+    assert resposta.p2_necessario > 0
+
+
+def test_calculadora_recusa_o_trienio_sem_edital_em_vez_de_estourar():
+    """`TRIENIO_SEM_EDITAL` não tem o Edital da Etapa 1, nem derivada. Sem este caminho a rota
+    respondia 500; com um `stats` chutado, responderia um P2 necessário que ninguém mediu."""
+    from api.schemas.predict import StrategyInput
+
+    resposta = predict_service.predict_strategy(
+        StrategyInput(
+            p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
+            p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
+            nota_alvo=120.0, ciclo_aluno=TRIENIO_SEM_EDITAL, lingua="espanhola",
         )
     )
 

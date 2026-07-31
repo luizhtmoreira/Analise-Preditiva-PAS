@@ -20,7 +20,7 @@ from pathlib import Path
 import pandas as pd  # type: ignore
 
 from .argument_calculator import HistoricalStats, calculate_argument_etapa
-from .pas_constants import OFFICIAL_STATS
+from .pas_constants import OFFICIAL_STATS, Origem
 
 REQUIRED_SOURCE_COLUMNS = [
     "campus",
@@ -128,6 +128,21 @@ def stats_da_prova(ano: int, etapa: int, lingua: str) -> HistoricalStats:
     except KeyError:
         raise EstatisticaOficialAusenteError(
             f"OFFICIAL_STATS não cobre (ano={ano}, etapa={etapa}, língua={lingua!r})."
+        ) from None
+
+
+def origem_da_prova(ano: int, etapa: int) -> Origem:
+    """`EDITAL` ou `DERIVADA` (ticket 07): de onde vem a média/desvio de uma `(Ano, Etapa)`.
+
+    Não depende de língua — a procedência é da Etapa inteira, não de uma língua dentro dela.
+    Levanta `EstatisticaOficialAusenteError` pela mesma razão que `stats_da_prova`: um
+    `(ano, etapa)` sem entrada é "ainda não sei", nunca um `KeyError` cru.
+    """
+    try:
+        return OFFICIAL_STATS[(ano, etapa)].origem
+    except KeyError:
+        raise EstatisticaOficialAusenteError(
+            f"OFFICIAL_STATS não cobre (ano={ano}, etapa={etapa})."
         ) from None
 
 

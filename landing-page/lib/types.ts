@@ -25,6 +25,9 @@ export interface PredictResponse {
   trienio_ref: string;
   modelo_disponivel: boolean;
   motivo_indisponivel: string | null;
+  /** A1 e/ou A2 vieram do Edital isolado de Etapa corrigido (ticket 06), não do Edital de
+   *  médias e desvios do Cebraspe — caso da Turma viva. Muda quando o Edital de verdade sair. */
+  usa_estatistica_derivada: boolean;
 }
 
 export interface StudentResult {

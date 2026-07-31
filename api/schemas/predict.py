@@ -9,15 +9,21 @@ class PredictInput(BaseModel):
     p1_pas2: float
     p2_pas2: float
     red_pas2: float
-    # O Cebraspe normaliza a Parte 1 **por língua estrangeira**, e o Edital não diz qual língua
-    # cada candidato fez. Agrupar as três embute viés sistemático contra quem fez espanhol ou
-    # francês — em (2024, Etapa 2) a diferença entre a maior e a menor média foi de 3,86 pontos,
-    # mais de um desvio-padrão inteiro. Por isso o formulário pergunta (ticket 04 §5.3).
+    # O Cebraspe normaliza a Parte 1 **por língua estrangeira, por Etapa** — não é atributo do
+    # Aluno, é atributo do par (Aluno, Etapa). 13,9% da base trocam de língua entre a Etapa 1 e a
+    # Etapa 2 (majoritariamente inglês → espanhol), e aplicar a língua errada custa até 3,79
+    # pontos de Argumento Final, sempre na mesma direção (defeito 11 de `defeitos-pendentes.md`).
+    # Agrupar as duas Etapas numa língua só embute viés sistemático contra quem trocou — em
+    # (2024, Etapa 2) a diferença entre a maior e a menor média foi de 3,86 pontos, mais de um
+    # desvio-padrão inteiro. Por isso o formulário pergunta as duas (ticket 04 §5.3, ticket 13).
     #
-    # **Obrigatória, sem default.** Um default silencioso é exatamente o viés que o ticket 04
+    # **Obrigatórias, sem default.** Um default silencioso é exatamente o viés que o ticket 04
     # mediu: o Aluno de espanhol receberia um número plausível e errado, sempre na mesma direção.
     # Cliente que não enviar recebe 422 nomeando o campo — o mesmo tratamento que as seis notas.
-    lingua: Literal["inglesa", "francesa", "espanhola"]
+    # Sem alias de compatibilidade: o único cliente é o nosso próprio frontend, reescrito nesta
+    # mesma rodada.
+    lingua_e1: Literal["inglesa", "francesa", "espanhola"]
+    lingua_e2: Literal["inglesa", "francesa", "espanhola"]
     cota: str = "Sistema Universal"
     trienio: str = "2024-2026"
     curso_alvo: Optional[str] = None
@@ -58,6 +64,10 @@ class PredictResponse(BaseModel):
     modelo_disponivel: bool
     # Por que a previsão não saiu, quando `modelo_disponivel` é falso — em vez de zeros mudos.
     motivo_indisponivel: Optional[str] = None
+    # Ticket 07: `A1` e/ou `A2` vieram do Edital isolado de Etapa corrigido (ticket 06), não do
+    # Edital de médias e desvios do Cebraspe — caso da Turma viva, 2024-2026. Quando o Edital de
+    # verdade sair, `OFFICIAL_STATS` troca de valor e esta previsão muda; a tela precisa avisar.
+    usa_estatistica_derivada: bool = False
 
 
 class ChamadaCorte(BaseModel):
