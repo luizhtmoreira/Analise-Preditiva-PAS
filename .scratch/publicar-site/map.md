@@ -2,6 +2,14 @@
 
 **Label:** `wayfinder:map`
 **Criado:** 2026-07-29
+**Atualizado:** 2026-07-31 — `08b` entregue: Dockerfile na forma do Render (porta via `$PORT`,
+secret em `/etc/secrets/HF_TOKEN` — verificado, não de memória) e `publicar_space.py` publicando
+por `git push` num Repo de Deploy que nasce vazio. `08a` e `08b` estão os dois em código; falta
+rodar os dois passos manuais que só o dono do produto pode fazer (revisão do Derivado, criação do
+Repo de Deploy) antes do `08c`.
+**Atualizado:** 2026-07-31 — o ticket 08 foi **reaberto**: o Hugging Face Spaces passou a exigir
+PRO, a API vai para o Render (ADR-0014), e o restante virou os sub-tickets `08a`–`08e`. O ticket 14
+passa a depender de `08c`, não do 08 inteiro.
 **Atualizado:** 2026-07-30 — ticket 06 rodou duas vezes: reprovou como constante (5,751) e
 **aprovou** ao corrigir média **e** desvio nos stats (4,366 < 5,009). O ticket 07 está
 desbloqueado (ver "O que pode reordenar tudo" e o relatório do ticket 06).
@@ -57,7 +65,7 @@ O B2B (Gestão de Ativos, Escola, Comparação, Relatórios) fica **fora desta r
 | Landing (`main`) | ✅ em produção na Vercel | — |
 | Portal Next.js | ⏳ `feat/nextjs-frontend`, 22 commits, **52 atrás da `main`** | não pronto; não conhece o modelo novo |
 | Visual da landing | ✅ `feat/proof-section`, 14 commits, contém a `main` | só falta mergear |
-| API FastAPI | ⚠️ funciona em `localhost:8000` | sem Dockerfile, sem Space, CORS quebrado |
+| API FastAPI | ⚠️ Dockerfile, ponteiro, scripts e CORS prontos e testados (ticket 08) | não está no ar: o HF Spaces virou pago, a API vai pro Render (ADR-0014) — sub-tickets `08a`–`08e` |
 
 ---
 

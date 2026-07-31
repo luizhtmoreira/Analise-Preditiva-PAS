@@ -186,3 +186,25 @@ _Avoid_: sobre nós, quem somos
 **Mobile-First Design**:
 Diretriz de design para a Landing Page Temporária: foco prioritário na experiência em smartphones (layouts empilhados, touch targets otimizados, formulário responsivo rápido), considerando que a maioria dos estudantes do PAS 3 acessará via celular (Instagram/WhatsApp).
 _Avoid_: versão mobile simples, adaptação mobile
+
+### Publicação e Hospedagem
+
+**Domicílio Versionado**:
+Lugar onde mora um artefato que não entra no git (pacote de modelo, CSVs), identificado por uma revisão exata em vez de "a versão mais recente".
+_Avoid_: storage, bucket, hospedagem de arquivo, Dropbox
+
+**Ponteiro de Artefato**:
+O registro versionado que diz qual revisão de cada Domicílio Versionado está valendo. Promover é mudar o Ponteiro; reverter é voltá-lo.
+_Avoid_: config de deploy, lockfile, manifesto
+
+**Derivado de Deploy**:
+A versão de um artefato de dado reduzida às colunas que a API de fato lê e sem nenhuma coluna que identifique um Aluno pelo nome. É a única forma em que dado de Aluno sai do disco do dono do produto. O bruto correspondente permanece como backup e nunca é publicado nem embarcado.
+_Avoid_: dataset de produção, CSV limpo, dump, versão anonimizada
+
+**Repo de Deploy**:
+Repositório que recebe apenas um snapshot curado dos arquivos que a imagem precisa, gerado por script e nunca editado à mão. Existe para que nenhuma plataforma de hospedagem receba a árvore nem a história do monorepo.
+_Avoid_: repo de produção, mirror, fork
+
+**Boot Frio**:
+Subida do container a partir do zero, com o custo de importar as bibliotecas científicas antes da primeira resposta. É o comportamento **normal** da hospedagem gratuita, não uma anomalia — acontece a cada deploy, restart ou período ocioso.
+_Avoid_: cold start ocasional, lentidão, primeira requisição lenta

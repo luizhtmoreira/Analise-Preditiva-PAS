@@ -6,7 +6,7 @@ ver project_parser_privacy) e só existem localmente.
 Isto é o passo 1 da promoção (ADR do ticket 03 do mapa treino-modelos-pas3, decisão 6):
     1. este script sobe o artefato e atualiza `ponteiro.json`           ← você está aqui
     2. `git add deploy/ponteiro.json && git commit && git push`         ← o commit de ponteiro
-    3. `python deploy/publicar_space.py`                                ← propaga pro Space
+    3. `python deploy/publicar_space.py`                                ← propaga pro Repo de Deploy
 
 Reverter é `git revert` do commit do passo 2, seguido de novo do passo 3 — nada é apagado do
 repositório HF, a revisão antiga continua lá.

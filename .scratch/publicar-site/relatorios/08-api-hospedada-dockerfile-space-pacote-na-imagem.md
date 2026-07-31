@@ -70,8 +70,8 @@ boot, com `OSError: libgomp.so.1: cannot open shared object file`, dentro do `li
 
 - [x] Existe um Dockerfile que constrói a API com o pacote de modelo e os CSVs dentro da imagem —
       testado com build real (etapa runtime com artefatos equivalentes).
-- [ ] O Space privado no Hugging Face está de pé e `/health` responde numa URL pública — **pendente
-      de execução sua** (só a conta `Luiz1912` cria o Space); os scripts e o runbook estão prontos.
+- [ ] O Space no Hugging Face está de pé e `/health` responde numa URL pública — **bloqueado
+      (ver seção "Bloqueio" abaixo)**.
 - [x] O pacote de modelo é buscado no build a partir do domicílio versionado, não copiado do disco
       de ninguém — `Dockerfile` não tem nenhum `COPY models/` nem `COPY data/` a partir do contexto
       local; `.dockerignore` os exclui do contexto.
@@ -118,3 +118,28 @@ boot, com `OSError: libgomp.so.1: cannot open shared object file`, dentro do `li
   não carregam) de uma degradação silenciosa pra um `500` na Estratégia — troca de comportamento
   que não é minha de decidir sozinho.
 - `assets/` (templates whitelabel) — explicitamente fora desta rodada, fica pro B2B.
+
+## Bloqueio: Hugging Face Docker Space exige PRO (2026-07-31)
+
+Ao rodar `python deploy/publicar_space.py`, o HF retornou `402 Payment Required`:
+
+> Static Spaces are free for everyone, but hosting Gradio and Docker Spaces on free cpu-basic
+> requires a PRO subscription. Subscribe at https://huggingface.co/pro
+
+O ADR-0004 previa "CPU Basic, gratuito" — a política do HF mudou desde a decisão. O erro se repete
+tanto com `private=True` quanto com `private=False`.
+
+### O que foi executado até aqui
+
+- `publicar_pacote.py` rodou com sucesso: modelo e CSVs estão nos dois repositórios HF privados
+  (`Luiz1912/vetor-pas3-modelo` e `Luiz1912/vetor-pas-dados`) com revisões gravadas em
+  `ponteiro.json`.
+- `ponteiro.json` foi commitado em `feat/pdf-extraction` (será mergeado pra `main` no ticket 14).
+- `publicar_space.py` foi ajustado para `private=False` — não resolve o problema.
+
+### Decisão pendente (dono do produto)
+
+| Opção | Custo | Atrito | Observação |
+|---|---|---|---|
+| **Assinar HF PRO** | ~$9/mês | Mínimo — roda `publicar_space.py` e encerra | Faz sentido perto do lançamento |
+| **Migrar para Render** | Gratuito | Médio — requer novo ticket | Dockerfile precisa mudar: secrets de build são pagos no Render; artefatos teriam de ser baixados em runtime, não no build |

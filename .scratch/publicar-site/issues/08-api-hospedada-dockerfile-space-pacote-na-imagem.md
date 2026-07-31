@@ -1,5 +1,30 @@
 # 08 — API hospedada: Dockerfile, Space e o pacote assado na imagem
 
+> **REABERTO em 2026-07-31 — o destino mudou, o trabalho não.** Ao publicar de verdade, o Hugging
+> Face devolveu `402 Payment Required`: hospedar Docker Spaces passou a exigir assinatura PRO. A
+> premissa "CPU Basic, gratuito" do ADR-0004 envelheceu sem ninguém notar. **A API vai para o
+> Render** — decisão, porquês e alternativas rejeitadas no **ADR-0014**.
+>
+> **O que este ticket entregou continua valendo:** Dockerfile em duas etapas, `deploy/ponteiro.json`,
+> `buscar_artefatos.py`, `publicar_pacote.py` (que já rodou — os artefatos estão no Domicílio
+> Versionado), `requirements-api.txt`, CORS vindo do ambiente, e o bug do `libgomp1` resolvido.
+>
+> **O trabalho restante está em cinco sub-tickets**, em ordem de bloqueio:
+>
+> | | ticket | bloqueado por |
+> |---|---|---|
+> | `08a` | Derivado de Deploy: o dado que sai do disco não tem nome de Aluno | — |
+> | `08b` | A imagem na forma do Render, entregue por um Repo de Deploy | — |
+> | `08c` | O serviço no ar, em `api.vetorpas.com.br` | 08a, 08b |
+> | `08d` | Boot Frio medido, e o frontend que sabe esperar | 08c |
+> | `08e` | Keep-alive, como otimização descartável | 08d |
+>
+> **O ticket 14 depende de `08c`**, não do 08 inteiro — dá para publicar antes de `08d` e `08e`.
+>
+> Os critérios de aceite abaixo permanecem como o contrato do 08; quem os fecha agora são os
+> sub-tickets. O único que nunca chegou a ser verificado — *o Preditor num navegador de verdade* —
+> é o critério central do `08c`.
+
 **What to build:** a API responde numa URL pública, e uma máquina limpa reproduz esse deploy sem
 que ninguém copie arquivo à mão.
 

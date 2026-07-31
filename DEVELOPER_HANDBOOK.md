@@ -30,7 +30,7 @@ O ecossistema de branches do Git é dividido estrategicamente para gerenciar o p
 
 1.  **`main` (Página de Espera - PRODUÇÃO)**:
     *   **Propósito**: Contém o site de pré-lançamento do projeto com o formulário de lista de espera (waitlist) e a história do fundador.
-    *   **Status**: **100% Implementado e Implantado**. É a branch de produção oficial conectada à Vercel. Qualquer alteração aqui é implantada automaticamente na URL pública ([vetorpas.com.br](https://vetorpas.com.br)).
+    *   **Status**: **100% Implementado e Implantado**. É a branch de produção da URL pública ([vetorpas.com.br](https://vetorpas.com.br)). **O deploy não é automático**: o projeto na Vercel é CLI-only, sem integração Git — `git push` nesta branch não publica nada, é preciso rodar o deploy manualmente. Consequência prática: qualquer coisa cravada no build do frontend (ex.: a URL da API) é cara de mudar sob pressão — ver ADR-0014.
 2.  **`feat/nextjs-frontend` (Painel e Landing Page Principal - INCORPORADA)**:
     *   **Propósito**: Continha a landing page principal definitiva, o Preditor com semestre e curso alvo, a Calculadora de Estratégia, o header público, a recuperação de senha e a tela de perfil.
     *   **Status**: **Integrada em `feat/pdf-extraction`** (ticket 10 da rodada *Publicar o Site*), que é o tronco unificado — modelo promovido, pipeline de treino, extração e portal no mesmo lugar. Ainda não mergeada para a `main`, portanto suas páginas não estão acessíveis em produção.
