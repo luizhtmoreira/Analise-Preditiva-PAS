@@ -13,6 +13,7 @@ _ROOT = Path(__file__).parent.parent.parent
 if str(_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_ROOT / "src"))
 
+from pas_intelligence.derivado_deploy import COLUNAS_RESULTADO_FINAL
 from pas_intelligence.pas_constants import OFFICIAL_STATS
 from pas_intelligence.ab_testing import compare_groups
 
@@ -40,19 +41,25 @@ def _load_population() -> Optional[pd.DataFrame]:
     if _df_pop is not None:
         return _df_pop
 
-    path = _ROOT / "data" / "banco_alunos_pas_final.csv"
+    # Mesma frente de extração e mesma tradução de `load_resources` (ticket 09): schema minúsculo,
+    # `inscricao` mantido (precisa dele pra casar Aluno de Escola com o banco), `nome` nunca lido,
+    # `checksum_fecha == True` como único filtro de plausibilidade.
+    path = _ROOT / "data" / "resultado_final.csv"
     if not path.exists():
         return None
 
-    cols = [
-        "Inscricao", "Ano_Trienio", "Arg_Final",
-        "P1_PAS1", "P2_PAS1", "P1_PAS2", "P2_PAS2", "P1_PAS3", "P2_PAS3",
-    ]
-    df = pd.read_csv(path, usecols=lambda c: c in cols, dtype={"Inscricao": str})
+    df = pd.read_csv(path, usecols=lambda c: c in COLUNAS_RESULTADO_FINAL, dtype={"inscricao": str})
+    df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
+    df = df.rename(columns={
+        "inscricao": "Inscricao",
+        "trienio": "Ano_Trienio",
+        "argumento_final": "Arg_Final",
+    })
     df["Inscricao"] = df["Inscricao"].astype(str).str.strip()
-    df["EB_PAS1"] = df["P1_PAS1"] + df["P2_PAS1"]
-    df["EB_PAS2"] = df["P1_PAS2"] + df["P2_PAS2"]
-    df["EB_PAS3"] = df["P1_PAS3"] + df["P2_PAS3"]
+    df["Ano_Trienio"] = df["Ano_Trienio"].astype(str).str.replace("/", "-", regex=False)
+    df["EB_PAS1"] = df["eb_p1_e1"] + df["eb_p2_e1"]
+    df["EB_PAS2"] = df["eb_p1_e2"] + df["eb_p2_e2"]
+    df["EB_PAS3"] = df["eb_p1_e3"] + df["eb_p2_e3"]
     _df_pop = df
     return _df_pop
 
@@ -89,13 +96,18 @@ def get_temporal() -> TemporalResponse:
     return TemporalResponse(etapas=etapas, cursos=cursos)
 
 
-def get_corte_evolucao(curso: str) -> list[CorteEvolucao]:
-    """Evolução da nota de corte de um curso (Sistema Universal) através dos triênios."""
+def get_corte_evolucao(curso: str, cota: str = "Sistema Universal") -> list[CorteEvolucao]:
+    """Evolução da nota de corte de um curso através dos triênios, para o sistema de
+    concorrência (`cota`) selecionado — cada cota tem sua própria série de cortes, e antes
+    deste parâmetro a tela sempre lia "Sistema Universal" mesmo com outra cota selecionada."""
     df_corte = gestao_service._df_corte
     if df_corte is None or not curso:
         return []
 
-    df = df_corte[df_corte["Sistema_Nome"] == "Sistema Universal"].copy()
+    available_systems = list(df_corte["Sistema_Nome"].dropna().unique())
+    sistema = gestao_service._resolver_sistema(cota, available_systems)
+
+    df = df_corte[df_corte["Sistema_Nome"] == sistema].copy()
     keys = (
         df["Curso_Limpo"].astype(str) + " - " + df["Turno"].astype(str)
         + " (" + df["Campus"].astype(str) + ")"

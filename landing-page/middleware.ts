@@ -27,6 +27,13 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Profile route requires authenticated user
+  if (request.nextUrl.pathname.startsWith("/perfil")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/auth/entrar?next=/perfil", request.url));
+    }
+  }
+
   // Dashboard routes require authenticated coordinator with a tenant
   if (request.nextUrl.pathname.startsWith("/gestao") ||
       request.nextUrl.pathname.startsWith("/escola") ||

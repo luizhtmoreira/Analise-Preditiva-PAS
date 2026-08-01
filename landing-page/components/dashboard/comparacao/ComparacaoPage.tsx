@@ -27,6 +27,31 @@ function groupLabel(sel: GroupSel): string {
 
 /* ─── boxplot SVG (horizontal) ──────────────────────────────────── */
 
+/** Uma linha do boxplot. Vive no escopo do módulo, e não dentro de `BoxPlot`: um componente
+ *  redefinido a cada render é um tipo novo a cada render, e o React remonta a subárvore inteira
+ *  em vez de atualizá-la. A escala horizontal entra por prop (`X`) porque depende dos dados. */
+function Row({ s, y, color, name, X }: { s: BoxStats; y: number; color: string; name: string; X: (v: number) => number }) {
+  return (
+    <g>
+      <text x={62} y={y + 4} textAnchor="end" fontSize={11.5} fontWeight={600} fill="#3A3A3C">{name}</text>
+      {/* whiskers */}
+      <line x1={X(s.min)} x2={X(s.q1)} y1={y} y2={y} stroke="#B8BEC6" strokeWidth={1.5} />
+      <line x1={X(s.q3)} x2={X(s.max)} y1={y} y2={y} stroke="#B8BEC6" strokeWidth={1.5} />
+      <line x1={X(s.min)} x2={X(s.min)} y1={y - 8} y2={y + 8} stroke="#B8BEC6" strokeWidth={1.5} />
+      <line x1={X(s.max)} x2={X(s.max)} y1={y - 8} y2={y + 8} stroke="#B8BEC6" strokeWidth={1.5} />
+      {/* caixa q1–q3 */}
+      <rect x={X(s.q1)} y={y - 16} width={Math.max(X(s.q3) - X(s.q1), 2)} height={32} rx={6} fill={color} fillOpacity={0.18} stroke={color} strokeWidth={1.5} />
+      {/* mediana */}
+      <line x1={X(s.med)} x2={X(s.med)} y1={y - 16} y2={y + 16} stroke={color} strokeWidth={3} />
+      {/* média */}
+      <circle cx={X(s.mean)} cy={y} r={4} fill="#fff" stroke={color} strokeWidth={2} />
+      <text x={X(s.med)} y={y - 22} textAnchor="middle" fontSize={10.5} fontFamily="var(--font-geist-mono), monospace" fill={color} fontWeight={700}>
+        {s.med}
+      </text>
+    </g>
+  );
+}
+
 function BoxPlot({ a, b, nameA, nameB }: { a: BoxStats; b: BoxStats; nameA: string; nameB: string }) {
   const lo = Math.min(a.min, b.min);
   const hi = Math.max(a.max, b.max);
@@ -34,27 +59,6 @@ function BoxPlot({ a, b, nameA, nameB }: { a: BoxStats; b: BoxStats; nameA: stri
   const pad = range * 0.06;
   const X = (v: number) => 70 + ((v - (lo - pad)) / (range + 2 * pad)) * 560;
 
-  function Row({ s, y, color, name }: { s: BoxStats; y: number; color: string; name: string }) {
-    return (
-      <g>
-        <text x={62} y={y + 4} textAnchor="end" fontSize={11.5} fontWeight={600} fill="#3A3A3C">{name}</text>
-        {/* whiskers */}
-        <line x1={X(s.min)} x2={X(s.q1)} y1={y} y2={y} stroke="#B8BEC6" strokeWidth={1.5} />
-        <line x1={X(s.q3)} x2={X(s.max)} y1={y} y2={y} stroke="#B8BEC6" strokeWidth={1.5} />
-        <line x1={X(s.min)} x2={X(s.min)} y1={y - 8} y2={y + 8} stroke="#B8BEC6" strokeWidth={1.5} />
-        <line x1={X(s.max)} x2={X(s.max)} y1={y - 8} y2={y + 8} stroke="#B8BEC6" strokeWidth={1.5} />
-        {/* caixa q1–q3 */}
-        <rect x={X(s.q1)} y={y - 16} width={Math.max(X(s.q3) - X(s.q1), 2)} height={32} rx={6} fill={color} fillOpacity={0.18} stroke={color} strokeWidth={1.5} />
-        {/* mediana */}
-        <line x1={X(s.med)} x2={X(s.med)} y1={y - 16} y2={y + 16} stroke={color} strokeWidth={3} />
-        {/* média */}
-        <circle cx={X(s.mean)} cy={y} r={4} fill="#fff" stroke={color} strokeWidth={2} />
-        <text x={X(s.med)} y={y - 22} textAnchor="middle" fontSize={10.5} fontFamily="var(--font-geist-mono), monospace" fill={color} fontWeight={700}>
-          {s.med}
-        </text>
-      </g>
-    );
-  }
 
   const ticks = useMemo(() => {
     const t: number[] = [];
@@ -72,8 +76,8 @@ function BoxPlot({ a, b, nameA, nameB }: { a: BoxStats; b: BoxStats; nameA: stri
             <text x={X(t)} y={166} textAnchor="middle" fontSize={10} fontFamily="var(--font-geist-mono), monospace" fill="#9CA1A8">{t}</text>
           </g>
         ))}
-        <Row s={a} y={60} color="#00AEEF" name={nameA.length > 14 ? nameA.slice(0, 13) + "…" : nameA} />
-        <Row s={b} y={122} color="#00843D" name={nameB.length > 14 ? nameB.slice(0, 13) + "…" : nameB} />
+        <Row X={X} s={a} y={60} color="#00AEEF" name={nameA.length > 14 ? nameA.slice(0, 13) + "…" : nameA} />
+        <Row X={X} s={b} y={122} color="#00843D" name={nameB.length > 14 ? nameB.slice(0, 13) + "…" : nameB} />
       </svg>
     </div>
   );

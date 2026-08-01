@@ -19,6 +19,16 @@ Thumbs.db
 models/
 *.joblib
 
+# PII e IP expurgados da história em 2026-07-25 — NÃO recommitar.
+# Os padrões abaixo são ancorados em `/` de propósito: um `app/` solto casaria também
+# com `landing-page/app/`, que é o App Router do Next e está rastreado.
+
+# Whitelabel PDF templates, logos e fontes (produto pago, não pode ser público)
+/assets/
+
+# Streamlit app (descontinuado publicamente, mantido localmente para uso via localhost)
+/app/
+
 # Temporary Data/Logs
 extracted_students.csv
 found_students.txt
@@ -33,19 +43,56 @@ ENV/
 # Datasets e arquivos de dados brutos/temporários
 data/
 *.csv
+*.xlsx
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PII e IP expurgados da história em 2026-07-25 — NÃO recommitar.
-# Os padrões são ancorados em `/` de propósito: um `app/` solto casaria também
-# com `landing-page/app/`, que é o App Router do Next e está rastreado.
-# ─────────────────────────────────────────────────────────────────────────────
-# Notas de trabalho: contêm nome e inscrição de Aluno
-/.scratch/
-# App Streamlit (IP)
-/app/
-# Templates de PDF whitelabel (IP)
-/assets/
-# Parsers de edital (IP)
-/src/pas_extraction/
-# PDFs oficiais com nome de Aluno
-/tests/fixtures/
+# Parsers de dados de editais (lógica de extração não deve ser pública)
+scripts/extrator_master.py
+scripts/extract.py
+scripts/extract_students.py
+scripts/extrator_teste.py
+scripts/extrair_alunos_demo.py
+scripts/debug_quota_logic.py
+scripts/calculate_cutoffs_2023_2025.py
+scripts/sla5.py
+scripts/tirateima.py
+src/extract_pas1_pdf.py
+src/extract_pas2_html.py
+src/data_processing/extract_and_join_scores.py
+src/data_processing/extract_cutoff_scores.py
+src/data_processing/ingest_23_25.py
+src/data_processing/ingest_23_25_robust.py
+src/pas_extraction/
+scripts/prototype_checksum.py
+scripts/prototype_cotas.py
+src/generate_student_excel.py
+src/update_specific_students.py
+src/generate_batch_excel.py
+notebooks/01_Parser_PAS.ipynb
+notebooks/02_EDA_e_Modelagem.ipynb
+scripts/gerar_dossie.py
+scripts/atualizarPas1.py
+scripts/concatenar.py
+scripts/auditoria.py
+scripts/blindagem.py
+dossie_modelos.md
+
+# Fixtures de teste geradas de editais reais (contêm dados reais de Alunos)
+tests/fixtures/
+
+# Saída dos pipelines em .scratch/ — dado de Aluno identificável (nome + notas).
+# O .scratch/ é rastreado de propósito (mapas, tickets e relatórios), então a saída
+# de dado precisa ser excluída explicitamente, ou um `git add .` a leva junto.
+# Tudo aqui é regenerável rodando o pipeline sobre data/pdfs local.
+.scratch/**/saida-nova/
+.scratch/**/*.csv
+.scratch/**/*.xlsx
+.scratch/**/*.parquet
+.scratch/**/*.joblib
+
+# Config local do Claude Code (permissões e settings específicos da máquina/sessão)
+.claude/
+
+# Pacotes de modelo produzidos pelo pipeline de treino (ticket 12/13 do mapa
+# `treino-modelos-pas3`). O artefato versionado mora fora do git (ticket 03); aqui ficaria
+# só uma cópia pesada e regenerável por `scripts/treinar_pipeline.py`.
+.scratch/**/pacotes/

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel
 
 
@@ -9,9 +9,30 @@ class PredictInput(BaseModel):
     p1_pas2: float
     p2_pas2: float
     red_pas2: float
+    # O Cebraspe normaliza a Parte 1 **por língua estrangeira, por Etapa** — não é atributo do
+    # Aluno, é atributo do par (Aluno, Etapa). 13,9% da base trocam de língua entre a Etapa 1 e a
+    # Etapa 2 (majoritariamente inglês → espanhol), e aplicar a língua errada custa até 3,79
+    # pontos de Argumento Final, sempre na mesma direção (defeito 11 de `defeitos-pendentes.md`).
+    # Agrupar as duas Etapas numa língua só embute viés sistemático contra quem trocou — em
+    # (2024, Etapa 2) a diferença entre a maior e a menor média foi de 3,86 pontos, mais de um
+    # desvio-padrão inteiro. Por isso o formulário pergunta as duas (ticket 04 §5.3, ticket 13).
+    #
+    # **Obrigatórias, sem default.** Um default silencioso é exatamente o viés que o ticket 04
+    # mediu: o Aluno de espanhol receberia um número plausível e errado, sempre na mesma direção.
+    # Cliente que não enviar recebe 422 nomeando o campo — o mesmo tratamento que as seis notas.
+    # Sem alias de compatibilidade: o único cliente é o nosso próprio frontend, reescrito nesta
+    # mesma rodada.
+    lingua_e1: Literal["inglesa", "francesa", "espanhola"]
+    lingua_e2: Literal["inglesa", "francesa", "espanhola"]
     cota: str = "Sistema Universal"
     trienio: str = "2024-2026"
     curso_alvo: Optional[str] = None
+    is_logged_in: bool = False
+    semestre: Optional[str] = "1°"
+
+    # As três notas da Etapa 1 iguais a zero significam **Aluno sem Etapa 1** (ADR-0008), não
+    # "fez a prova e tirou zero". O formulário tem um botão que preenche os três campos com zero,
+    # para o Aluno declarar em vez de adivinhar a codificação.
 
 
 class CourseResult(BaseModel):
@@ -24,11 +45,105 @@ class CourseResult(BaseModel):
 
 
 class PredictResponse(BaseModel):
-    eb_pas3_previsto: float
     arg_previsto: float
-    arg_min: float
-    arg_max: float
+    # `a1` e `a2` são aritmética exata sobre as notas que o Aluno digitou, não previsão — vão na
+    # resposta para que a tela possa mostrar de onde vem o Argumento Final sem chamar a API de
+    # novo, e para que ninguém precise reimplementar a fórmula do Argumento de Etapa no frontend.
+    a1: float
+    a2: float
+    a3_previsto: float
+    # A Largura de Incerteza da classe deste Aluno, em pontos de Argumento Final (`3 × σ(A3)`).
+    # Sai do manifesto do pacote de modelo, nunca de constante de código. A tela **não** a mostra
+    # como `±` ao lado do número (ADR-0012 §7: a faixa sem rótulo acertava 63% e respondia uma
+    # pergunta que o Aluno não fez); ela alimenta a probabilidade por curso.
+    largura_incerteza: float
+    etapa_1_ausente: bool
     curso_alvo_result: Optional[CourseResult]
+    # `curso_alvo_result` é `None` tanto quando o Aluno não escolheu curso quanto quando a cota
+    # escolhida simplesmente não tem corte publicado para o curso pedido (ex.: cota L1 sem
+    # candidato em Engenharia Civil num triênio). Sem este campo os dois casos são
+    # indistinguíveis pra tela, que não sabe se deve ficar calada ou avisar "sem dados".
+    curso_alvo_sem_dados_cota: bool = False
     top_cursos: list[CourseResult]
     trienio_ref: str
     modelo_disponivel: bool
+    # Por que a previsão não saiu, quando `modelo_disponivel` é falso — em vez de zeros mudos.
+    motivo_indisponivel: Optional[str] = None
+    # Ticket 07: `A1` e/ou `A2` vieram do Edital isolado de Etapa corrigido (ticket 06), não do
+    # Edital de médias e desvios do Cebraspe — caso da Turma viva, 2024-2026. Quando o Edital de
+    # verdade sair, `OFFICIAL_STATS` troca de valor e esta previsão muda; a tela precisa avisar.
+    usa_estatistica_derivada: bool = False
+
+
+class ChamadaCorte(BaseModel):
+    chamada: str
+    campus: str
+    turno: str
+    nota_corte: float
+
+
+class StrategyInput(BaseModel):
+    p1_pas1: float
+    p2_pas1: float
+    red_pas1: float
+    p1_pas2: float
+    p2_pas2: float
+    red_pas2: float
+    nota_alvo: float
+    ciclo_aluno: str
+    # Mesma razão do `PredictInput.lingua_e1`/`lingua_e2`: a Parte 1 é normalizada por língua
+    # estrangeira **por Etapa**, e a Calculadora reverte exatamente essa normalização para chegar
+    # ao P2 necessário. Sem a língua certa de cada Etapa, o P2 que a tela pede sai deslocado — e
+    # sempre na mesma direção, por Aluno. Obrigatórias, sem default, pelo mesmo motivo do
+    # Preditor (ticket 04 §5.3).
+    lingua_e1: Literal["inglesa", "francesa", "espanhola"]
+    lingua_e2: Literal["inglesa", "francesa", "espanhola"]
+    p1_override: Optional[float] = None
+    red_override: Optional[float] = None
+    base_projecao: str = "Utilizar Projeção Tendência"
+    # Ticket 12 (Ano-Âncora): quando a Etapa 3 do Aluno ainda não aconteceu, cada um dos cinco
+    # cenários precisa da Nota de Corte do curso no **triênio correspondente ao Ano-Âncora**
+    # (Ano-Âncora 2025 → triênio 2023-2025), não só do `nota_alvo` de um triênio só. Opcionais e
+    # com default retrocompatível: sem `curso_alvo`, os cinco cenários caem de volta a comparar
+    # contra o único `nota_alvo` que o cliente já resolveu — a mesma resposta de antes do ticket.
+    curso_alvo: Optional[str] = None
+    cota: str = "Sistema Universal"
+    semestre: str = "1°"
+
+
+class AnoAncoraResultado(BaseModel):
+    """Um cenário do Ano-Âncora (ticket 12): "e se a minha Etapa 3 for como a de `ano`?".
+
+    Amarra junto a estatística da Etapa 3 daquele ano (dificuldade da prova) e a Nota de Corte do
+    curso no triênio correspondente (concorrência) — as duas variam juntas, nunca uma combinação
+    que não aconteceu.
+    """
+    ano: int
+    trienio_corte: str
+    nota_corte: float
+    p1_estimado: float
+    p2_necessario: float
+    red_estimada: float
+    total_pas3: float
+    arg_pas3_necessario: float
+    status: str
+    mensagem: str
+
+
+class StrategyResponse(BaseModel):
+    p1_estimado: float
+    p2_necessario: float
+    red_estimada: float
+    total_pas3: float
+    arg_pas3_necessario: float
+    status: str
+    mensagem: str
+    prob_hist: float
+    amostra: int
+    p1_ia: float
+    red_ia: float
+    # Os cinco cenários do Ano-Âncora, mais recente primeiro — vazio quando a Etapa 3 do próprio
+    # triênio do Aluno já foi publicada (aí a resposta acima já é exata, nenhum cenário precisa
+    # ser simulado). Os campos únicos acima replicam `anos_ancora[0]` quando ele existe, para que
+    # um cliente que não sabe do ticket 12 continue lendo a mesma forma de sempre.
+    anos_ancora: list[AnoAncoraResultado] = []

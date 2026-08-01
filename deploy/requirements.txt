@@ -1,0 +1,6 @@
+# Só usado pelos scripts de publicação/busca deste diretório — nunca entra na imagem de
+# runtime (requirements-api.txt é o que a etapa `runtime` do Dockerfile instala).
+huggingface_hub==1.26.0
+# `publicar_pacote.py` usa pandas para construir o Derivado (pas_intelligence.derivado_deploy)
+# antes de subir — mesma versão pinada de requirements-api.txt.
+pandas==3.0.3

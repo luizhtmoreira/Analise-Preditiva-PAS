@@ -2,13 +2,24 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand/BrandMark";
-import { fetchPredict, fetchCourses } from "@/lib/api";
-import type { PredictResponse, CourseResult } from "@/lib/types";
+import { PublicHeader } from "@/components/public/PublicHeader";
+import { fetchPredict, fetchCourses, fetchCorteEvolucao, fetchCourseChamadas } from "@/lib/api";
+import type { PredictResponse, CourseResult, CorteEvolucao, ChamadaCorte } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 
 /* ─── constants ─────────────────────────────────────────────────── */
 
 const TRIENIOS = ["2024-2026", "2023-2025", "2022-2024"];
+// O Cebraspe normaliza a Parte 1 por língua estrangeira e não publica qual língua cada
+// candidato fez. Perguntar custa um campo e evita viés sistemático contra quem fez espanhol
+// ou francês — em (2024, Etapa 2) a diferença entre as médias passou de um desvio inteiro.
+const LINGUAS = [
+  { valor: "inglesa", rotulo: "Inglês" },
+  { valor: "espanhola", rotulo: "Espanhol" },
+  { valor: "francesa", rotulo: "Francês" },
+];
 const COTAS = [
   "Sistema Universal",
   "L1 - Escola Pública + Renda ≤ 1,5 SM + PPI",
@@ -17,20 +28,22 @@ const COTAS = [
   "L10 - Escola Pública",
 ];
 
-// Paleta da identidade (docs/identidade-visual.md) sobre fundo Azul UnB escuro
+// Paleta clara da landing (docs/identidade-visual.md) — Azul UnB como tinta,
+// não como fundo. `onDark` guarda os tons que só valem dentro do banner navy.
 const C = {
-  bg:       "#002147",
-  surface:  "rgba(255,255,255,0.05)",
-  border:   "rgba(255,255,255,0.13)",
-  borderHi: "rgba(0,174,239,0.5)",
-  text:     "#FFFFFF",
-  dim:      "rgba(255,255,255,0.55)",
-  faint:    "rgba(255,255,255,0.3)",
+  page:     "#F8F9FA",
+  surface:  "#FFFFFF",
+  border:   "rgba(0,0,0,0.05)",
+  hairline: "#E2E8F0",
+  text:     "#002147",
+  dim:      "#4A5568",
+  faint:    "#718096",
+  label:    "#00843D",
   cyan:     "#00AEEF",
   cyanSoft: "#7FD8F7",
-  green:    "#00C26A",
-  red:      "#FF6B6B",
-  amber:    "#FFC25E",
+  green:    "#00843D",
+  red:      "#B71C1C",
+  amber:    "#F57F17",
 } as const;
 
 /* ─── global styles injected once ──────────────────────────────── */
@@ -56,40 +69,38 @@ const GLOBAL_STYLES = `
 
   .bar-grow { animation: predBarGrow 1.2s cubic-bezier(.16,1,.3,1) both; animation-delay: 0.5s; }
 
-  .pred-stepper { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 12px; transition: border-color .2s; }
-  .pred-stepper:focus-within { border-color: rgba(0,174,239,0.6); }
-  .pred-stepper:focus-within .pred-stepper-num { color: #00AEEF !important; }
+  .pred-stepper { background: #F8F9FA; border: 1px solid rgba(0,0,0,0.10); border-radius: 12px; transition: border-color .2s, box-shadow .2s; }
+  .pred-stepper:focus-within { border-color: #00843D; box-shadow: 0 0 0 3px rgba(0,132,61,0.10); }
+  .pred-stepper:focus-within .pred-stepper-num { color: #00843D !important; }
 
-  .pred-btn-adj { background: transparent; border: none; cursor: pointer; padding: 0 18px; color: rgba(255,255,255,0.35); font-size: 22px; font-weight: 300; transition: color .15s; line-height: 1; }
-  .pred-btn-adj:hover { color: #00AEEF; }
+  .pred-btn-adj { background: transparent; border: none; cursor: pointer; padding: 0 18px; color: #718096; font-size: 22px; font-weight: 300; transition: color .15s; line-height: 1; }
+  .pred-btn-adj:hover { color: #00843D; }
 
   .pred-cta { transition: transform .2s, box-shadow .3s, background .2s, opacity .2s; }
-  .pred-cta:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,174,239,0.45) !important; background: #33C1F3 !important; }
+  .pred-cta:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,174,239,0.40) !important; background: #33C1F3 !important; }
+  .pred-cta:active:not(:disabled) { transform: scale(0.98); }
 
-  .pred-row:hover td { background: rgba(255,255,255,0.04) !important; }
+  .pred-row:hover td { background: #F8F9FA !important; }
 
-  .pred-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 16px; }
+  .pred-card { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.05); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
 
   @keyframes gateBackdrop { from { opacity: 0; } to { opacity: 1; } }
   @keyframes gateSlide { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
   .gate-backdrop { animation: gateBackdrop 0.2s ease both; }
   .gate-modal { animation: gateSlide 0.28s cubic-bezier(.16,1,.3,1) both; }
 
-  .pred-select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; color: #fff; padding: 10px 14px; font-size: 13px; font-family: var(--font-body), sans-serif; width: 100%; outline: none; transition: border-color .2s; appearance: none; cursor: pointer; }
-  .pred-select:focus { border-color: rgba(0,174,239,0.6); }
+  .pred-select { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.15); border-radius: 12px; color: #002147; padding: 11px 14px; font-size: 13px; font-weight: 500; font-family: var(--font-body), sans-serif; width: 100%; outline: none; transition: border-color .2s, box-shadow .2s; appearance: none; cursor: pointer; }
+  .pred-select:focus { border-color: #00843D; box-shadow: 0 0 0 3px rgba(0,132,61,0.10); }
 
-  .pred-combo-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; color: #fff; padding: 10px 14px; font-size: 13px; font-family: var(--font-body), sans-serif; width: 100%; outline: none; transition: border-color .2s; }
-  .pred-combo-input:focus { border-color: rgba(0,174,239,0.6); }
-  .pred-combo-input::placeholder { color: rgba(255,255,255,0.3); }
+  .pred-combo-input { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.15); border-radius: 12px; color: #002147; padding: 11px 14px; font-size: 13px; font-weight: 500; font-family: var(--font-body), sans-serif; width: 100%; outline: none; transition: border-color .2s, box-shadow .2s; }
+  .pred-combo-input:focus { border-color: #00843D; box-shadow: 0 0 0 3px rgba(0,132,61,0.10); }
+  .pred-combo-input::placeholder { color: #718096; }
 
-  .pred-dropdown { background: #00305F; border: 1px solid rgba(0,174,239,0.3); border-radius: 12px; box-shadow: 0 16px 48px rgba(0,10,25,0.6); overflow: hidden; }
-  .pred-dropdown-item { padding: 9px 14px; font-size: 12.5px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all .15s; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .pred-dropdown-item:hover { background: rgba(0,174,239,0.15); color: #fff; }
-
-  .pred-grid-bg {
-    background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
-    background-size: 56px 56px;
-  }
+  /* Dropdown navy — o contraste que a landing usa nos seletores */
+  .pred-dropdown { background: #001730; border: 1px solid rgba(0,132,61,0.55); border-radius: 12px; box-shadow: 0 15px 30px rgba(0,0,0,0.35); overflow: hidden; }
+  .pred-dropdown-item { padding: 10px 16px; font-size: 12.5px; color: rgba(255,255,255,0.85); cursor: pointer; transition: all .15s; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .pred-dropdown-item:last-child { border-bottom: none; }
+  .pred-dropdown-item:hover { background: #00843D; color: #fff; font-weight: 700; }
 
   /* grids empilham no mobile, 2 colunas a partir de 640px */
   .pred-grid-2 { display: grid; grid-template-columns: 1fr; gap: 14px; }
@@ -99,8 +110,8 @@ const GLOBAL_STYLES = `
     .pred-grid-cfg { grid-template-columns: 1fr 1fr; }
   }
 
-  .section-label { font-family: var(--font-geist-mono), monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: #7FD8F7; display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-  .section-label::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, rgba(0,174,239,0.35), transparent); }
+  .section-label { font-family: var(--font-geist-mono), monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #00843D; display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: #E2E8F0; }
 
   @media (prefers-reduced-motion: reduce) {
     .pred-result, .bar-grow { animation: none; }
@@ -119,7 +130,7 @@ function StepperInput({ label, value, onChange, step = 0.5, min = -100, max = 10
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim }}>
+      <span className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim }}>
         {label}
       </span>
       <div className="pred-stepper" style={{ display: "flex", alignItems: "stretch", height: 48 }}>
@@ -129,7 +140,7 @@ function StepperInput({ label, value, onChange, step = 0.5, min = -100, max = 10
           onChange={(e) => onChange(e.target.value)}
           className="pred-stepper-num mono"
           style={{
-            flex: 1, textAlign: "center", fontSize: 17, fontWeight: 700, background: "transparent",
+            flex: 1, textAlign: "center", fontSize: 17, fontWeight: 800, background: "transparent",
             border: "none", outline: "none", color: C.text, width: 0,
           }}
         />
@@ -179,10 +190,23 @@ function CourseCombobox({ value, onChange, courses }: {
   );
 }
 
+/**
+ * O número da previsão é o clímax da página — vai no único bloco escuro que a
+ * estética da landing admite (o banner navy→verde), do mesmo jeito que o CTA
+ * final. Tudo em volta permanece claro.
+ */
 function ArgCard({ result }: { result: PredictResponse }) {
-  const range = (result.arg_max - result.arg_min) || 1;
-  const pct = Math.min(100, Math.max(0, ((result.arg_previsto - result.arg_min) / range) * 100));
-
+  // Nem faixa `±` nem EB PAS 3 aqui, e os dois por motivos diferentes.
+  //
+  // A faixa: `previsto ± 13,49` aparecia sem rótulo e acertava 63% — 1 em cada 3 candidatos
+  // terminava fora do intervalo que a tela lhe mostrou. Rotulá-la a 80% deixaria o número
+  // honesto, mas ele responde uma pergunta que o candidato não fez: ele quer saber em que curso
+  // entra, não entre que valores a nota dele cai. A Largura de Incerteza continua trabalhando —
+  // é ela que produz as probabilidades por curso logo abaixo (ADR-0012 §7).
+  //
+  // O EB PAS 3: era uma **segunda** previsão, de um modelo independente, que discordava desta
+  // sobre "passa ou não passa" em 11% dos candidatos. Voltará derivado do Argumento, por
+  // aritmética, quando o Estimador Auxiliar e o Ano-Âncora existirem (ticket 04 §7.1).
   return (
     <div className="pred-result pred-result-1" style={{ position: "relative", overflow: "hidden" }}>
       <div style={{
@@ -200,43 +224,51 @@ function ArgCard({ result }: { result: PredictResponse }) {
               <span className="mono" style={{ fontSize: "clamp(48px, 14vw, 72px)", fontWeight: 700, lineHeight: 1, color: C.cyan, letterSpacing: "-0.02em", textShadow: "0 0 40px rgba(0,174,239,0.4)" }}>
                 {result.arg_previsto.toFixed(1)}
               </span>
-              <span style={{ fontSize: 16, color: C.dim }}>pts</span>
+              <span style={{ fontSize: 16, color: "rgba(255,255,255,0.7)" }}>pts</span>
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
-            <div style={{ textAlign: "right" }}>
-              <p className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(0,194,106,0.8)" }}>EB PAS 3 previsto</p>
-              <p className="mono" style={{ fontSize: 28, fontWeight: 700, color: C.green, lineHeight: 1.2 }}>
-                {result.eb_pas3_previsto.toFixed(1)}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4, textAlign: "right" }}>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>ref. {result.trienio_ref}</p>
+          </div>
+        </div>
+
+        {/* De onde o número vem: as duas Etapas já feitas são conta fechada, só a terceira é
+            previsão. Mostrar a decomposição é o que impede o Argumento de parecer um palpite. */}
+        <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid rgba(255,255,255,0.12)", display: "flex", gap: 24, flexWrap: "wrap" }}>
+          {[
+            { rotulo: "PAS 1 (feito)", valor: result.a1, peso: "×1" },
+            { rotulo: "PAS 2 (feito)", valor: result.a2, peso: "×2" },
+            { rotulo: "PAS 3 (previsto)", valor: result.a3_previsto, peso: "×3" },
+          ].map(({ rotulo, valor, peso }) => (
+            <div key={rotulo}>
+              <p className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 3 }}>
+                {rotulo} <span style={{ color: C.cyanSoft }}>{peso}</span>
+              </p>
+              <p className="mono" style={{ fontSize: 18, fontWeight: 600, color: C.cyan, lineHeight: 1.2 }}>
+                {valor.toFixed(2)}
               </p>
             </div>
-            <p style={{ fontSize: 11, color: C.faint, textAlign: "right" }}>
-              ref. {result.trienio_ref}
-            </p>
-          </div>
+          ))}
         </div>
 
-        {/* Intervalo de confiança */}
-        <div style={{ marginTop: 28 }}>
-          <div style={{ position: "relative", height: 6, borderRadius: 99, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, #FF6B6B 0%, #FFC25E 35%, #00C26A 100%)" }} />
-            <div
-              className="bar-grow"
-              style={{
-                position: "absolute", top: 0, bottom: 0, left: 0,
-                width: `${pct}%`, background: "transparent",
-                borderRight: "3px solid #fff",
-                boxShadow: "2px 0 12px rgba(255,255,255,0.6)",
-              }}
-            />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-            <span className="mono" style={{ fontSize: 11, color: C.faint }}>{result.arg_min.toFixed(1)}</span>
-            <span style={{ fontSize: 11, color: C.faint }}>intervalo ±13,49</span>
-            <span className="mono" style={{ fontSize: 11, color: C.faint }}>{result.arg_max.toFixed(1)}</span>
-          </div>
-        </div>
+        {result.etapa_1_ausente && (
+          <p style={{ marginTop: 16, fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
+            Calculado como candidato <strong style={{ color: "#FFFFFF" }}>sem PAS 1</strong> — o modelo usa
+            uma leitura própria para quem entrou no programa na Etapa 2.
+          </p>
+        )}
+
+        {/* Ticket 07: a Turma viva ainda não tem o Edital de médias e desvios do Cebraspe de
+            nenhuma Etapa — A1/A2 saem de uma estimativa (ticket 06), não da conta oficial, e
+            vão mudar quando o Edital sair. Sem isso o Aluno descobre a mudança sozinho depois. */}
+        {result.usa_estatistica_derivada && (
+          <p style={{ marginTop: 16, fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
+            Sua turma ainda não tem o Edital oficial de médias e desvios do Cebraspe — este
+            Argumento usa uma <strong style={{ color: "#FFFFFF" }}>estimativa</strong> para PAS 1
+            e/ou PAS 2, que será atualizada quando o Edital sair.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -249,47 +281,51 @@ function CursoAlvoCard({ c }: { c: CourseResult }) {
   const label  = isGood ? "Dentro do alcance" : isMid ? "Possível no 2º semestre" : "Fora do alcance atual";
 
   return (
-    <div className="pred-result pred-result-2 pred-card" style={{ padding: "24px 28px" }}>
-      <p className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 12 }}>
+    <div
+      className="pred-result pred-result-2 pred-card"
+      style={{ padding: "24px 28px", borderTop: `4px solid ${color}` }}
+    >
+      <p className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.label, fontWeight: 700, marginBottom: 12 }}>
         Curso Alvo · {c.semestre} semestre
       </p>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
         <div style={{ flex: 1 }}>
-          <p className="heading" style={{ fontSize: 17, fontWeight: 700, color: C.text, lineHeight: 1.3, letterSpacing: "-0.01em" }}>{c.curso}</p>
+          <p className="heading" style={{ fontSize: 17, fontWeight: 800, color: C.text, lineHeight: 1.3, letterSpacing: "-0.01em" }}>{c.curso}</p>
           <p style={{ fontSize: 13, color: C.dim, marginTop: 3 }}>
             {[c.turno, c.campus].filter(Boolean).join(" · ")}
           </p>
-          <p style={{ fontSize: 12, fontWeight: 600, color, marginTop: 8 }}>{label}</p>
+          <p style={{ fontSize: 12, fontWeight: 700, color, marginTop: 8 }}>{label}</p>
           <p className="mono" style={{ fontSize: 11, color: C.faint, marginTop: 4 }}>
             corte: {c.nota_corte.toFixed(3)}
           </p>
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
-          <span className="mono" style={{ fontSize: "clamp(40px, 11vw, 56px)", fontWeight: 700, lineHeight: 1, color }}>{c.prob.toFixed(0)}</span>
-          <span style={{ fontSize: 20, color }}>%</span>
+          <span className="mono" style={{ fontSize: "clamp(40px, 11vw, 56px)", fontWeight: 800, lineHeight: 1, color }}>{c.prob.toFixed(0)}</span>
+          <span style={{ fontSize: 20, fontWeight: 800, color }}>%</span>
         </div>
       </div>
-      <div style={{ marginTop: 16, height: 3, borderRadius: 99, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
+      <div style={{ marginTop: 16, height: 4, borderRadius: 99, background: C.hairline, overflow: "hidden" }}>
         <div className="bar-grow" style={{ height: "100%", borderRadius: 99, background: color, width: `${Math.min(c.prob, 100)}%` }} />
       </div>
     </div>
   );
 }
 
-function TopCursosTable({ cursos }: { cursos: CourseResult[] }) {
+function TopCursosTable({ cursos, isLoggedIn }: { cursos: CourseResult[]; isLoggedIn: boolean }) {
+  const router = useRouter();
   if (!cursos.length) return null;
   return (
     <div className="pred-result pred-result-4">
-      <p className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 14 }}>
-        Cursos acessíveis com sua previsão
+      <p className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.label, fontWeight: 700, marginBottom: 14 }}>
+        {isLoggedIn ? "Cursos acessíveis com sua previsão" : "Cursos mais próximos da sua previsão"}
       </p>
-      <div style={{ border: "1px solid rgba(255,255,255,0.13)", borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden", background: C.surface, boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <table style={{ width: "100%", minWidth: 560, borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: "rgba(255,255,255,0.05)" }}>
-              {["Curso", "Campus · Turno", "Sem.", "Corte", "Chance"].map((h) => (
-                <th key={h} className="mono" style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 500, letterSpacing: "0.12em", textTransform: "uppercase", color: C.cyanSoft, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>{h}</th>
+            <tr style={{ background: C.page }}>
+              {["Curso", "Chance", "Sem.", "Corte", "Campus · Turno"].map((h) => (
+                <th key={h} className="mono" style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.label, borderBottom: `1px solid ${C.hairline}` }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -297,17 +333,17 @@ function TopCursosTable({ cursos }: { cursos: CourseResult[] }) {
             {cursos.map((c, i) => {
               const color = c.prob >= 50 ? C.green : c.prob >= 30 ? C.amber : C.red;
               return (
-                <tr key={i} className="pred-row" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <td style={{ padding: "10px 16px", fontSize: 13, fontWeight: 600, color: C.text }}>{c.curso}</td>
-                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>
-                    {[c.campus, c.turno].filter(Boolean).join(" · ") || "—"}
-                  </td>
-                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>{c.semestre}</td>
-                  <td className="mono" style={{ padding: "10px 16px", fontSize: 12, color: C.cyanSoft }}>{c.nota_corte.toFixed(3)}</td>
+                <tr key={i} className="pred-row" style={{ borderBottom: `1px solid ${C.hairline}` }}>
+                  <td style={{ padding: "10px 16px", fontSize: 13, fontWeight: 700, color: C.text }}>{c.curso}</td>
                   <td style={{ padding: "10px 16px" }}>
-                    <span className="mono" style={{ display: "inline-block", padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, color, background: color + "20", border: `1px solid ${color}40` }}>
+                    <span className="mono" style={{ display: "inline-block", padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 800, color, background: color + "1A", border: `1px solid ${color}33` }}>
                       {c.prob.toFixed(0)}%
                     </span>
+                  </td>
+                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>{c.semestre}</td>
+                  <td className="mono" style={{ padding: "10px 16px", fontSize: 12, fontWeight: 600, color: C.dim }}>{c.nota_corte.toFixed(3)}</td>
+                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>
+                    {[c.campus, c.turno].filter(Boolean).join(" · ") || "—"}
                   </td>
                 </tr>
               );
@@ -316,93 +352,269 @@ function TopCursosTable({ cursos }: { cursos: CourseResult[] }) {
         </table>
         </div>
       </div>
+
+      {!isLoggedIn && (
+        <div
+          onClick={() => router.push("/auth/cadastro?next=/predict")}
+          style={{
+            marginTop: 16,
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderTop: `4px solid ${C.cyan}`,
+            borderRadius: 16,
+            padding: "18px 20px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+          }}
+          className="vp-card-lift"
+        >
+          <div style={{ flex: "1 1 280px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <span className="vp-eyebrow vp-eyebrow-cyan" style={{ fontSize: "0.68rem" }}>
+                Painel Multi-Curso
+              </span>
+            </div>
+            <h4 className="heading" style={{ fontSize: 15, fontWeight: 800, color: C.text, margin: "0 0 4px 0" }}>
+              Quer comparar suas chances em múltiplos cursos da UnB?
+            </h4>
+            <p style={{ fontSize: 12.5, color: C.dim, margin: 0, lineHeight: 1.5 }}>
+              Crie sua conta para simular vários cursos ao mesmo tempo e ver exatamente o <strong style={{ color: C.text }}>Quanto Falta</strong> no PAS 3.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push("/auth/cadastro?next=/predict");
+              }}
+              className="vp-btn vp-btn-cyan"
+              style={{ padding: "10px 16px", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}
+            >
+              <span>Criar Conta Grátis</span>
+              <span>→</span>
+            </button>
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push("/auth/entrar?next=/predict");
+              }}
+              style={{
+                fontSize: 12,
+                color: C.green,
+                fontWeight: 700,
+                cursor: "pointer",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+                whiteSpace: "nowrap",
+              }}
+              className="hover:opacity-80"
+            >
+              Entrar
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-/* ─── soft gate modal ───────────────────────────────────────────── */
+type CustomLabelProps = {
+  x?: number; y?: number;
+  value?: number | null;
+  index?: number;
+  highlightIndex: number;
+};
 
-function SoftGateModal({ onClose }: { onClose: () => void }) {
-  const router = useRouter();
+const CustomLabel = (props: CustomLabelProps) => {
+  const { x = 0, y = 0, value, index = 0, highlightIndex } = props;
+  if (value === null || value === undefined) return null;
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  const isHighlighted = index === highlightIndex;
+
+  if (isHighlighted) {
+    return (
+      <g>
+        {/* Etiqueta destacada do ponto mais recente */}
+        <rect
+          x={x - 42}
+          y={y - 34}
+          width={84}
+          height={20}
+          rx={4}
+          fill="#002147"
+          stroke="rgba(0,174,239,0.6)"
+          strokeWidth={1.5}
+        />
+        <text
+          x={x}
+          y={y - 20}
+          fill="#fff"
+          fontSize={10}
+          fontWeight="bold"
+          textAnchor="middle"
+          fontFamily="monospace"
+        >
+          {`Atual: ${value.toFixed(2)}`}
+        </text>
+        {/* Setinha para baixo, apontando o ponto */}
+        <polygon
+          points={`${x-4},${y-14} ${x+4},${y-14} ${x},${y-10}`}
+          fill="#002147"
+        />
+      </g>
+    );
+  }
 
   return (
-    <div
-      className="gate-backdrop"
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 100,
-        background: "rgba(0,10,25,0.75)", backdropFilter: "blur(6px)",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
-      }}
+    <text
+      x={x}
+      y={y - 12}
+      fill="#4A5568"
+      fontSize={11}
+      textAnchor="middle"
+      fontFamily="monospace"
     >
+      {value.toFixed(2)}
+    </text>
+  );
+};
+
+function CorteTendenciaCard({
+  curso,
+  campus,
+  turno,
+  semestre,
+  data,
+  highlightTrienio,
+}: {
+  curso: string;
+  campus: string;
+  turno: string;
+  semestre: string;
+  data: CorteEvolucao[];
+  highlightTrienio?: string;
+}) {
+  const chartData = useMemo(() => {
+    return data
+      .map((item) => {
+        // Formato triênio: "2023-2025" -> extrai "2025" como ano de término
+        const year = item.trienio.includes("-") ? item.trienio.split("-")[1] : item.trienio;
+        // Escolhe o corte do semestre ativo do curso_alvo (com segurança de fallback)
+        const corte = semestre.startsWith("1") ? item.corte_1sem : item.corte_2sem;
+        // Fallback se o semestre selecionado não tiver dados históricos
+        const finalCorte = corte !== null ? corte : (item.corte_1sem !== null ? item.corte_1sem : item.corte_2sem);
+
+        return {
+          year,
+          corte: finalCorte !== null ? Number(finalCorte.toFixed(2)) : null,
+          trienio: item.trienio,
+        };
+      })
+      .filter((item) => item.corte !== null);
+  }, [data, semestre]);
+
+  if (chartData.length === 0) return null;
+
+  // O ponto rotulado "Atual" tem que ser o mesmo triênio que a tabela "Histórico de
+  // Chamadas" usa (`highlightTrienio`, o `trienio_ref` calculado a partir do triênio do
+  // formulário) — não sempre o último ponto da série, senão os dois widgets descrevem
+  // triênios diferentes sob o mesmo card sem nenhuma indicação visual disso.
+  const highlightIndex = useMemo(() => {
+    const idx = highlightTrienio ? chartData.findIndex((d) => d.trienio === highlightTrienio) : -1;
+    return idx >= 0 ? idx : chartData.length - 1;
+  }, [chartData, highlightTrienio]);
+
+  return (
+    <div className="pred-result pred-result-trend" style={{ position: "relative", width: "100%", marginTop: 8 }}>
+      <p className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.label, fontWeight: 700, marginBottom: 14 }}>
+        Análise de Tendência de Corte: {curso}
+      </p>
+
       <div
-        className="gate-modal"
-        onClick={(e) => e.stopPropagation()}
+        className="pred-card"
         style={{
-          width: "100%", maxWidth: 420,
-          background: "linear-gradient(160deg, #002D5C 0%, #001A38 100%)",
-          border: "1px solid rgba(0,174,239,0.35)",
-          borderRadius: 24, padding: "36px 32px 32px",
+          borderTop: `4px solid ${C.cyan}`,
+          padding: "28px 20px 16px 12px",
+          height: 280,
           position: "relative",
         }}
       >
-        {/* Linha de destaque no topo */}
-        <div style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: 2, background: "linear-gradient(to right, transparent, #00AEEF, transparent)", borderRadius: 99 }} />
-
-        {/* Fechar */}
-        <button
-          onClick={onClose}
-          style={{ position: "absolute", top: 16, right: 18, background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 22, cursor: "pointer", lineHeight: 1, padding: 4 }}
-          aria-label="Fechar"
-        >×</button>
-
-        <p className="mono" style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 12 }}>
-          Painel Multi-Curso
-        </p>
-
-        <h2 className="heading" style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.025em", lineHeight: 1.2, color: "#fff", marginBottom: 10 }}>
-          Compare suas chances em <span style={{ color: C.cyan }}>vários cursos</span> de uma vez
-        </h2>
-
-        <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.6)", lineHeight: 1.65, marginBottom: 24 }}>
-          Crie uma conta gratuita para salvar seus dados e ver probabilidade + quanto você precisa tirar no PAS 3 para cada curso que te interessa.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button
-            onClick={() => router.push("/auth/cadastro?next=/predict")}
-            className="pred-cta"
-            style={{
-              width: "100%", padding: "14px", borderRadius: 12, border: "none",
-              background: C.cyan, color: "#002147", fontSize: 14, fontWeight: 700,
-              cursor: "pointer", fontFamily: "var(--font-body), sans-serif",
-              boxShadow: "0 8px 28px rgba(0,174,239,0.4)",
-            }}
-          >
-            Criar conta gratuita →
-          </button>
-          <button
-            onClick={() => router.push("/auth/entrar?next=/predict")}
-            style={{
-              width: "100%", padding: "13px", borderRadius: 12,
-              background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)",
-              color: "rgba(255,255,255,0.75)", fontSize: 14, cursor: "pointer",
-              fontFamily: "var(--font-body), sans-serif",
-            }}
-          >
-            Já tenho conta — entrar
-          </button>
+        {/* Subtítulo discreto no topo */}
+        <div style={{ position: "absolute", top: 12, left: 16, fontSize: 11, color: C.dim, fontWeight: 600 }}>
+          Tendência: {curso} ({campus} - {turno}) — {semestre.startsWith("1") || semestre.startsWith("2") ? `${semestre} Semestre` : "Semestre Geral"}
         </div>
 
-        <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 18 }}>
-          Gratuito para alunos · sem cartão de crédito
-        </p>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 35, right: 30, left: -20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,33,71,0.08)" vertical={false} />
+            <XAxis
+              dataKey="year"
+              stroke={C.faint}
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              dy={10}
+            />
+            <YAxis
+              stroke={C.faint}
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              domain={["dataMin - 10", "dataMax + 10"]}
+              dx={-5}
+            />
+            <Line
+              type="monotone"
+              dataKey="corte"
+              stroke={C.cyan}
+              strokeWidth={3}
+              dot={{ r: 5, stroke: C.cyan, strokeWidth: 2, fill: "#fff" }}
+              activeDot={{ r: 7, stroke: "#fff", strokeWidth: 2, fill: C.cyan }}
+              label={<CustomLabel highlightIndex={highlightIndex} />}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function ChamadasHistoricoTable({ chamadas }: { chamadas: ChamadaCorte[] }) {
+  if (!chamadas || chamadas.length === 0) return null;
+  return (
+    <div className="pred-result pred-result-chamadas" style={{ width: "100%", marginTop: 8 }}>
+      <p className="mono" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.label, fontWeight: 700, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
+        <span>🕥</span> Histórico de Chamadas (Lista de Espera)
+      </p>
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden", background: C.surface, boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <table style={{ width: "100%", minWidth: 500, borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: C.page }}>
+                {["Chamada", "Campus", "Turno", "Nota de Corte"].map((h) => (
+                  <th key={h} className="mono" style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.label, borderBottom: `1px solid ${C.hairline}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {chamadas.map((c, i) => (
+                <tr key={i} className="pred-row" style={{ borderBottom: `1px solid ${C.hairline}` }}>
+                  <td style={{ padding: "10px 16px", fontSize: 13, fontWeight: 700, color: C.text }}>{c.chamada}</td>
+                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>{c.campus.toUpperCase()}</td>
+                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>{c.turno.toUpperCase()}</td>
+                  <td className="mono" style={{ padding: "10px 16px", fontSize: 13, color: C.text, fontWeight: 800 }}>{c.nota_corte.toFixed(3)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -413,20 +625,106 @@ function SoftGateModal({ onClose }: { onClose: () => void }) {
 const emptyScores = () => ({ p1: "0", p2: "0", red: "0" });
 
 export function PreditorPage() {
+  const router = useRouter();
   const [pas1, setPas1] = useState(emptyScores());
   const [pas2, setPas2] = useState(emptyScores());
+  const [linguaE1, setLinguaE1] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
+  const [linguaE2, setLinguaE2] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
+  // O Cebraspe registra a língua por Etapa, não por Aluno — 13,9% trocam entre a Etapa 1 e a 2.
+  // O segundo campo começa pré-preenchido pelo primeiro (86% não trocam) mas fica editável; uma
+  // vez que o Aluno mexe nele diretamente, ele para de seguir o primeiro.
+  const [linguaE2Tocada, setLinguaE2Tocada] = useState(false);
+  function handleLinguaE1(v: "inglesa" | "francesa" | "espanhola") {
+    setLinguaE1(v);
+    if (!linguaE2Tocada) setLinguaE2(v);
+  }
+  function handleLinguaE2(v: "inglesa" | "francesa" | "espanhola") {
+    setLinguaE2Tocada(true);
+    setLinguaE2(v);
+  }
   const [cota, setCota] = useState("Sistema Universal");
   const [trienio, setTrienio] = useState("2024-2026");
   const [cursoAlvo, setCursoAlvo] = useState("");
+  const [semestre, setSemestre] = useState("Ambos");
   const [courses, setCourses] = useState<string[]>([]);
   const [result, setResult] = useState<PredictResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showGate, setShowGate] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  // Sem estado de "carregando" para estes dois: nenhuma parte da tela o lia, e ligá-lo dentro do
+  // efeito custava um render extra por diagnóstico. Os cards só aparecem quando o dado chega.
+  const [evolutionData, setEvolutionData] = useState<CorteEvolucao[] | null>(null);
+  const [chamadasData, setChamadasData] = useState<ChamadaCorte[] | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      console.log("Vetor PAS Auth Check - User:", user, "Error:", error);
+      if (user) {
+        setIsLoggedIn(true);
+        setUserId(user.id);
+
+        // Carrega notas e configuração salvas
+        supabase
+          .from("alunos_perfis")
+          .select("*")
+          .eq("id", user.id)
+          .single()
+          .then(({ data: profile, error }) => {
+            if (profile && !error) {
+              setPas1({
+                p1: String(profile.p1_pas1 ?? 0),
+                p2: String(profile.p2_pas1 ?? 0),
+                red: String(profile.red_pas1 ?? 0),
+              });
+              setPas2({
+                p1: String(profile.p1_pas2 ?? 0),
+                p2: String(profile.p2_pas2 ?? 0),
+                red: String(profile.red_pas2 ?? 0),
+              });
+              if (profile.cota) setCota(profile.cota);
+              if (profile.trienio) setTrienio(profile.trienio);
+              if (profile.curso_alvo) setCursoAlvo(profile.curso_alvo);
+            }
+          });
+      }
+    });
+  }, []);
 
   useEffect(() => {
     fetchCourses(cota, trienio).then(setCourses).catch(() => setCourses([]));
   }, [cota, trienio]);
+
+  useEffect(() => {
+    if (result && result.curso_alvo_result) {
+      const c = result.curso_alvo_result;
+      const courseKey = `${c.curso} - ${c.turno} (${c.campus})`;
+
+      const targetTrienio = result.trienio_ref || trienio;
+      const targetSemestre = c.semestre;
+
+      // `vivo` derruba a resposta de um curso alvo que o Aluno já trocou — sem ele, um
+      // diagnóstico antigo que demorasse mais sobrescreveria o card do diagnóstico novo.
+      let vivo = true;
+
+      fetchCorteEvolucao(courseKey, cota)
+        .then((data) => { if (vivo) setEvolutionData(data); })
+        .catch((err) => {
+          console.error("Erro ao buscar evolução do corte:", err);
+          if (vivo) setEvolutionData(null);
+        });
+
+      fetchCourseChamadas(courseKey, cota, targetTrienio, targetSemestre)
+        .then((data) => { if (vivo) setChamadasData(data); })
+        .catch((err) => {
+          console.error("Erro ao buscar histórico de chamadas:", err);
+          if (vivo) setChamadasData(null);
+        });
+
+      return () => { vivo = false; };
+    }
+  }, [result, cota]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -435,9 +733,30 @@ export function PreditorPage() {
       const data = await fetchPredict({
         p1_pas1: Number(pas1.p1), p2_pas1: Number(pas1.p2), red_pas1: Number(pas1.red),
         p1_pas2: Number(pas2.p1), p2_pas2: Number(pas2.p2), red_pas2: Number(pas2.red),
-        cota, trienio, curso_alvo: cursoAlvo.trim() || undefined,
+        lingua_e1: linguaE1, lingua_e2: linguaE2, cota, trienio,
+        curso_alvo: isLoggedIn ? (cursoAlvo.trim() || undefined) : undefined,
+        is_logged_in: isLoggedIn,
+        semestre: isLoggedIn ? semestre : "Ambos",
       });
       setResult(data);
+
+      // Salva notas e configuração do aluno se estiver logado
+      if (isLoggedIn && userId) {
+        const supabase = createClient();
+        await supabase.from("alunos_perfis").upsert({
+          id: userId,
+          p1_pas1: Number(pas1.p1),
+          p2_pas1: Number(pas1.p2),
+          red_pas1: Number(pas1.red),
+          p1_pas2: Number(pas2.p1),
+          p2_pas2: Number(pas2.p2),
+          red_pas2: Number(pas2.red),
+          cota: cota,
+          trienio: trienio,
+          curso_alvo: cursoAlvo.trim() || null,
+          updated_at: new Date().toISOString()
+        });
+      }
     } catch {
       setError("Serviço indisponível. Verifique se a API está rodando.");
     } finally {
@@ -448,64 +767,81 @@ export function PreditorPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLES }} />
-      {showGate && <SoftGateModal onClose={() => setShowGate(false)} />}
 
       <div
-        className="pred-root"
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(168deg, #002147 0%, #003366 60%, #003A70 100%)",
-          color: C.text,
-        }}
+        className="pred-root antialiased selection:bg-[#00843D] selection:text-white"
+        style={{ minHeight: "100vh", background: C.page, color: C.text }}
       >
 
-        {/* ── Header ── */}
-        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,26,53,0.75)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 40 }}>
-          <div style={{ maxWidth: 680, margin: "0 auto", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <BrandMark sublabel="Preditor PAS 3" />
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div className="hidden sm:flex" style={{ alignItems: "center", gap: 8 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.green, boxShadow: `0 0 8px ${C.green}`, display: "inline-block" }} />
-                <span style={{ fontSize: 11, color: C.dim }}>Modelo ativo</span>
-              </div>
-              <Link href="/" style={{ fontSize: 12, color: C.dim, textDecoration: "none" }} className="hover:!text-white transition-colors">
-                ← Início
-              </Link>
-            </div>
-          </div>
-        </div>
+        <PublicHeader />
 
-        {/* ── Conteúdo ── */}
-        <div className="pred-grid-bg">
-          <div style={{ maxWidth: 680, margin: "0 auto", padding: "48px 20px 96px" }}>
-
-            <p className="mono" style={{ fontSize: 12, letterSpacing: "0.22em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 14 }}>
-              Análise preditiva · PAS/UnB
-            </p>
-            <h1 className="heading" style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 10, color: "#fff" }}>
-              Preditor <span style={{ color: C.cyan }}>PAS 3</span>
+        {/* ── Lavagem radial estendida por toda a página ── */}
+        <div className="vp-wash relative bg-white overflow-hidden min-h-[calc(100vh-65px)]">
+          {/* Cabeçalho */}
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "56px 24px 24px" }}>
+            <span className="vp-eyebrow">Análise preditiva · PAS/UnB</span>
+            <h1 className="heading" style={{ fontSize: "clamp(34px, 7vw, 44px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.08, margin: "24px 0 12px", color: C.text }}>
+              Preditor <span style={{ color: C.green }}>PAS 3</span>
             </h1>
-            <p style={{ fontSize: 15, color: C.dim, marginBottom: 40, maxWidth: 440, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 17, color: C.dim, maxWidth: 480, lineHeight: 1.6 }}>
               Insira suas notas do PAS 1 e 2 — o modelo prevê seu Argumento Final e suas chances nos cursos da UnB.
             </p>
+          </div>
+
+          {/* ── Conteúdo ── */}
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "16px 24px 96px" }}>
 
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
               {/* PAS 1 + PAS 2 grid */}
               <div className="pred-grid-2">
                 {[
-                  { title: "PAS 1", state: pas1, set: setPas1 },
-                  { title: "PAS 2", state: pas2, set: setPas2 },
-                ].map(({ title, state, set }) => (
+                  { title: "PAS 1", state: pas1, set: setPas1, lingua: linguaE1, onLingua: handleLinguaE1 },
+                  { title: "PAS 2", state: pas2, set: setPas2, lingua: linguaE2, onLingua: handleLinguaE2 },
+                ].map(({ title, state, set, lingua, onLingua }) => (
                   <div key={title} className="pred-card" style={{ padding: "22px 20px" }}>
                     <div className="section-label">{title}</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div>
+                        <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                          Língua Estrangeira — {title}
+                        </p>
+                        <div style={{ position: "relative" }}>
+                          <select
+                            value={lingua}
+                            onChange={(e) => onLingua(e.target.value as typeof lingua)}
+                            className="pred-select"
+                          >
+                            {LINGUAS.map((l) => <option key={l.valor} value={l.valor}>{l.rotulo}</option>)}
+                          </select>
+                          <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.faint, pointerEvents: "none", fontSize: 12 }}>▾</span>
+                        </div>
+                      </div>
                       <StepperInput label="P1 — Língua Estrangeira" value={state.p1}
                         onChange={(v) => set((s) => ({ ...s, p1: v }))} step={0.5} min={-20} max={20} />
                       <StepperInput label="P2 — Conhecimentos" value={state.p2}
                         onChange={(v) => set((s) => ({ ...s, p2: v }))} step={0.5} min={-100} max={100} />
                       <StepperInput label="Redação" value={state.red}
                         onChange={(v) => set((s) => ({ ...s, red: v }))} step={0.1} min={0} max={10} />
+                      {/* Quem entrou no programa na Etapa 2 é uma população que o modelo trata
+                          por conta própria (8,7% da base histórica), não um caso de nota zero.
+                          Sem o botão, o candidato teria que adivinhar que "tudo zero" é a
+                          codificação — e quem adivinhasse errado receberia a previsão de alguém
+                          que fez a prova e zerou. */}
+                      {title === "PAS 1" && (
+                        <button
+                          type="button"
+                          onClick={() => set({ p1: "0", p2: "0", red: "0" })}
+                          style={{
+                            alignSelf: "flex-start", marginTop: 2, padding: 0, border: "none",
+                            background: "transparent", color: C.cyanSoft, fontSize: 11,
+                            textDecoration: "underline", cursor: "pointer",
+                            fontFamily: "var(--font-body), sans-serif",
+                          }}
+                        >
+                          Não fiz o PAS 1
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -514,92 +850,184 @@ export function PreditorPage() {
               {/* Config */}
               <div className="pred-card" style={{ padding: "22px 20px" }}>
                 <div className="section-label">Configuração do Candidato</div>
-                <div className="pred-grid-cfg">
+                <div className="pred-grid-cfg" style={isLoggedIn ? { gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" } : undefined}>
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Triênio</p>
+                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Triênio</p>
                     <div style={{ position: "relative" }}>
                       <select value={trienio} onChange={(e) => setTrienio(e.target.value)} className="pred-select">
-                        {TRIENIOS.map((t) => <option key={t} style={{ background: "#00305F" }}>{t}</option>)}
+                        {TRIENIOS.map((t) => <option key={t}>{t}</option>)}
                       </select>
-                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.dim, pointerEvents: "none", fontSize: 12 }}>▾</span>
+                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.faint, pointerEvents: "none", fontSize: 12 }}>▾</span>
                     </div>
                   </div>
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Sistema de Cotas</p>
+                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Sistema de Cotas</p>
                     <div style={{ position: "relative" }}>
                       <select value={cota} onChange={(e) => setCota(e.target.value)} className="pred-select">
-                        {COTAS.map((c) => <option key={c} style={{ background: "#00305F" }}>{c}</option>)}
+                        {COTAS.map((c) => <option key={c}>{c}</option>)}
                       </select>
-                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.dim, pointerEvents: "none", fontSize: 12 }}>▾</span>
+                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.faint, pointerEvents: "none", fontSize: 12 }}>▾</span>
                     </div>
                   </div>
+                  {isLoggedIn && (
+                    <div>
+                      <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Semestre</p>
+                      <div style={{ position: "relative" }}>
+                        <select value={semestre} onChange={(e) => setSemestre(e.target.value)} className="pred-select">
+                          {["Ambos", "1°", "2°"].map((s) => (
+                            <option key={s} value={s}>
+                              {s === "Ambos" ? "Ambos" : `${s} Semestre`}
+                            </option>
+                          ))}
+                        </select>
+                        <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.faint, pointerEvents: "none", fontSize: 12 }}>▾</span>
+                      </div>
+                    </div>
+                  )}
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                    <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
                       Curso Alvo <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400, fontSize: 11, color: C.faint }}>opcional</span>
                     </p>
-                    <CourseCombobox value={cursoAlvo} onChange={setCursoAlvo} courses={courses} />
+                    {isLoggedIn ? (
+                      <CourseCombobox value={cursoAlvo} onChange={setCursoAlvo} courses={courses} />
+                    ) : (
+                      <div
+                        onClick={() => router.push("/auth/cadastro?next=/predict")}
+                        style={{
+                          background: C.page,
+                          border: `1px solid ${C.border}`,
+                          borderTop: `4px solid ${C.cyan}`,
+                          borderRadius: 16,
+                          padding: "18px",
+                          cursor: "pointer",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                        }}
+                        className="vp-card-lift"
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
+                          <span className="vp-eyebrow vp-eyebrow-cyan" style={{ fontSize: "0.68rem" }}>
+                            Recurso para Aluno Cadastrado
+                          </span>
+                        </div>
+
+                        <h4 className="heading" style={{ fontSize: 15, fontWeight: 800, color: C.text, margin: "0 0 4px 0", display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>🔒</span> Desbloquear seleção de Curso Alvo
+                        </h4>
+
+                        <p style={{ fontSize: 12.5, color: C.dim, margin: "0 0 14px 0", lineHeight: 1.5 }}>
+                          Selecione seu curso pretendido para calcular a probabilidade exata de aprovação, conferir as notas de corte para cada chamada e ver os 10 cursos que você está mais bem colocado.
+                        </p>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, paddingTop: 4 }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push("/auth/cadastro?next=/predict");
+                            }}
+                            className="vp-btn vp-btn-cyan"
+                            style={{ padding: "9px 14px", fontSize: 12, fontWeight: 700 }}
+                          >
+                            <span>Cadastrar-se grátis</span>
+                            <span>→</span>
+                          </button>
+
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push("/auth/entrar?next=/predict");
+                            }}
+                            style={{
+                              fontSize: 12,
+                              color: C.green,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                              textUnderlineOffset: 3,
+                            }}
+                            className="hover:opacity-80"
+                          >
+                            Já tem conta? Entrar
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* CTA */}
-              <button type="submit" disabled={loading} className="pred-cta"
-                style={{
-                  width: "100%", padding: "16px", borderRadius: 14, border: "none",
-                  background: C.cyan, color: "#002147", fontSize: 15, fontWeight: 700,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  fontFamily: "var(--font-body), sans-serif", opacity: loading ? 0.6 : 1,
-                  boxShadow: "0 8px 30px rgba(0,174,239,0.35)",
-                }}>
+              <button type="submit" disabled={loading} className="pred-cta vp-btn vp-btn-cyan"
+                style={{ width: "100%", padding: "16px", fontSize: 15, fontWeight: 700 }}>
                 {loading ? "Calculando previsão…" : "Calcular minha previsão →"}
               </button>
             </form>
 
             {/* Error */}
             {error && (
-              <div style={{ marginTop: 14, padding: "12px 16px", borderRadius: 10, background: "rgba(255,107,107,0.12)", border: "1px solid rgba(255,107,107,0.3)", color: C.red, fontSize: 13 }}>
+              <div style={{ marginTop: 14, padding: "12px 16px", borderRadius: 12, background: "#FFCDD2", border: "1px solid rgba(183,28,28,0.2)", color: C.red, fontSize: 13, fontWeight: 600 }}>
                 {error}
               </div>
             )}
 
+            {/* Sem previsão: acontece enquanto o Edital de média e desvio de uma das Etapas já
+                feitas não foi publicado/extraído. A1 e A2 são a parte exata da conta — aproximá-los
+                seria pior que não responder. */}
+            {result && !result.modelo_disponivel && (
+              <div style={{ marginTop: 40, padding: "20px 24px", borderRadius: 16, background: "rgba(255,194,94,0.08)", border: "1px solid rgba(255,194,94,0.28)" }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: C.amber, marginBottom: 6 }}>
+                  Ainda não dá para calcular o seu triênio
+                </p>
+                <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>
+                  O Argumento das Etapas que você já fez depende da média e do desvio-padrão que o
+                  Cebraspe publica no Edital de cada Etapa, e o do seu triênio ainda não saiu.
+                  Preferimos não responder a responder por estimativa.
+                </p>
+              </div>
+            )}
+
             {/* Results */}
-            {result && (
-              <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 14 }}>
-                <p className="mono" style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: C.cyanSoft, marginBottom: 4 }}>
+            {result && result.modelo_disponivel && (
+              <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 16 }}>
+                <p className="mono" style={{ fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: C.label, fontWeight: 700, marginBottom: 4 }}>
                   Diagnóstico gerado
                 </p>
                 <ArgCard result={result} />
                 {result.curso_alvo_result && <CursoAlvoCard c={result.curso_alvo_result} />}
-                <TopCursosTable cursos={result.top_cursos} />
-
-                {/* Soft gate CTA */}
-                <div style={{
-                  marginTop: 8, padding: "20px 24px",
-                  border: "1px dashed rgba(0,174,239,0.3)", borderRadius: 16,
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  gap: 16, flexWrap: "wrap",
-                  background: "rgba(0,174,239,0.04)",
-                }}>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}>
-                      Quer comparar com outros cursos?
-                    </p>
-                    <p style={{ fontSize: 12, color: C.dim }}>
-                      Crie uma conta e veja suas chances em vários cursos de uma vez.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowGate(true)}
-                    className="pred-cta"
+                {result.curso_alvo_sem_dados_cota && (
+                  <div
                     style={{
-                      padding: "10px 20px", borderRadius: 10, border: "1px solid rgba(0,174,239,0.5)",
-                      background: "transparent", color: C.cyan, fontSize: 13, fontWeight: 600,
-                      cursor: "pointer", fontFamily: "var(--font-body), sans-serif", whiteSpace: "nowrap",
+                      background: "#FFF8E1",
+                      border: "1px solid rgba(245,127,23,0.25)",
+                      borderLeft: `8px solid ${C.amber}`,
+                      borderRadius: "0 16px 16px 0",
+                      padding: "16px 18px",
                     }}
                   >
-                    + Adicionar curso
-                  </button>
-                </div>
+                    <p style={{ fontSize: 12.5, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      <strong>Sem dados para esse curso nessa cota:</strong> a cota selecionada não
+                      teve nota de corte publicada para o curso escolhido nesse triênio. Tente outra
+                      cota ou o Sistema Universal.
+                    </p>
+                  </div>
+                )}
+
+                {result.curso_alvo_result && evolutionData && (
+                  <CorteTendenciaCard
+                    curso={result.curso_alvo_result.curso}
+                    campus={result.curso_alvo_result.campus}
+                    turno={result.curso_alvo_result.turno}
+                    semestre={result.curso_alvo_result.semestre}
+                    data={evolutionData}
+                    highlightTrienio={result.trienio_ref || trienio}
+                  />
+                )}
+
+                {result.curso_alvo_result && chamadasData && (
+                  <ChamadasHistoricoTable chamadas={chamadasData} />
+                )}
+
+                <TopCursosTable cursos={result.top_cursos} isLoggedIn={isLoggedIn} />
               </div>
             )}
 

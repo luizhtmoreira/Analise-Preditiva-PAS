@@ -1,4 +1,6 @@
-export type RiscoStatus = "green" | "yellow" | "red";
+// `grey` = sem previsão: o Edital de média e desvio de uma das Etapas já feitas pelo Aluno
+// ainda não foi extraído, então A1/A2 não são exatos e a API recusa em vez de aproximar.
+export type RiscoStatus = "green" | "yellow" | "red" | "grey";
 
 export interface CourseResult {
   curso: string;
@@ -10,14 +12,25 @@ export interface CourseResult {
 }
 
 export interface PredictResponse {
-  eb_pas3_previsto: number;
   arg_previsto: number;
-  arg_min: number;
-  arg_max: number;
+  /** Aritmética exata sobre as notas digitadas, não previsão: Argumento Final = a1 + 2·a2 + 3·a3. */
+  a1: number;
+  a2: number;
+  a3_previsto: number;
+  /** Largura de Incerteza em pontos de Argumento Final. Alimenta a probabilidade; não vira `±` na tela. */
+  largura_incerteza: number;
+  etapa_1_ausente: boolean;
   curso_alvo_result: CourseResult | null;
+  /** `curso_alvo_result` nulo pode ser "não escolheu curso" ou "essa cota não tem corte
+   *  publicado pra esse curso" — este campo distingue os dois pra tela poder avisar o Aluno. */
+  curso_alvo_sem_dados_cota: boolean;
   top_cursos: CourseResult[];
   trienio_ref: string;
   modelo_disponivel: boolean;
+  motivo_indisponivel: string | null;
+  /** A1 e/ou A2 vieram do Edital isolado de Etapa corrigido (ticket 06), não do Edital de
+   *  médias e desvios do Cebraspe — caso da Turma viva. Muda quando o Edital de verdade sair. */
+  usa_estatistica_derivada: boolean;
 }
 
 export interface StudentResult {
@@ -42,13 +55,16 @@ export interface GestaoKpis {
   n_red: number;
   n_yellow: number;
   n_green: number;
+  n_sem_previsao: number;
 }
 
 export interface GestaoResponse {
   results: StudentResult[];
   kpis: GestaoKpis;
   trienio_ref: string;
+  /** Só "o pacote de modelo carregou". Aluno sem previsão é `kpis.n_sem_previsao`. */
   modelo_disponivel: boolean;
+  motivo_sem_previsao: string | null;
 }
 
 /* ── Análise Temporal (pública) ───────────────────────────────── */
@@ -71,6 +87,13 @@ export interface CorteEvolucao {
   trienio: string;
   corte_1sem: number | null;
   corte_2sem: number | null;
+}
+
+export interface ChamadaCorte {
+  chamada: string;
+  campus: string;
+  turno: string;
+  nota_corte: number;
 }
 
 /* ── Escola vs. População ─────────────────────────────────────── */
@@ -145,3 +168,35 @@ export interface StudentRow {
   p2_pas2: number;
   red_pas2: number;
 }
+
+export interface AnoAncoraResultado {
+  ano: number;
+  trienio_corte: string;
+  nota_corte: number;
+  p1_estimado: number;
+  p2_necessario: number;
+  red_estimada: number;
+  total_pas3: number;
+  arg_pas3_necessario: number;
+  status: string;
+  mensagem: string;
+}
+
+export interface StrategyResponse {
+  p1_estimado: number;
+  p2_necessario: number;
+  red_estimada: number;
+  total_pas3: number;
+  arg_pas3_necessario: number;
+  status: string;
+  mensagem: string;
+  prob_hist: number;
+  amostra: number;
+  p1_ia: number;
+  red_ia: number;
+  // Ticket 12 — Ano-Âncora: cinco cenários (o mais recente primeiro), um por Etapa 3 real e já
+  // publicada, quando a do próprio triênio do Aluno ainda não aconteceu. Vazio quando a Etapa 3
+  // do triênio já é real — aí os campos únicos acima já são exatos, nenhum cenário é simulado.
+  anos_ancora: AnoAncoraResultado[];
+}
+

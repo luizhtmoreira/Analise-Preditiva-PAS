@@ -1,0 +1,56 @@
+# 09 — Conjunto de features: o que o modelo pode ver, e o que o aluno consegue informar
+
+**Type:** task
+**Status:** concluído — 2026-07-28
+**Blocked by:** 06 (resolvido), 07 (resolvido)
+
+## Question
+
+Quais colunas entram como feature? A base nova traz muito mais do que as **6 features atuais**
+(`[eb_p1, red_p1, eb_p2, red_p2, c_eb, c_red]`), e cada candidata tem um custo que não é
+estatístico.
+
+**Candidatas disponíveis no `resultado_final.csv`:**
+
+| Candidata | Por que pode ajudar | O custo |
+|---|---|---|
+| `curso` | trajetórias diferem muito entre MEDICINA e PEDAGOGIA | ~100 categorias; e o aluno do app pode ainda não ter escolhido curso |
+| `campus` / `turno` | proxies grosseiros de perfil | idem, mais fracos |
+| `lingua_e1/e2/e3` | a Parte 1 tem média e desvio **oficialmente distintos por língua** — ignorar isso é erro conhecido | o aluno sabe informar; barato |
+| `perfil_cota` e as 5 booleanas | perfil socioeconômico correlaciona com trajetória | dado sensível; pedir isso ao aluno tem custo de produto e ético |
+| `trienio` | captura o efeito de ano | não existe para o aluno futuro — só como efeito temporal, nunca como categoria direta |
+| derivadas de trajetória | delta e aceleração entre Etapas 1 e 2 | grátis, já derivável das 6 atuais |
+
+**A restrição que manda:** uma feature só serve se o aluno da escola parceira conseguir
+fornecê-la no app **no momento da previsão**. Uma feature que melhora o holdout mas não existe
+em produção é uma melhoria fantasma. Este ticket precisa medir o ganho *e* confirmar a
+disponibilidade com o produto — se a feature exige mudar a tela de entrada, o ganho tem que
+pagar por isso.
+
+**Armadilha específica do `trienio`:** ele é o mais tentador e o mais perigoso. Como feature
+categórica, o modelo aprende o ano e não generaliza para o ano seguinte — que é o único ano que
+importa. Se entrar, entra como variável temporal contínua ou como ponderação (ticket 08), nunca
+como categoria.
+
+**Armadilha do `curso`:** ele pode estar codificando a Nota de Corte por vias tortas, o que
+aproxima o modelo do alvo por um caminho que não é aprendizado sobre o aluno. Verificar antes
+de aceitar o ganho.
+
+- [x] Ganho de cada bloco de feature medido isoladamente sobre o holdout do ticket 06, contra a
+      linha de base de 6 features do ticket 07 — só `curso` (+0,43%), `lingua_e*` (+0,35%) e as
+      **derivadas de trajetória** (+2,13%) ganham; o resto empata ou piora
+- [x] Disponibilidade de cada feature vencedora confirmada com o produto — a única vencedora que
+      paga o custo (derivadas de trajetória) é derivada de dado já coletado; nada exige mudar a
+      tela
+- [x] `lingua_e*` avaliada especificamente contra a normalização de P1 por língua do
+      `pas_constants.py` — a normalização já está embutida em `A1`/`A2`, por isso o ganho do
+      bruto é pequeno
+- [x] `trienio` tratado como efeito temporal ou ponderação, nunca como categoria — testado como
+      numérica contínua e descartado por piorar 1,43%
+- [x] Verificado se `curso` está atuando como proxy da Nota de Corte — correlação 0,126, fraca
+- [x] Decisão sobre features de cota tomada explicitamente, incluindo a dimensão ética de pedir
+      esse dado ao aluno — rejeitada por não ter ganho estatístico (−0,07%); a ética não precisou
+      decidir
+- [x] Conjunto final de features declarado, com o ganho de cada uma — as 6 legadas + `A1`/`A2` +
+      3 derivadas de trajetória, RMSE 5,057 (+2,13% sobre a base)
+- [x] Relatório em `relatorios/09-conjunto-de-features.md`

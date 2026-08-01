@@ -40,12 +40,12 @@ export default function LoginPage() {
           </p>
         </div>
         <div className="relative -mx-10 -mb-10">
-          <CurvaGaussiana showLabels={false} />
+          <CurvaGaussiana tone="dark" showLabels={false} />
         </div>
       </div>
 
       {/* Formulário */}
-      <div className="flex items-center justify-center bg-[#F5F5F7] px-6 py-12">
+      <div className="flex items-center justify-center bg-[#F8F9FA] px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="lg:hidden mb-8 flex justify-center">
             <BrandMark light={false} sublabel="Painel da escola" />

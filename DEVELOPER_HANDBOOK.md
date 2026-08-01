@@ -30,10 +30,10 @@ O ecossistema de branches do Git é dividido estrategicamente para gerenciar o p
 
 1.  **`main` (Página de Espera - PRODUÇÃO)**:
     *   **Propósito**: Contém o site de pré-lançamento do projeto com o formulário de lista de espera (waitlist) e a história do fundador.
-    *   **Status**: **100% Implementado e Implantado**. É a branch de produção oficial conectada à Vercel. Qualquer alteração aqui é implantada automaticamente na URL pública ([vetorpas.com.br](https://vetorpas.com.br)).
-2.  **`feat/nextjs-frontend` (Painel e Landing Page Principal - DESENVOLVIMENTO)**:
-    *   **Propósito**: Contém a landing page principal definitiva e a interface completa de dashboards do portal do aluno e da escola.
-    *   **Status**: **Em desenvolvimento constante (Local)**. Esta branch ainda não foi mergeada para a `main`, portanto suas páginas não estão acessíveis em produção.
+    *   **Status**: **100% Implementado e Implantado**. É a branch de produção da URL pública ([vetorpas.com.br](https://vetorpas.com.br)). **O deploy não é automático**: o projeto na Vercel é CLI-only, sem integração Git — `git push` nesta branch não publica nada, é preciso rodar o deploy manualmente. Consequência prática: qualquer coisa cravada no build do frontend (ex.: a URL da API) é cara de mudar sob pressão — ver ADR-0014.
+2.  **`feat/nextjs-frontend` (Painel e Landing Page Principal - INCORPORADA)**:
+    *   **Propósito**: Continha a landing page principal definitiva, o Preditor com semestre e curso alvo, a Calculadora de Estratégia, o header público, a recuperação de senha e a tela de perfil.
+    *   **Status**: **Integrada em `feat/pdf-extraction`** (ticket 10 da rodada *Publicar o Site*), que é o tronco unificado — modelo promovido, pipeline de treino, extração e portal no mesmo lugar. Ainda não mergeada para a `main`, portanto suas páginas não estão acessíveis em produção.
 3.  **`feat/grill`**:
     *   **Propósito**: Branch secundária de testes e experimentações.
 
@@ -58,7 +58,7 @@ graph TD
 
 1.  **Frontend (Diretório `landing-page/`)**:
     *   **Tecnologia**: **Next.js (App Router)** com React, TypeScript e TailwindCSS (v4).
-    *   **Status de Deploy**: **Ativo em Produção na Vercel**. A branch `main` serve a Landing Page Temporária de espera. A branch `feat/nextjs-frontend` (portal completo) é executada apenas localmente (`http://localhost:3000`) por enquanto.
+    *   **Status de Deploy**: **Ativo em Produção na Vercel**. A branch `main` serve a Landing Page Temporária de espera. O portal completo vive em `feat/pdf-extraction` e é executado apenas localmente (`http://localhost:3000`) por enquanto. O deploy da Vercel é manual (CLI), sem integração Git: um `git push` na `main` não publica nada.
 2.  **Backend API (Diretório `api/`)**:
     *   **Tecnologia**: **FastAPI** (Python).
     *   **Status de Deploy**: **Apenas Local (localhost:8000)**. A hospedagem no **Hugging Face Spaces** (via Docker) está planejada e decidida na arquitetura (ADR 0004), mas ainda não foi ativada em produção. A URL de produção da Vercel precisará apontar para o link do Space através da variável `API_URL` assim que o deploy for feito.
@@ -104,7 +104,7 @@ A raiz do monorepo é estruturada da seguinte forma:
 │   ├── components/         # Componentes React (UI, brand, dashboard)
 │   ├── lib/                # Utilitários, chamadas Supabase e tipos
 │   └── README.md           # Guia de setup do frontend
-├── models/                 # Modelos de Machine Learning (.joblib) - Gitignored
+├── models/                 # Pacote de modelo do PAS 3 (pas3/) e artefatos aposentados - Gitignored
 ├── scripts/                # Scripts utilitários de importação de dados e mocks
 ├── src/                    # Código core do backend em Python
 │   ├── pas_intelligence/   # O "cérebro" de Inteligência Artificial do sistema
@@ -135,28 +135,65 @@ As notas no PAS/UnB não são somas simples. O Cebraspe calcula a nota em relaç
     $$AF = NP_1 \times 0.72 + NP_2 \times 8.28 + NP_3 \times 1.00$$
     *Nota: A redação das etapas 1 e 2 não tem peso direto, mas a redação do PAS 3 possui um cálculo integrado ao edital.*
 *   **Engenharia Reversa ("Quanto Falta"):**
-    O módulo `target_calculator.py` recebe a nota de corte alvo (Argumento Final) e os EBs conhecidos do aluno no PAS 1 e PAS 2. Ele resolve a equação reversamente para encontrar o $EB_3$ necessário. Como as médias e desvios oficiais do PAS 3 ainda não foram divulgados, o sistema projeta esses dados usando regressão linear histórica antes de calcular o alvo.
+    O módulo `target_calculator.py` recebe a nota de corte alvo (Argumento Final) e os EBs conhecidos do aluno no PAS 1 e PAS 2. Ele resolve a equação reversamente para encontrar o $EB_3$ necessário.
+
+    As médias e desvios entram pela **porta única** `stats_da_prova(ano, etapa, língua)`, que lê o `OFFICIAL_STATS` — a mesma porta que o treino e o Preditor usam, para que o `A1` que a tela mostra seja o `A1` com que o modelo foi treinado. Quando o PAS 3 do triênio do aluno ainda não aconteceu, entra o **Ano-Âncora**: a Etapa 3 real e já publicada mais recente. A projeção por regressão linear (`STATS_PAS3_TREND`) foi **descartada** — o ADR-0009 registra o porquê: ela colapsa numa precisão fingida uma incerteza que o Ano-Âncora mostra de graça, e produz combinações que nunca existiram, como o corte de um ano com a prova de outro. Se o Edital de uma das Etapas *já feitas* não saiu, a rota não é calculável e a API responde `status: "indisponivel"` com o motivo, em vez de números estimados.
 
 ---
 
 ## 6. O Motor de IA (`src/pas_intelligence/`)
 
-O coração preditivo do Vetor PAS é implementado através de um **Ensemble Dinâmico** que orquestra 4 algoritmos de Machine Learning:
+O coração preditivo do Vetor PAS é **um modelo só, mais aritmética**. Até o ticket 13 eram oito
+artefatos `.joblib` orquestrados por um ensemble dinâmico; a medição que os aposentou está no
+ADR-0011 e no ADR-0009.
 
-### O Ensemble Dinâmico (`ensemble.py`)
-Em vez de usar o mesmo modelo para todos, o sistema decide o peso de cada algoritmo baseado na **Volatilidade (Coeficiente de Variação - CV)** do histórico de Escores Brutos do aluno nas Etapas 1 e 2:
-*   **Baixa Volatilidade (Aluno Estável)**: Se as notas do aluno são lineares e previsíveis, o modelo de **Regressão Linear** assume o maior peso.
-*   **Alta Volatilidade (Aluno Errático)**: Se o histórico do aluno oscila bruscamente, os modelos baseados em árvores (**LightGBM** e **Random Forest**) e redes neurais (**MLP**) ganham pesos maiores devido à capacidade de capturar padrões não-lineares.
-*   Essa ponderação dinâmica é ajustada via curva sigmoide.
+### A cadeia (ADR-0009 — Alvo Canônico)
 
-### Modelos Serializados (`models/`)
-Os modelos foram treinados com base em uma amostra real de **48.758 alunos** de 7 triênios históricos (2016 - 2024):
-*   `modelo_lgbm.joblib` / `modelo_arg_final.joblib` — Modelos LightGBM campeões em acurácia para dados tabulares erráticos.
-*   `modelo_rf.joblib` — Regressor de Floresta Aleatória.
-*   `modelo_linear.joblib` — Regressor Linear simples e estável.
-*   `modelo_mlp.joblib` — Rede neural Multi-Layer Perceptron (100, 50).
-*   `meta_model.joblib` — Classificador RandomForest que ajuda a ponderar/escolher a melhor combinação de modelos base por aluno.
-*   `scaler.joblib` / `meta_scaler.joblib` — Scalers StandardScaler para normalização de features.
+```
+Â3                     ← a ÚNICA previsão do modelo (Argumento da Etapa 3)
+A1, A2                 ← aritmética exata sobre as notas que o Aluno já tem na mão
+Argumento Final        = A1 + 2·A2 + 3·Â3
+σ(Argumento Final)     = 3 × σ(A3)          — exato: A1 e A2 têm variância zero
+```
+
+Para quem já fez PAS 1 e PAS 2, `A1` e `A2` **não são previsão**: as notas estão na mão e as
+médias/desvios oficiais daqueles anos são públicos. Prever o Argumento Final inteiro gastava
+capacidade estatística reaprendendo, de forma aproximada, ⅗ do peso de uma conta já exata — e
+produzia um número que podia contradizer as notas que o próprio Aluno digitou.
+
+### O pacote de modelo (`models/pas3/`, servido por `model_package.py`)
+
+| Arquivo | O que é |
+|---|---|
+| `modelo_pas3.txt` | LightGBM em texto nativo (`n_estimators=400, learning_rate=0,01, num_leaves=15`) |
+| `manifest.json` | Proveniência (hash do CSV, commit, versões), features, métricas e a Largura de Incerteza |
+
+**Vetor de features canônico (11), na ordem — a ordem é contrato:**
+`[a1, a2, EB_PAS1, Red_PAS1, EB_PAS2, Red_PAS2, Cresc_EB, Cresc_Red, cresc_eb_pct,
+cresc_red_pct, sinal_cresc_eb]`. Sem scaler. Passar o vetor trocado não levanta erro — devolve
+número errado, que foi o que invalidou o ADR-0007. `PacoteDeModelo.carregar` recusa um pacote
+cuja ordem não bata com a canônica.
+
+**Aluno sem Etapa 1** (as três notas da Etapa 1 iguais a zero): as oito colunas derivadas da
+Etapa 1 viram **`NaN` nativo**, não zero literal, e a Largura de Incerteza é a da classe dele.
+A detecção acontece em runtime, e o formulário tem um botão *"Não fiz o PAS 1"* — sem ela o
+modelo leria "fez a prova e tirou zero" e erraria a **previsão**, não só a largura.
+
+### A Largura de Incerteza
+
+`P(X > Nota de Corte)` com `X ~ N(Argumento previsto, largura²)`. A largura vem do
+`manifest.json`, **um número por classe de Aluno**, medido fora-da-dobra. Antes era a constante
+`13,49` em `statistics.py` e `gestao_service.py` — resíduo de um modelo aposentado, que ficava
+errado por construção a cada troca de modelo sem que nada avisasse (ADR-0012). Hoje
+`calculate_approval_probability` **exige** o parâmetro: não há valor padrão para esquecer.
+
+### Quando a API não responde
+
+`A1` e `A2` dependem da média e do desvio que o Cebraspe publica no Edital de cada Etapa. Para o
+triênio vivo (2024-2026) faltam `(2024, Etapa 1)` e `(2025, Etapa 2)`, e enquanto faltarem a API
+devolve `modelo_disponivel: False` com o motivo — nunca uma aproximação silenciosa, porque `A1` e
+`A2` são a parte *exata* da conta. Na Gestão de Ativos o Aluno aparece como `grey` / *Sem
+previsão*, que é diferente de *Alto Risco*.
 
 ---
 
@@ -208,3 +245,22 @@ streamlit run app/streamlit_app.py
 ```bash
 pytest tests/
 ```
+
+### 5. Regerar os modelos do PAS 3 (ticket 12 — pipeline reprodutível)
+
+`scripts/treinar_pipeline.py` é o único comando que vai do `resultado_final.csv` ao pacote do
+modelo (`.scratch/treino-modelos-pas3/` documenta as decisões que ele codifica):
+
+```bash
+.venv/bin/python scripts/treinar_pipeline.py data/saida-nova/resultado_final.csv \
+    --saida .scratch/treino-modelos-pas3/pacotes/pas3-$(date +%Y-%m-%d)
+```
+
+Falha (código de saída ≠ 0) se o modelo treinado não bater o Portão 1 do ticket 07 — nesse caso
+não escreve nada em `--saida`. `--forcar "motivo"` publica mesmo assim, gravando o motivo no
+`manifest.json`.
+
+O comando **não** promove. Promover é copiar `modelo_pas3.txt` e `manifest.json` do pacote para
+`models/pas3/`, preservando o anterior ao lado para poder reverter — é o que o ticket 13 fez em
+2026-07-28, com o pacote que a API carrega hoje. O triênio lacrado (2023/2025) nunca entra no
+treino do artefato; ele foi lido uma única vez, por `scripts/lacre_ticket13.py`.

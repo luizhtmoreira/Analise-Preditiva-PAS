@@ -9,6 +9,7 @@ import {
   FileText,
   Target,
   TrendingUp,
+  Calculator,
   LogOut,
   Menu,
   X,
@@ -25,9 +26,11 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
 ];
 
 const PUBLIC_NAV: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/predict",  label: "Preditor PAS 3",   icon: Target },
-  { href: "/temporal", label: "Análise Temporal", icon: TrendingUp },
+  { href: "/predict",     label: "Preditor PAS 3",            icon: Target },
+  { href: "/calculadora", label: "Calculadora de Estratégia", icon: Calculator },
+  { href: "/temporal",    label: "Análise Temporal",          icon: TrendingUp },
 ];
+
 
 const TENANT_LABELS: Record<string, string> = {
   marista: "Colégio Marista",
@@ -48,9 +51,9 @@ function NavLink({ href, label, icon: Icon, active }: {
       }`}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-[#00AEEF]" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-[var(--vp-cyan)]" />
       )}
-      <Icon size={16} strokeWidth={2} className={active ? "text-[#00AEEF]" : ""} />
+      <Icon size={16} strokeWidth={2} className={active ? "text-[var(--vp-cyan)]" : ""} />
       <span>{label}</span>
     </Link>
   );
@@ -96,8 +99,15 @@ export function DashboardSidebar({ tenant, userEmail }: { tenant: string; userEm
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  // Fecha o drawer ao navegar e trava o scroll do body enquanto aberto
-  useEffect(() => setOpen(false), [pathname]);
+  // Fecha o drawer ao navegar: ajuste de estado durante o render quando a rota muda, e não um
+  // efeito — o efeito renderizava o drawer aberto na rota nova por um quadro antes de fechar.
+  const [rotaAnterior, setRotaAnterior] = useState(pathname);
+  if (rotaAnterior !== pathname) {
+    setRotaAnterior(pathname);
+    setOpen(false);
+  }
+
+  // Trava o scroll do body enquanto o drawer está aberto
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -117,7 +127,7 @@ export function DashboardSidebar({ tenant, userEmail }: { tenant: string; userEm
       {/* ── Top bar (mobile) ── */}
       <div
         className="md:hidden flex-shrink-0 sticky top-0 z-50 flex items-center justify-between px-4 h-14 border-b border-white/10 print:hidden"
-        style={{ background: "#002147" }}
+        style={{ background: "var(--vp-ink)" }}
       >
         <BrandMark sublabel={sublabel} />
         <button
@@ -139,7 +149,7 @@ export function DashboardSidebar({ tenant, userEmail }: { tenant: string; userEm
           />
           <nav
             className="absolute left-0 top-0 bottom-0 w-72 max-w-[85vw] flex flex-col gap-0.5 py-5 px-4 overflow-y-auto shadow-2xl"
-            style={{ background: "linear-gradient(180deg, #002147 0%, #003366 100%)" }}
+            style={{ background: "linear-gradient(180deg, var(--vp-ink) 0%, #003366 100%)" }}
           >
             <NavSections pathname={pathname} />
             <UserFooter userEmail={userEmail} onLogout={handleLogout} />

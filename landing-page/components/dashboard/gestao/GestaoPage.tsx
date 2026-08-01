@@ -120,9 +120,18 @@ export function GestaoPage({ data }: { data: GestaoResponse }) {
           <h1 className="font-heading text-2xl font-bold tracking-[-0.025em] text-[#1D1D1F]">
             Gestão de Ativos
           </h1>
+          {/* Dois avisos, porque são dois problemas: o modelo não ter carregado é ação de quem
+              opera o sistema; o Edital de uma turma não ter saído é espera. Um aviso só mandaria
+              a coordenação procurar o problema errado. */}
           {!modelo_disponivel && (
+            <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-[#FFCDD2] text-[#B71C1C]">
+              Modelo não carregou — nenhuma previsão nesta página
+            </span>
+          )}
+          {modelo_disponivel && kpis.n_sem_previsao > 0 && (
             <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-[#FFF9C4] text-[#F57F17]">
-              Modelo não disponível — probabilidades zeradas
+              {kpis.n_sem_previsao} aluno{kpis.n_sem_previsao > 1 ? "s" : ""} sem previsão — o
+              Edital de média e desvio do triênio deles ainda não saiu
             </span>
           )}
         </div>
