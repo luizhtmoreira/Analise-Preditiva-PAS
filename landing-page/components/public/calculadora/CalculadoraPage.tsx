@@ -267,13 +267,20 @@ export function CalculadoraPage() {
     return () => { vivo = false; };
   }, [cota, trienio]);
 
-  // Automatically fetch target cutoff
+  // Automatically fetch target cutoff. Ao trocar a cota, `courses` é a lista da cota nova
+  // (efeito acima) mas `cursoAlvo` continua com o texto da seleção anterior — se essa chave
+  // não existir na cota nova, o guard abaixo tem que zerar `notaAlvo` explicitamente, senão
+  // a tela fica mostrando o corte da cota anterior como se fosse da cota selecionada agora.
   useEffect(() => {
+    let vivo = true;
     if (cursoAlvo && courses.includes(cursoAlvo)) {
       fetchCoursesCutoff(cursoAlvo, cota, trienio, semestre)
-        .then((res) => setNotaAlvo(String(res.cutoff)))
-        .catch(() => setNotaAlvo("0"));
+        .then((res) => { if (vivo) setNotaAlvo(String(res.cutoff)); })
+        .catch(() => { if (vivo) setNotaAlvo("0"); });
+    } else {
+      setNotaAlvo("0");
     }
+    return () => { vivo = false; };
   }, [cursoAlvo, cota, trienio, semestre, courses]);
 
   // Fetch AI Estimates whenever grades or trienio changes

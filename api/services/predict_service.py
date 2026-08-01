@@ -367,7 +367,11 @@ def get_course_cutoff(curso: str, cota: str, trienio: str, semestre: str) -> flo
     passou; 1ª chamada do 2º semestre é o teto mais alto que ainda não passou).
     """
     calls = get_course_chamadas(curso, cota, trienio, semestre)
-    scores = [c["nota_corte"] for c in calls if c["nota_corte"] > 0]
+    # `!= 0`, não `> 0`: o Argumento Final é legitimamente negativo (~49% da base, ver
+    # CLAUDE.md) — filtrar por positivo descartava a nota de corte real de cotas como L9/L10
+    # e caía no sentinela de "sem dado" (`get_course_chamadas` usa `0.0` só para NaN, linha
+    # 328 acima), fazendo o Argumento de Corte Alvo da Calculadora parecer travado em 0.
+    scores = [c["nota_corte"] for c in calls if c["nota_corte"] != 0]
     if not scores:
         return 0.0
     return min(scores) if semestre == "1°" else max(scores)
