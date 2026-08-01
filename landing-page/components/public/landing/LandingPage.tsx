@@ -473,7 +473,7 @@ export function LandingPage() {
         />
 
         {/* ============ SEÇÃO 1: HERO ============ */}
-        <header className="relative z-10 text-[#002147] pt-16 pb-0 sm:pt-24">
+        <header className="relative z-10 text-[#002147] pt-16 pb-10 sm:pb-0 sm:pt-24">
           <div className="relative z-10 max-w-6xl mx-auto px-6">
             <div className="max-w-3xl">
               <span className="landing-reveal vp-eyebrow">
@@ -517,7 +517,7 @@ export function LandingPage() {
         </header>
 
         {/* A curva é o produto: distribuição do argumento previsto vs. nota de corte */}
-        <div className="relative z-0 -mt-6 sm:-mt-16">
+        <div className="relative z-0 mt-4 sm:-mt-16">
           <CurvaGaussiana />
         </div>
 
