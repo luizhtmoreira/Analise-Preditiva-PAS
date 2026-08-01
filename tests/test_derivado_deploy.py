@@ -14,6 +14,7 @@ import pandas as pd  # type: ignore
 import pytest  # type: ignore
 
 from pas_intelligence.derivado_deploy import (
+    COLUNAS_CHAMADAS,
     COLUNAS_DERIVADO,
     COLUNAS_NOTAS_CORTE,
     COLUNAS_RESULTADO_FINAL,
@@ -22,6 +23,12 @@ from pas_intelligence.derivado_deploy import (
 
 NOTAS_CORTE_CSV = """trienio,semestre,campus,curso,turno,sistema,sistema_nome,chamada,nota_corte,inscricao,nome,checksum_fecha
 2020/2022,2,DARCY RIBEIRO,MEDICINA (BACHARELADO),DIURNO,1,Universal,2,199162.872,20168784,Daniel Mota Cardoso,False
+"""
+
+# Histórico de chamadas — mesmo schema de `notas_corte.csv`, uma linha por chamada.
+CHAMADAS_CSV = """trienio,semestre,campus,curso,turno,sistema,sistema_nome,chamada,nota_corte,checksum_fecha
+2020/2022,2,DARCY RIBEIRO,MEDICINA (BACHARELADO),DIURNO,1,Universal,1,220.5,True
+2020/2022,2,DARCY RIBEIRO,MEDICINA (BACHARELADO),DIURNO,1,Universal,2,199162.872,False
 """
 
 RESULTADO_FINAL_CSV = """inscricao,nome,trienio,eb_p1_e1,eb_p2_e1,eb_p1_e2,eb_p2_e2,eb_p1_e3,eb_p2_e3,argumento_final,checksum_fecha
@@ -36,6 +43,7 @@ def origem(tmp_path: Path) -> Path:
     d.mkdir()
     (d / "notas_corte.csv").write_text(NOTAS_CORTE_CSV, encoding="utf-8")
     (d / "resultado_final.csv").write_text(RESULTADO_FINAL_CSV, encoding="utf-8")
+    (d / "chamadas.csv").write_text(CHAMADAS_CSV, encoding="utf-8")
     return d
 
 
@@ -58,6 +66,9 @@ def test_colunas_do_derivado_batem_exatamente_com_a_fonte_unica(tmp_path: Path, 
     df_resultado = pd.read_csv(destino / "resultado_final.csv")
     assert set(df_resultado.columns) == set(COLUNAS_RESULTADO_FINAL)
 
+    df_chamadas = pd.read_csv(destino / "chamadas.csv")
+    assert set(df_chamadas.columns) == set(COLUNAS_CHAMADAS)
+
 
 def test_nenhuma_linha_e_descartada_no_derivado(tmp_path: Path, origem: Path):
     """Cortar coluna e cortar linha são decisões independentes — o filtro `checksum_fecha` é
@@ -67,6 +78,7 @@ def test_nenhuma_linha_e_descartada_no_derivado(tmp_path: Path, origem: Path):
 
     assert escritos["resultado_final.csv"] == (2, len(COLUNAS_RESULTADO_FINAL))
     assert escritos["notas_corte.csv"] == (1, len(COLUNAS_NOTAS_CORTE))
+    assert escritos["chamadas.csv"] == (2, len(COLUNAS_CHAMADAS))
 
 
 def test_arquivo_ausente_na_origem_e_ignorado(tmp_path: Path):

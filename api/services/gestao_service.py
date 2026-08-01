@@ -30,7 +30,7 @@ from pas_intelligence.model_package import (
     PacoteDeModelo,
     PacoteIndisponivelError,
 )
-from pas_intelligence.derivado_deploy import COLUNAS_NOTAS_CORTE, COLUNAS_RESULTADO_FINAL
+from pas_intelligence.derivado_deploy import COLUNAS_CHAMADAS, COLUNAS_NOTAS_CORTE, COLUNAS_RESULTADO_FINAL
 from pas_intelligence.pas_constants import OFFICIAL_STATS
 from pas_intelligence.training_dataset import (
     EstatisticaOficialAusenteError,
@@ -108,6 +108,7 @@ _pacote: Optional[PacoteDeModelo] = None
 responde `modelo_disponivel: False` em vez de inventar zeros."""
 
 _df_corte: Optional[pd.DataFrame] = None
+_df_chamadas: Optional[pd.DataFrame] = None
 _df_cohort: Optional[pd.DataFrame] = None
 
 
@@ -121,8 +122,61 @@ def _normaliza_campus(campus: str) -> str:
     return base.upper()
 
 
+def _normalizar_cortes(df: pd.DataFrame) -> pd.DataFrame:
+    """Traduz o schema minúsculo que a frente de extração escreve (`trienio`, `sistema_nome`,
+    `curso`, ...) para o schema que o resto do serviço espera (`Trienio`, `Semestre`,
+    `Sistema_Nome`, `Curso_Limpo`, `Min`). Compartilhada por `notas_corte.csv` (Nota de Corte
+    oficial, só a maior chamada) e `chamadas.csv` (histórico, todas as chamadas) — mesmo schema
+    de origem, mesma sujeira a normalizar.
+    """
+    # `checksum_fecha == True` é o único filtro necessário: a contaminação de escala (ex.
+    # MEDICINA/Darcy Ribeiro/2020-2022 saindo com corte=199.162,872) sempre falha o checksum.
+    df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
+    # "Sub judice" é uma rodada de convocação por decisão judicial, à parte da concorrência
+    # normal do curso — sua nota de corte não é comparável à do curso e não deve aparecer
+    # como se fosse (item 2 do relatório de 2026-07-31).
+    df = df[~df["curso"].astype(str).str.contains("SUB JUDICE", case=False, na=False)]
+    df = df.rename(columns={
+        "curso": "Curso_Limpo",
+        "campus": "Campus",
+        "turno": "Turno",
+        "sistema_nome": "Sistema_Nome",
+        "nota_corte": "Min",
+        "chamada": "Chamada",
+    })
+    df["Curso_Limpo"] = df["Curso_Limpo"].replace(CURSO_ALIASES)
+    df["Trienio"] = df["trienio"].astype(str).str.replace("/", "-", regex=False)
+    # `semestre` vem como "1"/"2"/"desconhecido"; sem saber o semestre a linha não pode ser
+    # roteada para nenhum dos dois mapas de corte, então ela sai (perda medida: ~427 de 4.986).
+    df["Semestre"] = df["semestre"].map({"1": "1°", "2": "2°"})
+    df = df.dropna(subset=["Semestre"]).drop(columns=["trienio", "semestre"])
+    # Turno ausente não é sempre "curso de período integral" (ex. Enfermagem, Farmácia,
+    # que nunca reportam Turno em trienio nenhum): alguns cursos com Turno normal só
+    # passaram a discriminá-lo no Edital a partir de um certo ano (ex. as Engenharias do
+    # Gama, sem Turno até 2021/2023 e "DIURNO" a partir de 2022/2024). Preencher tudo com
+    # "Integral" cria, para esses cursos, uma chave de curso que não bate com a grafia mais
+    # recente do mesmo curso — mesmo defeito do `CURSO_ALIASES`, agora na dimensão Turno.
+    # Herda o Turno mais comum que o próprio curso já reportou em algum trienio; só cai
+    # para "Integral" quando o curso nunca reportou Turno.
+    turno_modal = df.dropna(subset=["Turno"]).groupby("Curso_Limpo")["Turno"].agg(lambda s: s.mode().iat[0])
+    df["Turno"] = df.apply(
+        lambda r: r["Turno"] if pd.notna(r["Turno"]) else turno_modal.get(r["Curso_Limpo"], "Integral"),
+        axis=1,
+    )
+    # O nome do Sistema Universal mudou de rótulo na extração nova; o resto do serviço (e o
+    # default de `cota` na API) ainda espera o rótulo antigo.
+    df["Sistema_Nome"] = df["Sistema_Nome"].replace({"Universal": "Sistema Universal"})
+    # Campus veio com a sigla da faculdade entre parênteses (ex. "UnB CEILÂNDIA (FCE)"), e a
+    # chave de curso (`_build_cutoff_maps`) já usa parênteses pra embutir o Campus —
+    # `_parse_course_key` faz `rfind("(")` e quebra com parênteses aninhados. Normaliza para
+    # o nome de Campus simples que o resto do sistema sempre assumiu.
+    df["Campus"] = df["Campus"].map(_normaliza_campus)
+    df["Min"] = pd.to_numeric(df["Min"], errors="coerce")
+    return df
+
+
 def load_resources() -> None:
-    global _pacote, _df_corte, _df_cohort
+    global _pacote, _df_corte, _df_chamadas, _df_cohort
 
     data_dir = _ROOT / "data"
 
@@ -137,56 +191,23 @@ def load_resources() -> None:
 
     # Banco de notas de corte — a frente de extração escreve schema minúsculo
     # (`trienio`, `sistema_nome`, `curso`, ...) e carrega `inscricao`/`nome` de Alunos reais junto
-    # (ticket 09). A tradução para o schema que o resto do serviço espera (`Trienio`, `Semestre`,
-    # `Sistema_Nome`, `Curso_Limpo`, `Min`) acontece só aqui — o único ponto de carga — e as duas
-    # colunas de PII nunca chegam a ser lidas.
+    # (ticket 09). A tradução para o schema que o resto do serviço espera acontece só em
+    # `_normalizar_cortes` — o único ponto de carga — e as duas colunas de PII nunca chegam a
+    # ser lidas (`usecols`).
     corte_path = data_dir / "notas_corte.csv"
     if corte_path.exists():
         df = pd.read_csv(corte_path, usecols=lambda c: c in COLUNAS_NOTAS_CORTE)
-        # `checksum_fecha == True` é o único filtro necessário: a contaminação de escala (ex.
-        # MEDICINA/Darcy Ribeiro/2020-2022 saindo com corte=199.162,872) sempre falha o checksum.
-        df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
-        # "Sub judice" é uma rodada de convocação por decisão judicial, à parte da concorrência
-        # normal do curso — sua nota de corte não é comparável à do curso e não deve aparecer
-        # como se fosse (item 2 do relatório de 2026-07-31).
-        df = df[~df["curso"].astype(str).str.contains("SUB JUDICE", case=False, na=False)]
-        df = df.rename(columns={
-            "curso": "Curso_Limpo",
-            "campus": "Campus",
-            "turno": "Turno",
-            "sistema_nome": "Sistema_Nome",
-            "nota_corte": "Min",
-            "chamada": "Chamada",
-        })
-        df["Curso_Limpo"] = df["Curso_Limpo"].replace(CURSO_ALIASES)
-        df["Trienio"] = df["trienio"].astype(str).str.replace("/", "-", regex=False)
-        # `semestre` vem como "1"/"2"/"desconhecido"; sem saber o semestre a linha não pode ser
-        # roteada para nenhum dos dois mapas de corte, então ela sai (perda medida: ~427 de 4.986).
-        df["Semestre"] = df["semestre"].map({"1": "1°", "2": "2°"})
-        df = df.dropna(subset=["Semestre"]).drop(columns=["trienio", "semestre"])
-        # Turno ausente não é sempre "curso de período integral" (ex. Enfermagem, Farmácia,
-        # que nunca reportam Turno em trienio nenhum): alguns cursos com Turno normal só
-        # passaram a discriminá-lo no Edital a partir de um certo ano (ex. as Engenharias do
-        # Gama, sem Turno até 2021/2023 e "DIURNO" a partir de 2022/2024). Preencher tudo com
-        # "Integral" cria, para esses cursos, uma chave de curso que não bate com a grafia mais
-        # recente do mesmo curso — mesmo defeito do `CURSO_ALIASES`, agora na dimensão Turno.
-        # Herda o Turno mais comum que o próprio curso já reportou em algum trienio; só cai
-        # para "Integral" quando o curso nunca reportou Turno.
-        turno_modal = df.dropna(subset=["Turno"]).groupby("Curso_Limpo")["Turno"].agg(lambda s: s.mode().iat[0])
-        df["Turno"] = df.apply(
-            lambda r: r["Turno"] if pd.notna(r["Turno"]) else turno_modal.get(r["Curso_Limpo"], "Integral"),
-            axis=1,
-        )
-        # O nome do Sistema Universal mudou de rótulo na extração nova; o resto do serviço (e o
-        # default de `cota` na API) ainda espera o rótulo antigo.
-        df["Sistema_Nome"] = df["Sistema_Nome"].replace({"Universal": "Sistema Universal"})
-        # Campus veio com a sigla da faculdade entre parênteses (ex. "UnB CEILÂNDIA (FCE)"), e a
-        # chave de curso (`_build_cutoff_maps`) já usa parênteses pra embutir o Campus —
-        # `_parse_course_key` faz `rfind("(")` e quebra com parênteses aninhados. Normaliza para
-        # o nome de Campus simples que o resto do sistema sempre assumiu.
-        df["Campus"] = df["Campus"].map(_normaliza_campus)
-        df["Min"] = pd.to_numeric(df["Min"], errors="coerce")
-        _df_corte = df
+        _df_corte = _normalizar_cortes(df)
+
+    # Histórico de chamadas — mesmo schema de `notas_corte.csv`, mas uma linha por chamada em
+    # vez de só a última (gerado por `scripts/gerar_historico_chamadas.py`). `notas_corte.csv`
+    # nunca guardou isso: desde o ticket 10 ele é colapsado para a maior chamada de cada grupo
+    # por definição de produto (ver `notas_corte.py`), então a tela "Histórico de Chamadas"
+    # (`get_course_chamadas`) lia esse CSV e nunca via mais de uma linha por curso.
+    chamadas_path = data_dir / "chamadas.csv"
+    if chamadas_path.exists():
+        df = pd.read_csv(chamadas_path, usecols=lambda c: c in COLUNAS_CHAMADAS)
+        _df_chamadas = _normalizar_cortes(df)
 
     # Banco histórico de alunos (Reality Check) — mesma frente de extração, mesma família de
     # sujeira e o mesmo filtro único (`checksum_fecha == True` deixa 64.298 de 66.313 linhas).

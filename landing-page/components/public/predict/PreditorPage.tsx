@@ -429,16 +429,16 @@ type CustomLabelProps = {
   x?: number; y?: number;
   value?: number | null;
   index?: number;
-  listLength: number;
+  highlightIndex: number;
 };
 
 const CustomLabel = (props: CustomLabelProps) => {
-  const { x = 0, y = 0, value, index = 0, listLength } = props;
+  const { x = 0, y = 0, value, index = 0, highlightIndex } = props;
   if (value === null || value === undefined) return null;
 
-  const isLast = index === listLength - 1;
+  const isHighlighted = index === highlightIndex;
 
-  if (isLast) {
+  if (isHighlighted) {
     return (
       <g>
         {/* Etiqueta destacada do ponto mais recente */}
@@ -492,12 +492,14 @@ function CorteTendenciaCard({
   turno,
   semestre,
   data,
+  highlightTrienio,
 }: {
   curso: string;
   campus: string;
   turno: string;
   semestre: string;
   data: CorteEvolucao[];
+  highlightTrienio?: string;
 }) {
   const chartData = useMemo(() => {
     return data
@@ -519,6 +521,15 @@ function CorteTendenciaCard({
   }, [data, semestre]);
 
   if (chartData.length === 0) return null;
+
+  // O ponto rotulado "Atual" tem que ser o mesmo triênio que a tabela "Histórico de
+  // Chamadas" usa (`highlightTrienio`, o `trienio_ref` calculado a partir do triênio do
+  // formulário) — não sempre o último ponto da série, senão os dois widgets descrevem
+  // triênios diferentes sob o mesmo card sem nenhuma indicação visual disso.
+  const highlightIndex = useMemo(() => {
+    const idx = highlightTrienio ? chartData.findIndex((d) => d.trienio === highlightTrienio) : -1;
+    return idx >= 0 ? idx : chartData.length - 1;
+  }, [chartData, highlightTrienio]);
 
   return (
     <div className="pred-result pred-result-trend" style={{ position: "relative", width: "100%", marginTop: 8 }}>
@@ -566,7 +577,7 @@ function CorteTendenciaCard({
               strokeWidth={3}
               dot={{ r: 5, stroke: C.cyan, strokeWidth: 2, fill: "#fff" }}
               activeDot={{ r: 7, stroke: "#fff", strokeWidth: 2, fill: C.cyan }}
-              label={<CustomLabel listLength={chartData.length} />}
+              label={<CustomLabel highlightIndex={highlightIndex} />}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -1008,6 +1019,7 @@ export function PreditorPage() {
                     turno={result.curso_alvo_result.turno}
                     semestre={result.curso_alvo_result.semestre}
                     data={evolutionData}
+                    highlightTrienio={result.trienio_ref || trienio}
                   />
                 )}
 

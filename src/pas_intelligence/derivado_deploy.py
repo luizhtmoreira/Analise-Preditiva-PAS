@@ -25,12 +25,19 @@ COLUNAS_NOTAS_CORTE = [
     "sistema_nome", "chamada", "nota_corte", "checksum_fecha",
 ]
 
-# Nome do arquivo → colunas que sobrevivem no Derivado. `resultado_final.csv` e
-# `notas_corte.csv` são os dois únicos CSVs que a API hospedada lê de `data/` — nenhum dos dois
-# tem `nome` nesta lista.
+# `chamadas.csv` (gerado por `scripts/gerar_historico_chamadas.py`) é o histórico completo —
+# uma linha por chamada, não só a última. `notas_corte.csv` continua sendo a Nota de Corte
+# oficial (só a maior chamada) porque é a definição do produto; os dois convivem.
+COLUNAS_CHAMADAS = [
+    "trienio", "semestre", "campus", "curso", "turno",
+    "sistema_nome", "chamada", "nota_corte", "checksum_fecha",
+]
+
+# Nome do arquivo → colunas que sobrevivem no Derivado. Nenhum dos três tem `nome`/`inscricao`.
 COLUNAS_DERIVADO: dict[str, list[str]] = {
     "resultado_final.csv": COLUNAS_RESULTADO_FINAL,
     "notas_corte.csv": COLUNAS_NOTAS_CORTE,
+    "chamadas.csv": COLUNAS_CHAMADAS,
 }
 
 

@@ -264,7 +264,7 @@ def _parse_course_key(key: str) -> dict:
 
 def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) -> list[dict]:
     import pandas as pd
-    df_corte = gestao_service._df_corte
+    df_corte = gestao_service._df_chamadas
     if df_corte is None or not curso_key:
         return []
 
@@ -309,9 +309,9 @@ def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) 
     # Extract digits to sort calls (e.g. "1ª" -> 1, "2ª" -> 2)
     sub["chamada_num"] = sub["Chamada"].astype(str).str.extract(r"(\d+)").fillna(0).astype(int)
 
-    # Cada linha do CSV é um Aluno convocado, não a chamada agregada: uma mesma chamada nominal
-    # tem várias linhas (subgrupos com/sem argumento), cada uma com sua própria nota. A nota de
-    # corte de uma chamada é a do último Aluno chamado nela — o mínimo entre as linhas do grupo.
+    # `chamadas.csv` já traz uma linha por chamada (ver `scripts/gerar_historico_chamadas.py`);
+    # o groupby aqui só garante 1 linha por `chamada_num` mesmo se o filtro acima (curso/turno/
+    # campus/sistema/trienio/semestre) ainda deixar duplicata por outra dimensão não filtrada.
     grouped = (
         sub.sort_values("chamada_num")
         .groupby("chamada_num", sort=True)
