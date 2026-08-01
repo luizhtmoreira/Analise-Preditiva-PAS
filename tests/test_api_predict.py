@@ -378,7 +378,7 @@ def test_calculadora_le_official_stats_e_nao_um_dicionario_proprio():
     from api.schemas.predict import StrategyInput
     from pas_intelligence.training_dataset import stats_da_prova
 
-    stats_p1, stats_p2, _, e3_e_ancora = predict_service._stats_do_ciclo(TRIENIO_COM_EDITAL, "espanhola")
+    stats_p1, stats_p2, _, e3_e_ancora = predict_service._stats_do_ciclo(TRIENIO_COM_EDITAL, "espanhola", "espanhola")
 
     assert stats_p1 == stats_da_prova(2023, 1, "espanhola")
     assert stats_p2 == stats_da_prova(2024, 2, "espanhola")
@@ -389,7 +389,7 @@ def test_calculadora_le_official_stats_e_nao_um_dicionario_proprio():
         StrategyInput(
             p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
             p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
-            nota_alvo=120.0, ciclo_aluno=TRIENIO_COM_EDITAL, lingua="espanhola",
+            nota_alvo=120.0, ciclo_aluno=TRIENIO_COM_EDITAL, lingua_e1="espanhola", lingua_e2="espanhola",
         )
     )
     assert resposta.status != "indisponivel"
@@ -407,7 +407,7 @@ def test_calculadora_preve_para_a_turma_viva_apoiada_em_estatistica_derivada():
         StrategyInput(
             p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
             p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
-            nota_alvo=120.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua="espanhola",
+            nota_alvo=120.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua_e1="espanhola", lingua_e2="espanhola",
         )
     )
 
@@ -426,7 +426,7 @@ def test_calculadora_turma_viva_traz_os_cinco_anos_ancora_mais_recentes():
         StrategyInput(
             p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
             p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
-            nota_alvo=120.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua="espanhola",
+            nota_alvo=120.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua_e1="espanhola", lingua_e2="espanhola",
         )
     )
 
@@ -467,7 +467,7 @@ def test_calculadora_ano_ancora_varia_a_nota_de_corte_por_trienio(monkeypatch):
         StrategyInput(
             p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
             p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
-            nota_alvo=999.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua="espanhola",
+            nota_alvo=999.0, ciclo_aluno=TRIENIO_DA_TURMA_VIVA, lingua_e1="espanhola", lingua_e2="espanhola",
             curso_alvo="Medicina - Diurno (Darcy Ribeiro)",
         )
     )
@@ -486,7 +486,7 @@ def test_calculadora_recusa_o_trienio_sem_edital_em_vez_de_estourar():
         StrategyInput(
             p1_pas1=4.0, p2_pas1=30.0, red_pas1=7.0,
             p1_pas2=5.0, p2_pas2=35.0, red_pas2=7.5,
-            nota_alvo=120.0, ciclo_aluno=TRIENIO_SEM_EDITAL, lingua="espanhola",
+            nota_alvo=120.0, ciclo_aluno=TRIENIO_SEM_EDITAL, lingua_e1="espanhola", lingua_e2="espanhola",
         )
     )
 

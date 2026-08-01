@@ -107,7 +107,8 @@ export async function fetchStrategy(body: {
   p1_pas2: number; p2_pas2: number; red_pas2: number;
   nota_alvo: number;
   ciclo_aluno: string;
-  lingua: "inglesa" | "francesa" | "espanhola";
+  lingua_e1: "inglesa" | "francesa" | "espanhola";
+  lingua_e2: "inglesa" | "francesa" | "espanhola";
   p1_override?: number | null;
   red_override?: number | null;
   base_projecao?: string;

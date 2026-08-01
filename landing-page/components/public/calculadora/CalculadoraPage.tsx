@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useRef, useMemo } from "react";
-import Link from "next/link";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { fetchCourses, fetchCoursesCutoff, fetchStrategy } from "@/lib/api";
@@ -91,17 +90,10 @@ const GLOBAL_STYLES = `
     .calc-grid-cfg { grid-template-columns: 1fr 1fr; }
   }
 
-  /* ── Simulador de Itens ── */
+  /* ── Simulador de Itens (placeholder "em breve"; implementação completa em feat/simulador-itens) ── */
   .sim-gate { border-radius: 16px; border: 1px solid rgba(0,0,0,0.05); border-top: 4px solid #00AEEF; background: #FFFFFF; box-shadow: 0 1px 2px rgba(0,0,0,0.04); padding: 24px 22px; margin-top: 4px; }
-  .sim-gate-blur { filter: blur(3px); pointer-events: none; user-select: none; opacity: 0.5; }
-  .sim-slider { width: 100%; accent-color: #00843D; cursor: pointer; }
-  .sim-slider:disabled { opacity: 0.4; cursor: default; }
   @keyframes simFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   .sim-in { animation: simFadeIn 0.4s cubic-bezier(.16,1,.3,1) both; }
-  .sim-progress-track { width: 100%; height: 8px; background: #E2E8F0; border-radius: 99px; overflow: hidden; }
-  .sim-progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s cubic-bezier(.16,1,.3,1); }
-  .sim-unlock-btn { width: 100%; padding: 14px 20px; border-radius: 12px; background: #00AEEF; border: none; color: #002147; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 30px rgba(0,174,239,0.3); transition: transform .2s, box-shadow .3s, background .2s; }
-  .sim-unlock-btn:hover { transform: translateY(-2px); background: #33C1F3; box-shadow: 0 12px 36px rgba(0,174,239,0.40); }
 `;
 
 /* ─── subcomponents ─────────────────────────────────────────────── */
@@ -231,12 +223,6 @@ export function CalculadoraPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Simulador de Itens state
-  const [simA, setSimA] = useState(60);
-  const [simB, setSimB] = useState(2);
-  const [simC, setSimC] = useState(3);
-  const [simD, setSimD] = useState(1);
-
   // Check login and load saved grades
   useEffect(() => {
     const supabase = createClient();
@@ -305,7 +291,8 @@ export function CalculadoraPage() {
         p1_pas2, p2_pas2, red_pas2,
         nota_alvo: 0,
         ciclo_aluno: trienio,
-        lingua: linguaE1,
+        lingua_e1: linguaE1,
+        lingua_e2: linguaE2,
       })
         .then((res) => {
           setIaEstimates({ p1: res.p1_ia, red: res.red_ia });
@@ -315,7 +302,7 @@ export function CalculadoraPage() {
         })
         .catch((err) => console.error("Erro ao buscar estimativas da IA:", err));
     }
-  }, [pas1, pas2, trienio, linguaE1]);
+  }, [pas1, pas2, trienio, linguaE1, linguaE2]);
 
   async function handleRouteCalculate(e: React.FormEvent) {
     e.preventDefault();
@@ -332,7 +319,8 @@ export function CalculadoraPage() {
       red_pas2: Number(pas2.red) || 0,
       nota_alvo: Number(notaAlvo) || 0,
       ciclo_aluno: trienio,
-      lingua: linguaE1,
+      lingua_e1: linguaE1,
+      lingua_e2: linguaE2,
       p1_override: p1Override !== null ? p1Override : undefined,
       red_override: redOverride !== null ? redOverride : undefined,
       base_projecao: trienio === "2024-2026" ? baseProjecao : undefined,
@@ -420,7 +408,7 @@ export function CalculadoraPage() {
         <div className="vp-wash relative bg-white overflow-hidden min-h-[calc(100vh-65px)]">
           {/* Cabeçalho */}
           <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", padding: "56px 24px 24px" }}>
-            <span className="vp-eyebrow">Estratégia de normalização · PAS 3</span>
+            <span className="vp-eyebrow">Calculadora de Estratégia · PAS 3</span>
             <h1 className="heading" style={{ fontSize: "clamp(32px, 7vw, 42px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.08, margin: "24px 0 12px", color: C.text }}>
               Calculadora de <span style={{ color: C.green }}>Estratégia</span>
             </h1>
@@ -768,210 +756,39 @@ export function CalculadoraPage() {
                 )}
 
                 {/* ═══════════════════════════════════════════════════
-                    SIMULADOR DE ITENS — Soft Gate
+                    SIMULADOR DE ITENS — em desenvolvimento (feat/simulador-itens)
                 ═══════════════════════════════════════════════════ */}
-                {(() => {
-                  const metaP2 = Math.max(0, result.p2_necessario ?? 0);
-                  const redEst = result.red_estimada ?? 0;
-
-                  // Cálculo em tempo real (apenas para logados)
-                  const pontos =
-                    simA * 1.0 + simB * 2.0 + simC * 2.0 + simD * 3.0 + redEst;
-                  const pct = metaP2 > 0 ? Math.min(100, (pontos / metaP2) * 100) : 0;
-                  const atingiu = pontos >= metaP2;
-                  const diff = Math.abs(pontos - metaP2);
-
-                  const progressColor = atingiu
-                    ? C.green
-                    : pct >= 70
-                    ? C.amber
-                    : C.cyan;
-
-                  return (
-                    <div className="sim-gate sim-in" style={{ marginTop: 8 }}>
-                      {/* Header */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                        <div>
-                          <p className="heading" style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: 0 }}>
-                            Simulador de Itens (Meta PAS 3)
-                          </p>
-                          <p style={{ fontSize: 11.5, color: C.dim, margin: 0 }}>
-                            Converta sua meta em acertos por tipo de questão
-                          </p>
-                        </div>
-                        {/* Badge com a meta */}
-                        <span
-                          className="mono"
-                          style={{
-                            marginLeft: "auto",
-                            fontSize: 13,
-                            fontWeight: 900,
-                            color: C.cyan,
-                            background: "rgba(0,174,239,0.08)",
-                            border: "1px solid rgba(0,174,239,0.22)",
-                            borderRadius: 8,
-                            padding: "4px 10px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          Alvo: {metaP2.toFixed(2)} pts
-                        </span>
-                      </div>
-
-                      {/* Separator */}
-                      <div style={{ height: 1, background: C.hairline, marginBottom: 16 }} />
-
-                      {!isLoggedIn ? (
-                        /* ── VISITANTE: Banner + Prévia Bloqueada ── */
-                        <>
-                          <div
-                            style={{
-                              background: C.page,
-                              border: `1px solid ${C.border}`,
-                              borderRadius: 12,
-                              padding: "16px 18px",
-                              marginBottom: 16,
-                              display: "flex",
-                              gap: 12,
-                              alignItems: "flex-start",
-                            }}
-                          >
-                            <div>
-                              <p className="heading" style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: "0 0 4px" }}>
-                                Recurso Exclusivo para Alunos Cadastrados
-                              </p>
-                              <p style={{ fontSize: 12.5, color: C.dim, margin: 0, lineHeight: 1.5 }}>
-                                O Simulador converte sua nota-alvo em metas práticas de acertos por tipo de questão
-                                (Tipo A, B, C e D). Cadastre-se gratuitamente para simular em tempo real.
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Prévia bloqueada */}
-                          <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.faint, marginBottom: 10 }}>
-                            Prévia — Acesso Bloqueado
-                          </p>
-                          <div className="sim-gate-blur">
-                            <div className="calc-grid-2" style={{ marginBottom: 12 }}>
-                              {([
-                                { label: "Tipo A · Certo/Errado (Peso 1.0×)", max: 120, val: 60 },
-                                { label: "Tipo B · Numérica (Peso 2.0×)",     max: 10,  val: 3 },
-                                { label: "Tipo C · Múltipla Escolha (Peso 2.0×)", max: 10, val: 4 },
-                                { label: "Tipo D · Discursiva (Peso 3.0×)",   max: 5,   val: 2 },
-                              ] as { label: string; max: number; val: number }[]).map((item) => (
-                                <div key={item.label}>
-                                  <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.dim, marginBottom: 4 }}>
-                                    {item.label}
-                                  </p>
-                                  <input type="range" min={0} max={item.max} value={item.val} disabled className="sim-slider" readOnly />
-                                  <div className="mono" style={{ textAlign: "right", fontSize: 11, color: C.faint, marginTop: 2 }}>
-                                    {item.val} / {item.max} acertos
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="sim-progress-track" style={{ marginBottom: 8 }}>
-                              <div className="sim-progress-fill" style={{ width: "70%", background: C.cyan }} />
-                            </div>
-                            <p style={{ fontSize: 11, color: C.dim, textAlign: "center", margin: 0 }}>Exemplo: 70% da meta atingida</p>
-                          </div>
-
-                          <Link href="/login" style={{ display: "block", marginTop: 18, textDecoration: "none" }}>
-                            <button className="sim-unlock-btn">
-                              Entrar ou Criar Conta Grátis
-                            </button>
-                          </Link>
-                        </>
-                      ) : (
-                        /* ── LOGADO: Simulador Interativo ── */
-                        <>
-                          {/* Status */}
-                          <div
-                            style={{
-                              padding: "10px 14px",
-                              borderRadius: 12,
-                              background: atingiu ? "#C8E6C9" : C.page,
-                              border: `1px solid ${atingiu ? "rgba(0,132,61,0.25)" : C.border}`,
-                              marginBottom: 14,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
-                            <p style={{ fontSize: 12.5, color: C.text, margin: 0, fontWeight: 700 }}>
-                              {atingiu
-                                ? `Meta Atingida! P2 Simulado: ${pontos.toFixed(2)} pts (+${diff.toFixed(2)} pts de folga)`
-                                : `Em Progresso: ${pontos.toFixed(2)} pts — Faltam ${diff.toFixed(2)} pts para a meta`}
-                            </p>
-                          </div>
-
-                          {/* Sliders */}
-                          <div className="calc-grid-2" style={{ marginBottom: 14 }}>
-                            {([
-                              { label: "Tipo A · Certo/Errado (Peso 1.0×)", max: 120, val: simA, set: setSimA },
-                              { label: "Tipo B · Numérica (Peso 2.0×)",     max: 10,  val: simB, set: setSimB },
-                              { label: "Tipo C · Múltipla Escolha (Peso 2.0×)", max: 10, val: simC, set: setSimC },
-                              { label: "Tipo D · Discursiva (Peso 3.0×)",   max: 5,   val: simD, set: setSimD },
-                            ] as { label: string; max: number; val: number; set: (v: number) => void }[]).map((item) => (
-                              <div key={item.label}>
-                                <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.dim, marginBottom: 4 }}>
-                                  {item.label}
-                                </p>
-                                <input
-                                  type="range"
-                                  min={0}
-                                  max={item.max}
-                                  value={item.val}
-                                  onChange={(e) => item.set(Number(e.target.value))}
-                                  className="sim-slider"
-                                />
-                                <div className="mono" style={{ textAlign: "right", fontSize: 11, color: C.faint, marginTop: 2 }}>
-                                  {item.val} / {item.max} acertos
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Progress Bar */}
-                          <div style={{ marginBottom: 8 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                              <span className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.dim }}>Progresso da Meta P2</span>
-                              <span className="mono" style={{ fontSize: 12, fontWeight: 800, color: progressColor }}>{pct.toFixed(1)}%</span>
-                            </div>
-                            <div className="sim-progress-track">
-                              <div className="sim-progress-fill" style={{ width: `${pct}%`, background: progressColor }} />
-                            </div>
-                          </div>
-
-                          {/* Mini Cards (breakdown) */}
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 14 }}>
-                            {([
-                              { label: "Tipo A", pts: simA * 1.0 },
-                              { label: "Tipo B", pts: simB * 2.0 },
-                              { label: "Tipo C", pts: simC * 2.0 },
-                              { label: "Tipo D", pts: simD * 3.0 },
-                            ] as { label: string; pts: number }[]).map((item) => (
-                              <div
-                                key={item.label}
-                                style={{
-                                  background: C.page,
-                                  border: `1px solid ${C.border}`,
-                                  borderRadius: 12,
-                                  padding: "10px 8px",
-                                  textAlign: "center",
-                                }}
-                              >
-                                <p className="mono" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.dim, margin: "0 0 4px" }}>{item.label}</p>
-                                <p className="mono" style={{ fontSize: 16, fontWeight: 900, color: C.text, margin: 0 }}>{item.pts.toFixed(1)}</p>
-                                <p style={{ fontSize: 9, color: C.faint, margin: "2px 0 0" }}>pts</p>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })()}
+                <div
+                  className="sim-gate sim-in"
+                  style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 14 }}
+                >
+                  <div>
+                    <p className="heading" style={{ fontSize: 14, fontWeight: 800, color: C.text, margin: "0 0 4px" }}>
+                      Simulador de Itens
+                    </p>
+                    <p style={{ fontSize: 12.5, color: C.dim, margin: 0, lineHeight: 1.5 }}>
+                      Em breve: converta sua meta de P2 em metas práticas de acertos por tipo de questão.
+                    </p>
+                  </div>
+                  <span
+                    className="mono"
+                    style={{
+                      marginLeft: "auto",
+                      fontSize: 11,
+                      fontWeight: 900,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: C.cyan,
+                      background: "rgba(0,174,239,0.08)",
+                      border: "1px solid rgba(0,174,239,0.22)",
+                      borderRadius: 8,
+                      padding: "4px 10px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Em breve
+                  </span>
+                </div>
               </div>
             )}
           </div>

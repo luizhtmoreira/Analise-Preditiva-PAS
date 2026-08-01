@@ -54,6 +54,22 @@ SEM_PACOTE = (
     "o estado 'previsão sim, largura não' não é representável (ADR-0012)."
 )
 
+# O Cebraspe reformula alguns nomes de curso entre triênios (ex.: Mecatrônica perdeu o
+# qualificador "– Controle e Automação" em 2023/2025) e algumas extrações antigas saíram sem o
+# sufixo "(BACHARELADO)" que os demais anos têm. Sem esta tabela, o mesmo curso vira duas chaves
+# distintas — `_build_cutoff_maps` (que só enxerga o triênio de referência) resolve para uma
+# grafia, e `get_corte_evolucao` (que casa string exata contra todos os triênios) perde o
+# histórico do lado que não bateu. Mapeia sempre para a grafia mais recente/completa.
+CURSO_ALIASES = {
+    "ENGENHARIA MECATRÔNICA – CONTROLE E AUTOMAÇÃO (BACHARELADO)": "ENGENHARIA MECATRÔNICA (BACHARELADO)",
+    "ENGENHARIA AMBIENTAL": "ENGENHARIA AMBIENTAL (BACHARELADO)",
+    "ENGENHARIAS – AEROESPACIAL / AUTOMOTIVA / ELETRÔNICA / ENERGIA / SOFTWARE (BACHARELADOS)":
+        "ENGENHARIAS – AEROESPACIAL / AUTOMOTIVA / ELETRÔNICA / ENERGIA / SOFTWARE",
+    "ESTATÍSTICA": "ESTATÍSTICA (BACHARELADO)",
+    "LÍNGUA ESTRANGEIRA APLICADA – MULTILINGUISMO E SOCIEDADE DA INFORMAÇÃO":
+        "LÍNGUA ESTRANGEIRA APLICADA – MULTILINGUISMO E SOCIEDADE DA INFORMAÇÃO (BACHARELADO)",
+}
+
 # ---------------------------------------------------------------------------
 # Singleton: recursos carregados uma vez no startup
 # ---------------------------------------------------------------------------
@@ -102,6 +118,10 @@ def load_resources() -> None:
         # `checksum_fecha == True` é o único filtro necessário: a contaminação de escala (ex.
         # MEDICINA/Darcy Ribeiro/2020-2022 saindo com corte=199.162,872) sempre falha o checksum.
         df = df[df["checksum_fecha"] == True].drop(columns=["checksum_fecha"])  # noqa: E712
+        # "Sub judice" é uma rodada de convocação por decisão judicial, à parte da concorrência
+        # normal do curso — sua nota de corte não é comparável à do curso e não deve aparecer
+        # como se fosse (item 2 do relatório de 2026-07-31).
+        df = df[~df["curso"].astype(str).str.contains("SUB JUDICE", case=False, na=False)]
         df = df.rename(columns={
             "curso": "Curso_Limpo",
             "campus": "Campus",
@@ -110,13 +130,25 @@ def load_resources() -> None:
             "nota_corte": "Min",
             "chamada": "Chamada",
         })
+        df["Curso_Limpo"] = df["Curso_Limpo"].replace(CURSO_ALIASES)
         df["Trienio"] = df["trienio"].astype(str).str.replace("/", "-", regex=False)
         # `semestre` vem como "1"/"2"/"desconhecido"; sem saber o semestre a linha não pode ser
         # roteada para nenhum dos dois mapas de corte, então ela sai (perda medida: ~427 de 4.986).
         df["Semestre"] = df["semestre"].map({"1": "1°", "2": "2°"})
         df = df.dropna(subset=["Semestre"]).drop(columns=["trienio", "semestre"])
-        # Cursos de período integral (ex. Enfermagem, Farmácia) não têm Turno no Edital.
-        df["Turno"] = df["Turno"].fillna("Integral")
+        # Turno ausente não é sempre "curso de período integral" (ex. Enfermagem, Farmácia,
+        # que nunca reportam Turno em trienio nenhum): alguns cursos com Turno normal só
+        # passaram a discriminá-lo no Edital a partir de um certo ano (ex. as Engenharias do
+        # Gama, sem Turno até 2021/2023 e "DIURNO" a partir de 2022/2024). Preencher tudo com
+        # "Integral" cria, para esses cursos, uma chave de curso que não bate com a grafia mais
+        # recente do mesmo curso — mesmo defeito do `CURSO_ALIASES`, agora na dimensão Turno.
+        # Herda o Turno mais comum que o próprio curso já reportou em algum trienio; só cai
+        # para "Integral" quando o curso nunca reportou Turno.
+        turno_modal = df.dropna(subset=["Turno"]).groupby("Curso_Limpo")["Turno"].agg(lambda s: s.mode().iat[0])
+        df["Turno"] = df.apply(
+            lambda r: r["Turno"] if pd.notna(r["Turno"]) else turno_modal.get(r["Curso_Limpo"], "Integral"),
+            axis=1,
+        )
         # O nome do Sistema Universal mudou de rótulo na extração nova; o resto do serviço (e o
         # default de `cota` na API) ainda espera o rótulo antigo.
         df["Sistema_Nome"] = df["Sistema_Nome"].replace({"Universal": "Sistema Universal"})

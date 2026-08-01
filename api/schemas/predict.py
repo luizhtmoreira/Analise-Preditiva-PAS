@@ -86,11 +86,13 @@ class StrategyInput(BaseModel):
     red_pas2: float
     nota_alvo: float
     ciclo_aluno: str
-    # Mesma razão do `PredictInput.lingua`: a Parte 1 é normalizada por língua estrangeira, e a
-    # Calculadora reverte exatamente essa normalização para chegar ao P2 necessário. Sem a língua
-    # certa, o P2 que a tela pede sai deslocado — e sempre na mesma direção, por Aluno.
-    # Obrigatória, sem default, pelo mesmo motivo do Preditor (ticket 04 §5.3).
-    lingua: Literal["inglesa", "francesa", "espanhola"]
+    # Mesma razão do `PredictInput.lingua_e1`/`lingua_e2`: a Parte 1 é normalizada por língua
+    # estrangeira **por Etapa**, e a Calculadora reverte exatamente essa normalização para chegar
+    # ao P2 necessário. Sem a língua certa de cada Etapa, o P2 que a tela pede sai deslocado — e
+    # sempre na mesma direção, por Aluno. Obrigatórias, sem default, pelo mesmo motivo do
+    # Preditor (ticket 04 §5.3).
+    lingua_e1: Literal["inglesa", "francesa", "espanhola"]
+    lingua_e2: Literal["inglesa", "francesa", "espanhola"]
     p1_override: Optional[float] = None
     red_override: Optional[float] = None
     base_projecao: str = "Utilizar Projeção Tendência"

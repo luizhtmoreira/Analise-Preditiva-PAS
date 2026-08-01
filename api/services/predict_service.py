@@ -295,10 +295,19 @@ def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) 
 
     # Extract digits to sort calls (e.g. "1ª" -> 1, "2ª" -> 2)
     sub["chamada_num"] = sub["Chamada"].astype(str).str.extract(r"(\d+)").fillna(0).astype(int)
-    sub = sub.sort_values("chamada_num")
+
+    # Cada linha do CSV é um Aluno convocado, não a chamada agregada: uma mesma chamada nominal
+    # tem várias linhas (subgrupos com/sem argumento), cada uma com sua própria nota. A nota de
+    # corte de uma chamada é a do último Aluno chamado nela — o mínimo entre as linhas do grupo.
+    grouped = (
+        sub.sort_values("chamada_num")
+        .groupby("chamada_num", sort=True)
+        .agg(Chamada=("Chamada", "first"), Campus=("Campus", "first"), Turno=("Turno", "first"), Min=("Min", "min"))
+        .reset_index()
+    )
 
     out = []
-    for _, row in sub.iterrows():
+    for _, row in grouped.iterrows():
         out.append({
             "chamada": str(row.get("Chamada", "")),
             "campus": str(row.get("Campus", "")),
@@ -308,27 +317,31 @@ def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) 
     return out
 
 
-def _stats_do_ciclo(ciclo_aluno: str, lingua: str):
+def _stats_do_ciclo(ciclo_aluno: str, lingua_e1: str, lingua_e2: str):
     """Média e desvio oficiais das três Etapas do triênio do Aluno, pela porta única.
 
     `stats_da_prova` é a mesma função que o treino e o Preditor usam (ticket 05): o
     `TRIENNIUM_STATS` que esta função substitui era uma cópia paralela do `OFFICIAL_STATS`,
     que podia divergir dele sem que nada avisasse.
 
+    A Parte 1 é normalizada por língua **por Etapa** (13,9% da base troca de língua entre a
+    Etapa 1 e a Etapa 2) — daí `lingua_e1` reger a Etapa 1 e `lingua_e2` reger a Etapa 2.
+
     A Etapa 3 do triênio vivo ainda não aconteceu, e a projeção por regressão foi descartada
     pelo ADR-0009. No lugar dela vai o Ano-Âncora — o quarto valor de retorno (`e3_e_ancora`)
     diz a `predict_strategy` se a Etapa 3 usada aqui (a mais recente publicada) é o cenário
     único que sobra quando o Aluno não pediu os cinco (ticket 12), ou a Etapa 3 real do
-    triênio dele.
+    triênio dele. Usa `lingua_e2` como escala por ser a língua mais recente que o Aluno
+    declarou — a mesma aproximação do Ano-Âncora logo abaixo.
     """
     ano_e1, ano_e2, ano_e3 = anos_do_trienio(ciclo_aluno)
-    stats_p1 = stats_da_prova(ano_e1, 1, lingua)
-    stats_p2 = stats_da_prova(ano_e2, 2, lingua)
+    stats_p1 = stats_da_prova(ano_e1, 1, lingua_e1)
+    stats_p2 = stats_da_prova(ano_e2, 2, lingua_e2)
     try:
-        stats_p3 = stats_da_prova(ano_e3, 3, lingua)
+        stats_p3 = stats_da_prova(ano_e3, 3, lingua_e2)
         e3_e_ancora = False
     except EstatisticaOficialAusenteError:
-        stats_p3 = gestao_service._stats_pas3_ancora(lingua)
+        stats_p3 = gestao_service._stats_pas3_ancora(lingua_e2)
         e3_e_ancora = True
     return stats_p1, stats_p2, stats_p3, e3_e_ancora
 
@@ -423,7 +436,7 @@ def predict_strategy(inp: StrategyInput) -> StrategyResponse:
     calc = TargetCalculator()
 
     try:
-        stats_p1, stats_p2, stats_p3, e3_e_ancora = _stats_do_ciclo(inp.ciclo_aluno, inp.lingua)
+        stats_p1, stats_p2, stats_p3, e3_e_ancora = _stats_do_ciclo(inp.ciclo_aluno, inp.lingua_e1, inp.lingua_e2)
     except (EstatisticaOficialAusenteError, ValueError) as erro:
         logger.info("Calculadora recusada por estatística oficial ausente: %s", erro)
         return StrategyResponse(
@@ -451,7 +464,7 @@ def predict_strategy(inp: StrategyInput) -> StrategyResponse:
         # A Etapa 3 do próprio triênio ainda não aconteceu: os cinco cenários substituem o
         # cenário único que `_stats_do_ciclo` devolveria sozinho.
         anos_ancora_resultados = _resultados_ano_ancora(
-            calc, notas_validas, stats_p1, stats_p2, inp.lingua,
+            calc, notas_validas, stats_p1, stats_p2, inp.lingua_e2,
             arg_alvo_fallback=inp.nota_alvo,
             curso_alvo=inp.curso_alvo, cota=inp.cota, semestre=inp.semestre,
             p1_override=inp.p1_override, red_override=inp.red_override,
