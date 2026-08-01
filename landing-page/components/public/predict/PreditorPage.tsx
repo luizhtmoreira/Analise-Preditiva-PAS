@@ -324,7 +324,7 @@ function TopCursosTable({ cursos, isLoggedIn }: { cursos: CourseResult[]; isLogg
         <table style={{ width: "100%", minWidth: 560, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: C.page }}>
-              {["Curso", "Campus · Turno", "Sem.", "Corte", "Chance"].map((h) => (
+              {["Curso", "Chance", "Sem.", "Corte", "Campus · Turno"].map((h) => (
                 <th key={h} className="mono" style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.label, borderBottom: `1px solid ${C.hairline}` }}>{h}</th>
               ))}
             </tr>
@@ -335,15 +335,15 @@ function TopCursosTable({ cursos, isLoggedIn }: { cursos: CourseResult[]; isLogg
               return (
                 <tr key={i} className="pred-row" style={{ borderBottom: `1px solid ${C.hairline}` }}>
                   <td style={{ padding: "10px 16px", fontSize: 13, fontWeight: 700, color: C.text }}>{c.curso}</td>
-                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>
-                    {[c.campus, c.turno].filter(Boolean).join(" · ") || "—"}
-                  </td>
-                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>{c.semestre}</td>
-                  <td className="mono" style={{ padding: "10px 16px", fontSize: 12, fontWeight: 600, color: C.dim }}>{c.nota_corte.toFixed(3)}</td>
                   <td style={{ padding: "10px 16px" }}>
                     <span className="mono" style={{ display: "inline-block", padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 800, color, background: color + "1A", border: `1px solid ${color}33` }}>
                       {c.prob.toFixed(0)}%
                     </span>
+                  </td>
+                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>{c.semestre}</td>
+                  <td className="mono" style={{ padding: "10px 16px", fontSize: 12, fontWeight: 600, color: C.dim }}>{c.nota_corte.toFixed(3)}</td>
+                  <td style={{ padding: "10px 16px", fontSize: 12, color: C.dim }}>
+                    {[c.campus, c.turno].filter(Boolean).join(" · ") || "—"}
                   </td>
                 </tr>
               );
