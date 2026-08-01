@@ -224,28 +224,28 @@ function ArgCard({ result }: { result: PredictResponse }) {
               <span className="mono" style={{ fontSize: "clamp(48px, 14vw, 72px)", fontWeight: 700, lineHeight: 1, color: C.cyan, letterSpacing: "-0.02em", textShadow: "0 0 40px rgba(0,174,239,0.4)" }}>
                 {result.arg_previsto.toFixed(1)}
               </span>
-              <span style={{ fontSize: 16, color: C.dim }}>pts</span>
+              <span style={{ fontSize: 16, color: "rgba(255,255,255,0.7)" }}>pts</span>
             </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4, textAlign: "right" }}>
-            <p style={{ fontSize: 11, color: C.faint }}>ref. {result.trienio_ref}</p>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>ref. {result.trienio_ref}</p>
           </div>
         </div>
 
         {/* De onde o número vem: as duas Etapas já feitas são conta fechada, só a terceira é
             previsão. Mostrar a decomposição é o que impede o Argumento de parecer um palpite. */}
-        <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid rgba(255,255,255,0.12)", display: "flex", gap: 24, flexWrap: "wrap" }}>
           {[
             { rotulo: "PAS 1 (feito)", valor: result.a1, peso: "×1" },
             { rotulo: "PAS 2 (feito)", valor: result.a2, peso: "×2" },
             { rotulo: "PAS 3 (previsto)", valor: result.a3_previsto, peso: "×3" },
           ].map(({ rotulo, valor, peso }) => (
             <div key={rotulo}>
-              <p className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: C.faint, marginBottom: 3 }}>
+              <p className="mono" style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", marginBottom: 3 }}>
                 {rotulo} <span style={{ color: C.cyanSoft }}>{peso}</span>
               </p>
-              <p className="mono" style={{ fontSize: 18, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>
+              <p className="mono" style={{ fontSize: 18, fontWeight: 600, color: C.cyan, lineHeight: 1.2 }}>
                 {valor.toFixed(2)}
               </p>
             </div>
@@ -253,8 +253,8 @@ function ArgCard({ result }: { result: PredictResponse }) {
         </div>
 
         {result.etapa_1_ausente && (
-          <p style={{ marginTop: 16, fontSize: 11, color: C.faint, lineHeight: 1.5 }}>
-            Calculado como candidato <strong style={{ color: C.dim }}>sem PAS 1</strong> — o modelo usa
+          <p style={{ marginTop: 16, fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
+            Calculado como candidato <strong style={{ color: "#FFFFFF" }}>sem PAS 1</strong> — o modelo usa
             uma leitura própria para quem entrou no programa na Etapa 2.
           </p>
         )}
@@ -263,9 +263,9 @@ function ArgCard({ result }: { result: PredictResponse }) {
             nenhuma Etapa — A1/A2 saem de uma estimativa (ticket 06), não da conta oficial, e
             vão mudar quando o Edital sair. Sem isso o Aluno descobre a mudança sozinho depois. */}
         {result.usa_estatistica_derivada && (
-          <p style={{ marginTop: 16, fontSize: 11, color: C.faint, lineHeight: 1.5 }}>
+          <p style={{ marginTop: 16, fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
             Sua turma ainda não tem o Edital oficial de médias e desvios do Cebraspe — este
-            Argumento usa uma <strong style={{ color: C.dim }}>estimativa</strong> para PAS 1
+            Argumento usa uma <strong style={{ color: "#FFFFFF" }}>estimativa</strong> para PAS 1
             e/ou PAS 2, que será atualizada quando o Edital sair.
           </p>
         )}
