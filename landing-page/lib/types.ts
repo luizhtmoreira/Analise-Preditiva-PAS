@@ -21,6 +21,9 @@ export interface PredictResponse {
   largura_incerteza: number;
   etapa_1_ausente: boolean;
   curso_alvo_result: CourseResult | null;
+  /** `curso_alvo_result` nulo pode ser "não escolheu curso" ou "essa cota não tem corte
+   *  publicado pra esse curso" — este campo distingue os dois pra tela poder avisar o Aluno. */
+  curso_alvo_sem_dados_cota: boolean;
   top_cursos: CourseResult[];
   trienio_ref: string;
   modelo_disponivel: boolean;

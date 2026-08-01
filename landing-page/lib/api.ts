@@ -36,8 +36,8 @@ export async function fetchTemporal() {
   return res.json();
 }
 
-export async function fetchCorteEvolucao(curso: string) {
-  const params = new URLSearchParams({ curso });
+export async function fetchCorteEvolucao(curso: string, cota: string = "Sistema Universal") {
+  const params = new URLSearchParams({ curso, cota });
   const res = await fetch(`${API_URL}/api/temporal/corte?${params}`);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();

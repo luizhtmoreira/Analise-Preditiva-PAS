@@ -96,13 +96,18 @@ def get_temporal() -> TemporalResponse:
     return TemporalResponse(etapas=etapas, cursos=cursos)
 
 
-def get_corte_evolucao(curso: str) -> list[CorteEvolucao]:
-    """Evolução da nota de corte de um curso (Sistema Universal) através dos triênios."""
+def get_corte_evolucao(curso: str, cota: str = "Sistema Universal") -> list[CorteEvolucao]:
+    """Evolução da nota de corte de um curso através dos triênios, para o sistema de
+    concorrência (`cota`) selecionado — cada cota tem sua própria série de cortes, e antes
+    deste parâmetro a tela sempre lia "Sistema Universal" mesmo com outra cota selecionada."""
     df_corte = gestao_service._df_corte
     if df_corte is None or not curso:
         return []
 
-    df = df_corte[df_corte["Sistema_Nome"] == "Sistema Universal"].copy()
+    available_systems = list(df_corte["Sistema_Nome"].dropna().unique())
+    sistema = gestao_service._resolver_sistema(cota, available_systems)
+
+    df = df_corte[df_corte["Sistema_Nome"] == sistema].copy()
     keys = (
         df["Curso_Limpo"].astype(str) + " - " + df["Turno"].astype(str)
         + " (" + df["Campus"].astype(str) + ")"

@@ -697,7 +697,7 @@ export function PreditorPage() {
       // diagnóstico antigo que demorasse mais sobrescreveria o card do diagnóstico novo.
       let vivo = true;
 
-      fetchCorteEvolucao(courseKey)
+      fetchCorteEvolucao(courseKey, cota)
         .then((data) => { if (vivo) setEvolutionData(data); })
         .catch((err) => {
           console.error("Erro ao buscar evolução do corte:", err);
@@ -713,7 +713,7 @@ export function PreditorPage() {
 
       return () => { vivo = false; };
     }
-  }, [result]);
+  }, [result, cota]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -983,6 +983,23 @@ export function PreditorPage() {
                 </p>
                 <ArgCard result={result} />
                 {result.curso_alvo_result && <CursoAlvoCard c={result.curso_alvo_result} />}
+                {result.curso_alvo_sem_dados_cota && (
+                  <div
+                    style={{
+                      background: "#FFF8E1",
+                      border: "1px solid rgba(245,127,23,0.25)",
+                      borderLeft: `8px solid ${C.amber}`,
+                      borderRadius: "0 16px 16px 0",
+                      padding: "16px 18px",
+                    }}
+                  >
+                    <p style={{ fontSize: 12.5, color: C.text, margin: 0, lineHeight: 1.5 }}>
+                      <strong>Sem dados para esse curso nessa cota:</strong> a cota selecionada não
+                      teve nota de corte publicada para o curso escolhido nesse triênio. Tente outra
+                      cota ou o Sistema Universal.
+                    </p>
+                  </div>
+                )}
 
                 {result.curso_alvo_result && evolutionData && (
                   <CorteTendenciaCard

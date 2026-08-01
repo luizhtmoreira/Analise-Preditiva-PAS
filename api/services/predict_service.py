@@ -21,7 +21,7 @@ from api.schemas.predict import (
     AnoAncoraResultado,
 )
 from api.services import gestao_service          # referência ao módulo, não ao valor
-from api.services.gestao_service import SEM_PACOTE, _find_best_match, _build_cutoff_maps
+from api.services.gestao_service import SEM_PACOTE, _find_best_match, _resolver_sistema, _build_cutoff_maps
 from pas_intelligence.model_package import (
     EntradaDePrevisao,
     EstatisticasIndisponiveisError,
@@ -147,16 +147,26 @@ def predict_student(inp: PredictInput) -> PredictResponse:
     largura = previsao.largura_argumento_final
 
     available_systems = list(set(c1_map.keys()) | set(c2_map.keys()))
-    sistema = _find_best_match(inp.cota, available_systems, cutoff=0.6) if available_systems else inp.cota
+    sistema = _resolver_sistema(inp.cota, available_systems)
 
     m1 = c1_map.get(sistema, c1_map.get("Sistema Universal", {}))
     m2 = c2_map.get(sistema, c2_map.get("Sistema Universal", {}))
 
     # Curso alvo (opcional)
     curso_alvo_result: CourseResult | None = None
+    curso_alvo_sem_dados_cota = False
     if inp.curso_alvo:
-        all_courses = list(set(list(m1.keys()) + list(m2.keys())))
-        curso_matched = _find_best_match(inp.curso_alvo, all_courses, cutoff=0.4) if all_courses else inp.curso_alvo
+        # Resolve o curso contra o universo de TODOS os cursos ofertados (todas as cotas), não
+        # contra `m1`/`m2` (já filtrados pela cota escolhida): algumas cotas não têm corte
+        # publicado para todo curso (ex. cota L1 não teve candidato em Engenharia Civil no
+        # triênio 2023/2025). Casar o fuzzy match direto contra esse mapa reduzido "chutava" o
+        # curso mais parecido disponível NAQUELA cota — podia devolver um curso sem relação
+        # nenhuma com o que o Aluno pediu. Resolvido o curso contra o universo completo, uma
+        # cota sem corte publicado para ele vira "sem dados", nunca um curso errado.
+        universo_cursos: set[str] = set()
+        for m in list(c1_map.values()) + list(c2_map.values()):
+            universo_cursos.update(m.keys())
+        curso_matched = _find_best_match(inp.curso_alvo, list(universo_cursos), cutoff=0.4) if universo_cursos else inp.curso_alvo
 
         # Sem login não há seletor de semestre na tela, então a busca varre os dois mapas.
         semestre_filtro = inp.semestre if inp.is_logged_in else None
@@ -175,6 +185,8 @@ def predict_student(inp: PredictInput) -> PredictResponse:
                     semestre=semestre,
                 )
                 break
+
+        curso_alvo_sem_dados_cota = curso_alvo_result is None
 
     if inp.is_logged_in:
         # Com login, a lista é aspiracional: dos cursos que ainda estão ao alcance
@@ -217,6 +229,7 @@ def predict_student(inp: PredictInput) -> PredictResponse:
         largura_incerteza=round(largura, 3),
         etapa_1_ausente=previsao.etapa_1_ausente,
         curso_alvo_result=curso_alvo_result,
+        curso_alvo_sem_dados_cota=curso_alvo_sem_dados_cota,
         top_cursos=top_cursos,
         trienio_ref=trienio_ref,
         modelo_disponivel=True,
@@ -228,7 +241,7 @@ def get_courses(cota: str, trienio: str) -> list[str]:
     """Retorna lista de cursos disponíveis para o combo de seleção."""
     c1_map, c2_map, _ = _build_cutoff_maps(trienio)
     available_systems = list(set(c1_map.keys()) | set(c2_map.keys()))
-    sistema = _find_best_match(cota, available_systems, cutoff=0.6) if available_systems else cota
+    sistema = _resolver_sistema(cota, available_systems)
     m1 = c1_map.get(sistema, c1_map.get("Sistema Universal", {}))
     m2 = c2_map.get(sistema, c2_map.get("Sistema Universal", {}))
     all_keys = sorted(set(list(m1.keys()) + list(m2.keys())))
@@ -274,7 +287,7 @@ def get_course_chamadas(curso_key: str, cota: str, trienio: str, semestre: str) 
 
     # Filter system name
     available_systems = list(df_corte["Sistema_Nome"].dropna().unique())
-    sistema = _find_best_match(cota, available_systems, cutoff=0.6) if available_systems else cota
+    sistema = _resolver_sistema(cota, available_systems)
 
     # Filter mask
     mask = (

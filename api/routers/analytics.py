@@ -19,8 +19,8 @@ def temporal() -> TemporalResponse:
 
 
 @router.get("/temporal/corte", response_model=list[CorteEvolucao])
-def corte_evolucao(curso: str) -> list[CorteEvolucao]:
-    return analytics_service.get_corte_evolucao(curso)
+def corte_evolucao(curso: str, cota: str = "Sistema Universal") -> list[CorteEvolucao]:
+    return analytics_service.get_corte_evolucao(curso, cota)
 
 
 @router.post("/escola/analyze", response_model=EscolaResponse)

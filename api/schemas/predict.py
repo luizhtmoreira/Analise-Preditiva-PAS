@@ -59,6 +59,11 @@ class PredictResponse(BaseModel):
     largura_incerteza: float
     etapa_1_ausente: bool
     curso_alvo_result: Optional[CourseResult]
+    # `curso_alvo_result` é `None` tanto quando o Aluno não escolheu curso quanto quando a cota
+    # escolhida simplesmente não tem corte publicado para o curso pedido (ex.: cota L1 sem
+    # candidato em Engenharia Civil num triênio). Sem este campo os dois casos são
+    # indistinguíveis pra tela, que não sabe se deve ficar calada ou avisar "sem dados".
+    curso_alvo_sem_dados_cota: bool = False
     top_cursos: list[CourseResult]
     trienio_ref: str
     modelo_disponivel: bool
