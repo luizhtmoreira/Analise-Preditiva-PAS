@@ -502,3 +502,50 @@ def test_ensemble_aposentado_nao_voltou_no_merge():
 
     with pytest.raises(ModuleNotFoundError):
         importlib.import_module("pas_intelligence.ensemble")
+
+
+def test_resolver_sistema_cota_negros_nao_cai_no_fallback_universal():
+    """Ticket 16: antes do `COTA_ALIASES` (rótulos L1/L2/L9/L10) ser removido, qualquer cota que
+    não fosse "Sistema Universal" resolvia, em silêncio, para o mapa de Universal — o `.get`
+    de quem consumia `_resolver_sistema` escondia o defeito. Este teste falharia se isso
+    voltasse a acontecer."""
+    available_systems = [
+        "Sistema Universal",
+        "Cota para Negros",
+        "EP / Baixa Renda / PPI",
+        "EP / Alta Renda / Não-PPI",
+    ]
+
+    resolvido = gestao_service._resolver_sistema("Cota para Negros", available_systems)
+
+    assert resolvido == "Cota para Negros"
+    assert resolvido != "Sistema Universal"
+
+
+@pytest.mark.parametrize(
+    "cota,esperado",
+    [
+        ("Sistema Universal", "Sistema Universal"),
+        ("Cota para Negros", "Cota para Negros"),
+        ("EP / Baixa Renda / PPI", "EP / Baixa Renda / PPI"),
+        ("EP / Baixa Renda / PPI / PcD", "EP / Baixa Renda / PPI / PcD"),
+        ("EP / Baixa Renda / Não-PPI", "EP / Baixa Renda / Não-PPI"),
+        ("EP / Baixa Renda / Não-PPI / PcD", "EP / Baixa Renda / Não-PPI / PcD"),
+        ("EP / Alta Renda / PPI", "EP / Alta Renda / PPI"),
+        ("EP / Alta Renda / PPI / PcD", "EP / Alta Renda / PPI / PcD"),
+        ("EP / Alta Renda / Não-PPI", "EP / Alta Renda / Não-PPI"),
+        ("EP / Alta Renda / Não-PPI / PcD", "EP / Alta Renda / Não-PPI / PcD"),
+    ],
+)
+def test_resolver_sistema_resolve_os_dez_sistemas_do_mapa(cota, esperado):
+    """O seletor da tela manda o rótulo de `MAPA_SISTEMAS` (ticket 16) — cada um dos 10 deve
+    bater exato contra o `Sistema_Nome` do CSV, sem depender de alias nem de fuzzy match."""
+    available_systems = [
+        "Sistema Universal", "Cota para Negros",
+        "EP / Baixa Renda / PPI", "EP / Baixa Renda / PPI / PcD",
+        "EP / Baixa Renda / Não-PPI", "EP / Baixa Renda / Não-PPI / PcD",
+        "EP / Alta Renda / PPI", "EP / Alta Renda / PPI / PcD",
+        "EP / Alta Renda / Não-PPI", "EP / Alta Renda / Não-PPI / PcD",
+    ]
+
+    assert gestao_service._resolver_sistema(cota, available_systems) == esperado

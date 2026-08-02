@@ -695,8 +695,8 @@ def _classificacoes(*sistemas: int) -> dict:
 class TestCotaDeclarada:
     """Ticket 06: os quatro atributos binários deduzidos do padrão das 10 classificações.
 
-    Os Sistemas de Escola Pública são **aninhados**: quem é ≤1,5 SM concorre também às
-    vagas de >1,5 SM, quem é PPI concorre também às não-PPI (cascata da Lei 12.711). Então
+    Os Sistemas de Escola Pública são **aninhados**: quem é ≤1 SM concorre também às
+    vagas de >1 SM, quem é PPI concorre também às não-PPI (cascata da Lei 12.711). Então
     o padrão observado é sempre o *fecho para baixo* do reticulado, e os atributos do Aluno
     são os do subsistema **mais específico** em que ele aparece.
     """

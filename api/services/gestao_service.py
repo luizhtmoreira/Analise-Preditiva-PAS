@@ -70,33 +70,21 @@ CURSO_ALIASES = {
         "LÍNGUA ESTRANGEIRA APLICADA – MULTILINGUISMO E SOCIEDADE DA INFORMAÇÃO (BACHARELADO)",
 }
 
-# O seletor de cota da tela usa a nomenclatura oficial da Lei de Cotas (L1/L2/L9/L10); o CSV de
-# notas de corte guarda o rótulo antigo da extração ("EP / Baixa Renda / PPI" etc.). As duas
-# descrições têm poucas palavras em comum — `_find_best_match` (fuzzy) não as aproxima o
-# suficiente e cai no próprio texto de entrada, que não bate com nenhuma chave dos mapas de
-# corte. O sintoma: toda cota que não seja "Sistema Universal" resolvia, em silêncio, para o
-# mapa de "Sistema Universal" (efeito do `.get(sistema, fallback)` de quem consome
-# `_resolver_sistema`) — mesmo corte de referência para qualquer cota, e o gráfico de evolução
-# (que não tem esse fallback) simplesmente vinha vazio.
-COTA_ALIASES = {
-    "L1 - Escola Pública + Renda ≤ 1,5 SM + PPI": "EP / Baixa Renda / PPI",
-    "L2 - Escola Pública + Renda ≤ 1,5 SM": "EP / Baixa Renda / Não-PPI",
-    "L9 - Escola Pública + PPI": "EP / Alta Renda / PPI",
-    "L10 - Escola Pública": "EP / Alta Renda / Não-PPI",
-}
-
-
+# Até o ticket 16, o seletor de cota da tela usava a nomenclatura "L1/L2/L9/L10" — um empréstimo
+# solto do SiSU que não vinha do Edital do PAS e nem batia com a própria ordem dele. O `COTA_ALIASES`
+# que existia aqui traduzia esses rótulos para o `Sistema_Nome` do CSV ("EP / Baixa Renda / PPI"
+# etc.); a fuzzy match sozinha não bastava porque as duas descrições têm poucas palavras em comum.
+# O ticket 16 trocou o seletor para usar o próprio `MAPA_SISTEMAS` (a fonte que gera o `Sistema_Nome`
+# do CSV) como rótulo, então a tela já manda a chave exata — sem alias para resolver.
 def _resolver_sistema(cota: str, available_systems: list[str]) -> str:
     """A chave de `Sistema_Nome` que corresponde à cota escolhida na tela.
 
-    Alias exato primeiro (cobre L1/L2/L9/L10, que o fuzzy match não alcança); `_find_best_match`
-    como último recurso, para o texto livre que sobra (Sistema Universal, Cota para Negros e
-    variações de grafia que o fuzzy já resolvia antes desta função existir).
+    `_find_best_match` (fuzzy) cobre variações de grafia; a tela manda o rótulo de
+    `MAPA_SISTEMAS` diretamente, que já bate exato com `Sistema_Nome` na maioria dos casos.
     """
-    aliased = COTA_ALIASES.get(cota, cota)
     if not available_systems:
-        return aliased
-    return _find_best_match(aliased, available_systems, cutoff=0.6)
+        return cota
+    return _find_best_match(cota, available_systems, cutoff=0.6)
 
 # ---------------------------------------------------------------------------
 # Singleton: recursos carregados uma vez no startup

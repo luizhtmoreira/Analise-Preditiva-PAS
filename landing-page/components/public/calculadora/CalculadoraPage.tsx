@@ -4,6 +4,7 @@ import { BrandMark } from "@/components/brand/BrandMark";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { fetchCourses, fetchCoursesCutoff, fetchStrategy } from "@/lib/api";
 import type { StrategyResponse } from "@/lib/types";
+import { COTAS, ehCotaConhecida } from "@/lib/cotas";
 import { createClient } from "@/lib/supabase/client";
 
 /* ─── constants & palette ────────────────────────────────────────── */
@@ -16,14 +17,6 @@ const LINGUAS = [
   { valor: "espanhola", rotulo: "Espanhol" },
   { valor: "francesa", rotulo: "Francês" },
 ];
-const COTAS = [
-  "Sistema Universal",
-  "L1 - Escola Pública + Renda ≤ 1,5 SM + PPI",
-  "L2 - Escola Pública + Renda ≤ 1,5 SM",
-  "L9 - Escola Pública + PPI",
-  "L10 - Escola Pública",
-];
-
 // Mesma paleta clara do Preditor e da landing — Azul UnB como tinta, não fundo.
 const C = {
   page:     "#F8F9FA",
@@ -188,6 +181,7 @@ export function CalculadoraPage() {
   const [pas1, setPas1] = useState(emptyScores());
   const [pas2, setPas2] = useState(emptyScores());
   const [cota, setCota] = useState("Sistema Universal");
+  const [cotaSalvaDesconhecida, setCotaSalvaDesconhecida] = useState(false);
   const [trienio, setTrienio] = useState("2024-2026");
   const [linguaE1, setLinguaE1] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
   const [linguaE2, setLinguaE2] = useState<"inglesa" | "francesa" | "espanhola">("inglesa");
@@ -248,7 +242,13 @@ export function CalculadoraPage() {
                 p2: String(profile.p2_pas2 ?? 0),
                 red: String(profile.red_pas2 ?? 0),
               });
-              if (profile.cota) setCota(profile.cota);
+              if (profile.cota) {
+                if (ehCotaConhecida(profile.cota)) {
+                  setCota(profile.cota);
+                } else {
+                  setCotaSalvaDesconhecida(true);
+                }
+              }
               if (profile.trienio) setTrienio(profile.trienio);
               if (profile.curso_alvo) setCursoAlvo(profile.curso_alvo);
             }
@@ -452,9 +452,14 @@ export function CalculadoraPage() {
 
                   <div>
                     <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Sistema de Concorrência</p>
-                    <select value={cota} onChange={(e) => setCota(e.target.value)} className="calc-select">
+                    <select value={cota} onChange={(e) => { setCota(e.target.value); setCotaSalvaDesconhecida(false); }} className="calc-select">
                       {COTAS.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
+                    {cotaSalvaDesconhecida && (
+                      <p className="mono" style={{ fontSize: 11, color: C.amber, marginTop: 6 }}>
+                        A cota salva no seu perfil não é mais reconhecida — mostrando Sistema Universal. Selecione a sua novamente.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

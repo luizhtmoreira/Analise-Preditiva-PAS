@@ -5,6 +5,7 @@ import { BrandMark } from "@/components/brand/BrandMark";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { fetchPredict, fetchCourses, fetchCorteEvolucao, fetchCourseChamadas } from "@/lib/api";
 import type { PredictResponse, CourseResult, CorteEvolucao, ChamadaCorte } from "@/lib/types";
+import { COTAS, ehCotaConhecida } from "@/lib/cotas";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
@@ -20,14 +21,6 @@ const LINGUAS = [
   { valor: "espanhola", rotulo: "Espanhol" },
   { valor: "francesa", rotulo: "Francês" },
 ];
-const COTAS = [
-  "Sistema Universal",
-  "L1 - Escola Pública + Renda ≤ 1,5 SM + PPI",
-  "L2 - Escola Pública + Renda ≤ 1,5 SM",
-  "L9 - Escola Pública + PPI",
-  "L10 - Escola Pública",
-];
-
 // Paleta clara da landing (docs/identidade-visual.md) — Azul UnB como tinta,
 // não como fundo. `onDark` guarda os tons que só valem dentro do banner navy.
 const C = {
@@ -643,6 +636,7 @@ export function PreditorPage() {
     setLinguaE2(v);
   }
   const [cota, setCota] = useState("Sistema Universal");
+  const [cotaSalvaDesconhecida, setCotaSalvaDesconhecida] = useState(false);
   const [trienio, setTrienio] = useState("2024-2026");
   const [cursoAlvo, setCursoAlvo] = useState("");
   const [semestre, setSemestre] = useState("Ambos");
@@ -683,7 +677,13 @@ export function PreditorPage() {
                 p2: String(profile.p2_pas2 ?? 0),
                 red: String(profile.red_pas2 ?? 0),
               });
-              if (profile.cota) setCota(profile.cota);
+              if (profile.cota) {
+                if (ehCotaConhecida(profile.cota)) {
+                  setCota(profile.cota);
+                } else {
+                  setCotaSalvaDesconhecida(true);
+                }
+              }
               if (profile.trienio) setTrienio(profile.trienio);
               if (profile.curso_alvo) setCursoAlvo(profile.curso_alvo);
             }
@@ -863,11 +863,16 @@ export function PreditorPage() {
                   <div>
                     <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Sistema de Cotas</p>
                     <div style={{ position: "relative" }}>
-                      <select value={cota} onChange={(e) => setCota(e.target.value)} className="pred-select">
+                      <select value={cota} onChange={(e) => { setCota(e.target.value); setCotaSalvaDesconhecida(false); }} className="pred-select">
                         {COTAS.map((c) => <option key={c}>{c}</option>)}
                       </select>
                       <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.faint, pointerEvents: "none", fontSize: 12 }}>▾</span>
                     </div>
+                    {cotaSalvaDesconhecida && (
+                      <p className="mono" style={{ fontSize: 11, color: C.amber, marginTop: 6 }}>
+                        A cota salva no seu perfil não é mais reconhecida — mostrando Sistema Universal. Selecione a sua novamente.
+                      </p>
+                    )}
                   </div>
                   {isLoggedIn && (
                     <div>
