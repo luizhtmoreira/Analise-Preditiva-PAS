@@ -127,6 +127,49 @@ function StepperInput({ label, value, onChange, step = 0.5, min = -100, max = 10
   );
 }
 
+/**
+ * Trigger + lista navy, o mesmo par visual do CourseCombobox abaixo — usado para os
+ * campos de opção fechada (língua, triênio, cota, semestre) que antes eram `<select>`
+ * nativo e, ao abrir, quebravam para o menu do sistema operacional.
+ */
+function FieldSelect({ value, onChange, options }: {
+  value: string; onChange: (v: string) => void; options: { value: string; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="calc-select"
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textAlign: "left" }}
+      >
+        <span>{selected?.label ?? value}</span>
+        <span style={{ color: C.faint, fontSize: 12, marginLeft: 8 }}>▾</span>
+      </button>
+      {open && (
+        <div className="calc-dropdown" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 50, maxHeight: 220, overflowY: "auto" }}>
+          {options.map((o) => (
+            <div key={o.value} className="calc-dropdown-item" onMouseDown={() => { onChange(o.value); setOpen(false); }}>
+              {o.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CourseCombobox({ value, onChange, courses }: {
   value: string; onChange: (v: string) => void; courses: string[];
 }) {
@@ -437,24 +480,28 @@ export function CalculadoraPage() {
                 <div className="calc-grid-cfg" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
                   <div>
                     <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Semestre de Entrada</p>
-                    <select value={semestre} onChange={(e) => setSemestre(e.target.value)} className="calc-select">
-                      <option value="1°">1º Semestre (Última chamada)</option>
-                      <option value="2°">2º Semestre (1ª chamada)</option>
-                    </select>
+                    <FieldSelect
+                      value={semestre}
+                      onChange={setSemestre}
+                      options={[
+                        { value: "1°", label: "1º Semestre" },
+                        { value: "2°", label: "2º Semestre" },
+                      ]}
+                    />
                   </div>
 
                   <div>
                     <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Triênio</p>
-                    <select value={trienio} onChange={(e) => setTrienio(e.target.value)} className="calc-select">
-                      {TRIENIOS.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                    <FieldSelect value={trienio} onChange={setTrienio} options={TRIENIOS.map((t) => ({ value: t, label: t }))} />
                   </div>
 
                   <div>
                     <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>Sistema de Concorrência</p>
-                    <select value={cota} onChange={(e) => { setCota(e.target.value); setCotaSalvaDesconhecida(false); }} className="calc-select">
-                      {COTAS.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <FieldSelect
+                      value={cota}
+                      onChange={(v) => { setCota(v); setCotaSalvaDesconhecida(false); }}
+                      options={COTAS.map((c) => ({ value: c, label: c }))}
+                    />
                     {cotaSalvaDesconhecida && (
                       <p className="mono" style={{ fontSize: 11, color: C.amber, marginTop: 6 }}>
                         A cota salva no seu perfil não é mais reconhecida — mostrando Sistema Universal. Selecione a sua novamente.
@@ -479,13 +526,11 @@ export function CalculadoraPage() {
                         <p className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
                           Língua Estrangeira — {stageLabel}
                         </p>
-                        <select
+                        <FieldSelect
                           value={lingua}
-                          onChange={(e) => onLingua(e.target.value as typeof lingua)}
-                          className="calc-select"
-                        >
-                          {LINGUAS.map((l) => <option key={l.valor} value={l.valor}>{l.rotulo}</option>)}
-                        </select>
+                          onChange={(v) => onLingua(v as typeof lingua)}
+                          options={LINGUAS.map((l) => ({ value: l.valor, label: l.rotulo }))}
+                        />
                       </div>
                       <StepperInput label="P1 — Língua Estrangeira" value={state.p1}
                         onChange={(v) => set((s) => ({ ...s, p1: v }))} step={0.5} min={-20} max={20} />

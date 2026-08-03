@@ -363,8 +363,9 @@ def get_course_cutoff(curso: str, cota: str, trienio: str, semestre: str) -> flo
     """A Nota de Corte publicada de um curso num triênio específico.
 
     Porta única para `/api/courses/cutoff` e para os cinco cenários do Ano-Âncora (ticket 12) —
-    os dois precisam da mesma regra (última chamada do 1º semestre é o piso mais baixo que
-    passou; 1ª chamada do 2º semestre é o teto mais alto que ainda não passou).
+    os dois precisam da mesma regra. Sempre a última chamada, o piso mais baixo que passou,
+    tanto no 1º quanto no 2º semestre — padronizado para não punir quem mira o 2º semestre
+    com um teto que só valia na 1ª chamada dele.
     """
     calls = get_course_chamadas(curso, cota, trienio, semestre)
     # `!= 0`, não `> 0`: o Argumento Final é legitimamente negativo (~49% da base, ver
@@ -374,7 +375,7 @@ def get_course_cutoff(curso: str, cota: str, trienio: str, semestre: str) -> flo
     scores = [c["nota_corte"] for c in calls if c["nota_corte"] != 0]
     if not scores:
         return 0.0
-    return min(scores) if semestre == "1°" else max(scores)
+    return min(scores)
 
 
 def _resultados_ano_ancora(
