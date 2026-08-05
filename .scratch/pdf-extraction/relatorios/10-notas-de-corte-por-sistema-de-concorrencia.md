@@ -280,14 +280,17 @@ como `outra_relacao`. O CSV de Convocação ganhou a coluna `lista`.
   `test_pdf_gen_manual.py`), já documentadas desde o relatório do ticket 01.
 - **Corpus real (77 Editais)** — ver seção 7.
 
-**Limitação conhecida, e por quê:** não existe teste ponta a ponta que produza uma Nota de
-Corte a partir de PDFs. Ele exigiria duas fixtures do **mesmo triênio** com inscrições que se
-cruzam (uma de Resultado Final, uma de Convocação), e fixtures de Edital real carregam dado de
-prova de Aluno identificável — a restrição de privacidade que impede commitar qualquer uma
-delas (ver [[project_parser_privacy]] e o relatório do ticket 01, 3.8). Um teste assim pularia
-para todo mundo menos quem tem `data/pdfs` local. A regra de derivação está coberta por 41
-testes sintéticos; a ponta a ponta está verificada pela rodada sobre os 77 Editais reais
-documentada na seção 7, que é reproduzível por quem tem o corpus com um comando só.
+**Limitação conhecida, e por quê — fechada pelo ticket 17:** não existia teste ponta a ponta
+que produzisse uma Nota de Corte a partir de PDFs, porque fixtures de Edital real carregam
+dado de prova de Aluno identificável — a restrição de privacidade que impede commitar
+qualquer uma delas (ver [[project_parser_privacy]] e o relatório do ticket 01, 3.8). O ticket
+17 fechou isso com PDFs sintéticos: `fixtures.gerar_pdf_texto_sintetico` monta duas fixtures
+do mesmo triênio (Resultado Final + Convocação, inscrições que se cruzam) a partir de texto
+inteiramente inventado, dentro do próprio teste
+(`tests/test_pas_extraction_notas_corte_e2e.py`) — nada é gravado no repositório e nenhum
+Aluno real é usado. A regra de derivação continua coberta por 41 testes sintéticos diretos; a
+ponta a ponta via PDF está coberta por esse novo teste, e a rodada sobre os 77 Editais reais
+(seção 7) continua sendo a verificação em escala real.
 
 **Rodada de `/code-review` (dois eixos, Standards e Spec):** 12 achados, 9 corrigidos —
 constante morta (`_DESCONHECIDO`), seis properties que só repassavam (`NotaCorte` achatou as

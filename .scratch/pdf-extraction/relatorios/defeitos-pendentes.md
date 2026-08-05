@@ -122,17 +122,25 @@ sem uma fonte de dado externa (fora do escopo declarado). Documentado e testado
 explicitamente (`test_registro_de_posicao_maxima_perdido_e_um_ponto_cego_conhecido`) em vez
 de escondido.
 
-## 5. Falta de teste ponta a ponta para Nota de Corte — lacuna de teste (não bug de dado)
+## 5. Falta de teste ponta a ponta para Nota de Corte — FECHADO pelo ticket 17
 
 **Onde foi encontrado:** `relatorios/10-notas-de-corte-por-sistema-de-concorrencia.md`,
 seção de limitações conhecidas.
 
-**A lacuna:** não existe teste que produza uma Nota de Corte a partir de PDFs reais
-ponta-a-ponta. Exigiria duas fixtures do mesmo triênio com inscrições cruzadas (Resultado
-Final + Convocação), e fixtures de Edital real carregam dado de aluno identificável — a
-restrição de [[project_parser_privacy]] impede commitá-las. A regra de derivação está coberta
-por 41 testes sintéticos; a ponta-a-ponta é verificada pela rodada real sobre os 77 Editais,
-reproduzível só por quem tem `data/pdfs` local.
+**A lacuna:** não existia teste que produzisse uma Nota de Corte a partir de PDFs
+ponta-a-ponta. Fixtures de Edital real carregam dado de aluno identificável — a restrição de
+[[project_parser_privacy]] impede commitá-las — e por isso a regra de derivação só tinha 41
+testes sintéticos diretos (construindo `RegistroResultadoFinal`/`RegistroConvocacao` à mão,
+sem passar por PDF).
+
+**Resolvido pelo ticket 17** (`tests/test_pas_extraction_notas_corte_e2e.py`): mesma saída que
+o ticket 02 usou para a mesma restrição de privacidade — `fixtures.gerar_pdf_texto_sintetico`
+monta dois PDFs (Resultado Final + Convocação, mesmo triênio, 4 inscrições que se cruzam) a
+partir de texto **inteiramente inventado**, dentro do próprio teste, sem gravar nada no
+repositório nem exigir `data/pdfs` local. O teste roda os extratores reais
+(`pipeline.extrair_edital`, `convocacao.extrair_edital_convocacao`) e confere que
+`derivar_notas_corte` produz o corte esperado, incluindo o caso de empate entre dois
+convocados do mesmo Sistema na mesma chamada (desempate pela menor inscrição).
 
 ## 6. (menor) 10 inscrições com nome divergente entre Editais diferentes
 

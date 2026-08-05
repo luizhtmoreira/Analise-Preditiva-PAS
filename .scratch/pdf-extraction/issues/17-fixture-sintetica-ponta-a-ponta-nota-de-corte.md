@@ -19,7 +19,8 @@ o que as torna comitáveis sem violar a política de privacidade.
 
 **Blocked by:** Nenhum — pode começar imediatamente.
 
-**Status:** ready-for-agent
+**Status:** concluído — ver
+`.scratch/pdf-extraction/relatorios/17-fixture-sintetica-ponta-a-ponta-nota-de-corte.md`
 
 - [ ] Duas fixtures sintéticas do mesmo triênio — uma Resultado Final, uma Convocação — com
       inscrições que se cruzam, dados inteiramente inventados
