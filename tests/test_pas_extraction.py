@@ -400,6 +400,71 @@ class TestValidacaoFormatoClassificacao:
         assert "classificacao_1" in registro.validacao.campos_formato_invalido
 
 
+class TestReparoDeNome:
+    """Ticket 13: nome quebrado por espaço espúrio no meio de uma palavra, ou espaço
+    duplicado sem quebra — reparado por `nome_repair.reparar_nome` e sinalizado (não
+    silencioso) em `validacao.nome_reparado`. A lógica em si é testada isoladamente em
+    `test_pas_extraction_nome_repair.py`; esta classe prova que `_montar_registro` de fato
+    a aplica ao campo `nome` e propaga o sinal para `ValidacaoRegistro`.
+    """
+
+    ESTADO = {"campus": "Darcy Ribeiro", "curso": "MEDICINA", "turno": "Matutino"}
+    CONTEXTO = ContextoEdital(arquivo_origem="ed36.pdf", edital="36", trienio="2017/2019")
+
+    @staticmethod
+    def _campos(nome: str) -> list:
+        # Mesmos 9 campos numéricos + argumento final + 10 classificações sempre válidos
+        # de `TestValidacaoFormatoClassificacao._campos` — só o nome varia neste conjunto
+        # de testes.
+        return (
+            ["12345678", nome]
+            + ["56.291", "17.539", "23.000", "45.123", "12.456",
+               "34.789", "56.789", "23.456", "12.345", "178.456"]
+            + ["1"] * 10
+        )
+
+    def _montar(self, nome: str):
+        return resultado_final._montar_registro(
+            self._campos(nome), self.ESTADO, self.CONTEXTO, pagina=1,
+        )
+
+    def test_palavra_quebrada_por_espaco_e_reparada_e_sinalizada(self):
+        registro = self._montar("Isabell a Costa")
+
+        assert registro is not None
+        assert registro.nome == "Isabella Costa"
+        assert registro.validacao.nome_reparado
+        # `nome_reparado` é um sinal de proveniência próprio (mesmo espírito de
+        # `cota_declarada.padrao_suspeito`/`checksum.fecha`), não um motivo a mais para
+        # `.valido` reprovar o registro inteiro — ver comentário em `models.py`.
+        assert registro.validacao.valido
+
+    def test_espaco_duplicado_sem_quebra_de_palavra_e_normalizado_e_sinalizado(self):
+        registro = self._montar("Maria  Eduarda  Santos")
+
+        assert registro is not None
+        assert registro.nome == "Maria Eduarda Santos"
+        assert registro.validacao.nome_reparado
+
+    def test_particula_curta_legitima_nunca_e_fundida(self):
+        for nome in (
+            "Maria de Souza", "Ana da Silva", "João do Nascimento",
+            "Carlos dos Santos", "Rita das Neves", "Sousa e Silva",
+        ):
+            registro = self._montar(nome)
+            assert registro is not None
+            assert registro.nome == nome
+            assert not registro.validacao.nome_reparado
+
+    def test_nome_sem_corrupcao_nao_e_sinalizado(self):
+        registro = self._montar("Isabella Costa")
+
+        assert registro is not None
+        assert registro.nome == "Isabella Costa"
+        assert not registro.validacao.nome_reparado
+        assert registro.validacao.valido
+
+
 class TestCabecalhoDeCursoEngolido:
     """Ticket 02, regressão do caso do protótipo: cabeçalho de curso colado ao fim do
     último registro do curso anterior (achado (a) do NOTES.md, exemplo real "ENGENHARIA

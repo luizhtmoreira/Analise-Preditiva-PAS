@@ -396,6 +396,45 @@ ADMINISTRAÇÃO (BACHARELADO)
         assert [r.nome for r in registros] == ["Julia Franco Soares"]
 
 
+class TestReparoDeNome:
+    """Ticket 13: mesma lógica de `nome_repair.reparar_nome` usada em `resultado_final.py`,
+    reaplicada aqui (decisão registrada no módulo, junto de `_ESPACOS_RE`) — antes desta
+    linha, `parse_convocacao` só colapsava espaço duplicado, nunca reconstruía uma palavra
+    quebrada por um único espaço espúrio."""
+
+    def test_palavra_quebrada_por_espaco_e_reparada_e_sinalizada(self):
+        texto = """
+1.1.1 CAMPUS DARCY RIBEIRO – DIURNO
+ADMINISTRAÇÃO (BACHARELADO)
+23115326       Isabell a Costa Rosa                              1
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="1")
+
+        assert [r.nome for r in registros] == ["Isabella Costa Rosa"]
+        assert [r.nome_reparado for r in registros] == [True]
+
+    def test_particula_curta_legitima_nao_e_fundida(self):
+        texto = """
+1.1.1 CAMPUS DARCY RIBEIRO – DIURNO
+ADMINISTRAÇÃO (BACHARELADO)
+23115326       Maria de Souza                                    1
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="1")
+
+        assert [r.nome for r in registros] == ["Maria de Souza"]
+        assert [r.nome_reparado for r in registros] == [False]
+
+    def test_nome_sem_corrupcao_nao_e_sinalizado(self):
+        texto = """
+1.1.1 CAMPUS DARCY RIBEIRO – DIURNO
+ADMINISTRAÇÃO (BACHARELADO)
+23115326       Julia Franco Soares                                1
+"""
+        registros = parse_convocacao(_ReaderFalso(texto), _CONTEXTO, semestre="1", chamada="1")
+
+        assert [r.nome_reparado for r in registros] == [False]
+
+
 class TestListaNaFixtureReal:
     def test_a_fixture_de_uma_secao_so_sai_inteira_como_convocacao(self):
         _pular_se_fixture_ausente(FIXTURE_CONVOCACAO)
