@@ -26,7 +26,34 @@ parâmetro `?error=auth_callback_failed` — o usuário só vê a tela de login 
 que aconteceu. Essa ausência de mensagem é, por si, um defeito de UX independente da causa raiz
 (está fora do escopo deste ticket consertar — ver "O que resolver").
 
-## Duas hipóteses para a causa raiz (não confirmadas)
+## Causa raiz confirmada — 2026-08-06
+
+Duas perguntas ao dono do produto fecharam a investigação:
+
+1. O teste foi em produção (`vetorpas.com.br`), não em `localhost` — **hipótese 1 (URL de
+   redirect fora da allowlist) descartada.**
+2. O e-mail de redefinição foi aberto **no app do Gmail**, não no mesmo navegador em que o reset
+   foi pedido — **hipótese 2 confirmada.** O app do Gmail abre links no seu próprio navegador
+   embutido (WebView), um contexto de armazenamento separado do navegador/aba onde
+   `resetPasswordForEmail` rodou. O `code_verifier` do PKCE (gerado e salvo *localmente* no
+   navegador que pediu o reset) não existe nesse WebView — `exchangeCodeForSession` falha por
+   design, não por bug de configuração.
+
+**Isto não é uma falha de configuração — é uma limitação estrutural do fluxo atual.** PKCE exige
+o mesmo navegador nas duas pontas; abrir o link de um cliente de e-mail (app do Gmail, Outlook
+etc., que quase sempre usam WebView próprio) quebra essa premissa quase sempre — não é um caso
+raro, é o caminho mais comum de um usuário real clicar num link de e-mail.
+
+**A correção recomendada pela própria documentação do Supabase para este cenário:** trocar a
+verificação de `exchangeCodeForSession(code)` (exige o `code_verifier` local) por
+`verifyOtp({ token_hash, type: "recovery" })` (valida o token em si, sem depender de nada salvo
+no navegador que pediu o reset) — isso significa gerar o link de e-mail com `token_hash` em vez
+de `code`, e trocar a rota `/auth/callback` (ou uma nova, ex. `/auth/confirm`) para usar
+`verifyOtp` em vez de `exchangeCodeForSession` nesse fluxo especificamente. Login por senha e
+cadastro por e-mail/senha não são afetados — é só o caminho de recovery (e, pelo mesmo motivo,
+provavelmente o de confirmação de cadastro) que precisa migrar.
+
+## Duas hipóteses para a causa raiz (histórico da investigação, já resolvidas acima)
 
 O fluxo usa PKCE por padrão (`@supabase/ssr` define `flowType: "pkce"` em
 `createBrowserClient`/`createServerClient`), o que abre duas possibilidades:
@@ -50,24 +77,25 @@ painel do Supabase para forçar/inspecionar o resultado do `exchangeCodeForSessi
 
 ## O que resolver
 
-1. Confirmar qual das duas hipóteses é a causa raiz (ambiente do teste é o primeiro dado que
-   falta).
-2. Se for a hipótese 1: cadastrar a URL de dev (`http://localhost:3000/auth/callback`) na
-   allowlist do Supabase, se o objetivo é também testar esse fluxo localmente.
-3. Independente da causa: `/auth/entrar` deveria mostrar uma mensagem quando
-   `?error=auth_callback_failed` estiver presente ("O link expirou ou é inválido — peça um novo"),
-   em vez de falhar em silêncio — isso não corrige a causa raiz, mas transforma qualquer falha
-   futura desse link (inclusive uma terceira causa ainda não cogitada) em algo diagnosticável pelo
-   próprio usuário, sem precisar abrir o console.
+1. Migrar o fluxo de recovery (e provavelmente o de confirmação de cadastro, mesmo problema) de
+   `exchangeCodeForSession(code)` para `verifyOtp({ token_hash, type: "recovery" | "signup" })` —
+   isso muda o `redirectTo` passado a `resetPasswordForEmail`/`signUp` (ou o template de e-mail no
+   painel do Supabase, dependendo de qual `{{ .ConfirmationURL }}` está configurado hoje) para
+   carregar `token_hash` em vez de depender de `code`, e a rota de callback a processar de acordo.
+2. `/auth/entrar` deveria mostrar uma mensagem quando `?error=auth_callback_failed` estiver
+   presente ("O link expirou ou é inválido — peça um novo"), em vez de falhar em silêncio — vale
+   manter mesmo depois da migração, como rede de segurança para qualquer falha futura desse link.
 
 **Blocked by:** Nenhum — pode começar imediatamente. Achado durante a investigação do ticket 18,
 mas é um defeito à parte.
 
 **Status:** ready-for-agent
 
-- [ ] Causa raiz confirmada (ambiente do teste + qual das duas hipóteses, ou uma terceira)
+- [x] Causa raiz confirmada — PKCE `code_verifier` ausente ao abrir o link num WebView diferente
+      do navegador que pediu o reset (confirmado: teste em produção, link aberto no app do Gmail)
 - [ ] Clicar no link de redefinição de senha, do e-mail até o formulário de nova senha, funciona
-      ponta a ponta em produção
+      ponta a ponta em produção — inclusive abrindo o link num app de e-mail (Gmail, Outlook),
+      não só copiando a URL para o mesmo navegador
 - [ ] `/auth/entrar` mostra uma mensagem quando chega com `?error=auth_callback_failed`, em vez de
       falhar em silêncio
 - [ ] `pytest tests/`, `eslint` e `tsc --noEmit` verdes
