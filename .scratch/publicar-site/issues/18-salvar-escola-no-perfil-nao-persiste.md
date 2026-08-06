@@ -44,15 +44,15 @@ onde a verificação foi feita antes de assumir que o `updateUser` falhou de ver
 **Blocked by:** Nenhum — pode começar imediatamente. Achado durante a investigação do ticket 17,
 mas é um defeito à parte (persistência, não modelo de dado).
 
-**Status:** diagnosticado — 2026-08-06, relatório em
+**Status:** concluído — 2026-08-06, relatório em
 `.scratch/publicar-site/relatorios/18-salvar-escola-no-perfil-nao-persiste.md`. Causa raiz: não é
 o `updateUser()` que falha — `alunos_perfis` tem uma coluna `escola` órfã (nenhum código escreve
 nela) que é onde o dono do produto checou; `raw_user_meta_data.escola` é o lugar certo e o código
-grava lá corretamente. Falta só a confirmação final no painel (`Authentication → Users`, não
-`Table Editor`), que ficou com o dono do produto.
+grava lá corretamente. Confirmado ao vivo pelo dono do produto: trocou a escola em `/perfil` e o
+JSON de `raw_user_meta_data` no painel mudou.
 
 - [x] O defeito está reproduzido e a causa raiz identificada (não só contornada)
-- [ ] Trocar a escola em `/perfil` reflete em `raw_user_meta_data` no Supabase, verificado
+- [x] Trocar a escola em `/perfil` reflete em `raw_user_meta_data` no Supabase, verificado
       diretamente no painel — não presumido pela mensagem de sucesso da tela
 - [x] Diagnóstico documentado por leitura de código (não há teste de integração com Supabase Auth
       no repo, e não foi possível logar com conta de teste real nesta rodada — e-mail de

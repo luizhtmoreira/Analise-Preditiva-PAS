@@ -1,8 +1,8 @@
 # Relatório — Ticket 18: salvar escola no perfil não persiste
 
 **Ticket:** `.scratch/publicar-site/issues/18-salvar-escola-no-perfil-nao-persiste.md`
-**Status:** diagnóstico concluído por leitura de código — verificação final no painel do Supabase
-fica com o dono do produto (decisão dele: só diagnóstico por código nesta rodada)
+**Status:** concluído — hipótese confirmada ao vivo pelo dono do produto em 2026-08-06: trocou a
+escola em `/perfil`, e o JSON de `raw_user_meta_data` no painel do Supabase mudou
 **Onde vive o trabalho:** nenhuma mudança de código; só investigação
 
 ---
@@ -37,7 +37,13 @@ coluna não existe": a coluna `escola` **existe** em `alunos_perfis`, então é 
 primeiro — só que ela nunca é escrita, então qualquer edição em `/perfil` vai parecer "não
 persistir" para sempre, mesmo que `raw_user_meta_data` esteja atualizando corretamente.
 
-## 2. O que não pude verificar, e por quê
+## 2. Confirmação ao vivo — 2026-08-06
+
+O dono do produto testou com a conta existente (`lht.unb@gmail.com`, `raw_user_meta_data.escola`
+partindo de `"sagrado"`), trocou a escola em `/perfil` e conferiu no painel: `raw_user_meta_data`
+mudou. Hipótese confirmada — não é bug de persistência.
+
+## 2a. O que não pude verificar sozinho, e por quê
 
 O checklist do ticket pede confirmar a mudança em `raw_user_meta_data` diretamente no painel. Não
 tenho como fazer isso nesta rodada:
@@ -66,8 +72,8 @@ coluna dedicada).
 - [x] O defeito está reproduzido e a causa raiz identificada (não só contornada) — causa raiz:
       confusão entre duas colunas `escola` (uma viva em `user_metadata`, uma órfã em
       `alunos_perfis`), não uma falha de persistência do `updateUser`
-- [ ] Trocar a escola em `/perfil` reflete em `raw_user_meta_data` no Supabase, verificado
-      diretamente no painel — fica pendente com o dono do produto (ver §2)
+- [x] Trocar a escola em `/perfil` reflete em `raw_user_meta_data` no Supabase, verificado
+      diretamente no painel — confirmado ao vivo pelo dono do produto (ver §2)
 - [x] Diagnóstico documentado por leitura de código (não há teste de integração com Supabase Auth
       no repo, e a rodada não incluiu conta de teste real)
 - [x] Nenhum código foi alterado — `pytest tests/`, `eslint` e `tsc --noEmit` continuam no estado
