@@ -142,15 +142,50 @@ repositório nem exigir `data/pdfs` local. O teste roda os extratores reais
 `derivar_notas_corte` produz o corte esperado, incluindo o caso de empate entre dois
 convocados do mesmo Sistema na mesma chamada (desempate pela menor inscrição).
 
-## 6. (menor) 10 inscrições com nome divergente entre Editais diferentes
+## 6. 10 inscrições com nome divergente entre Editais diferentes — FECHADO pelo ticket 18
 
 **Onde foi encontrado:** `relatorios/08-rodada-completa-deterministica.md` — reconciliação
 cruzada por inscrição entre ~100 mil registros de Editais diferentes.
 
-**Severidade:** baixa — proporção compatível com ruído de extração isolado (provavelmente a
-mesma classe do defeito 1, ou variação legítima de grafia entre Editais de anos diferentes),
-não um problema sistemático de casamento de inscrição. Não investigado a fundo; listado aqui
-para não se perder.
+**Investigado a fundo pelo ticket 18** (`relatorios/18-investigar-nomes-divergentes-entre-editais.md`):
+não é o defeito 1 (nome quebrado por espaço) — `schema.canonizar` já ignorava espaço na
+comparação, então esse defeito nunca poderia ter causado divergência aqui, mesmo antes do
+ticket 13 corrigi-lo. Reextraindo o texto bruto dos PDFs envolvidos nos 10 casos, o pipeline
+bate exatamente com o que está impresso em cada Edital — a divergência já existe na fonte, não
+é introduzida pelo `pas_extraction`. Sem defeito de código para corrigir. Ver item 7.
+
+## 7. (informativo, sem ação de código) Nomes divergentes entre Editais são um problema da fonte, não do parser
+
+**Onde foi encontrado:** ticket 18, investigando o item 6 (acima).
+
+**O achado:** dos 10 casos de nome divergente entre Editais do mesmo triênio (achado do ticket
+08), nenhum é causado por extração — em todos, reextraindo o PDF de origem diretamente, o
+texto capturado pelo pipeline bate byte a byte com o que está impresso no Edital.
+
+- **7 de 10** compartilham um padrão idêntico: um sobrenome termina numa sílaba acentuada; sai
+  correto no Resultado Final, mas na Convocação do mesmo triênio a mesma pessoa aparece com as
+  duas letras finais trocadas de posição e sem acento. Confirmado em 4 PDFs de Convocação
+  independentes (Ed_33, Ed_34, Ed_37, Ed_38 — dois triênios diferentes), sempre no mesmo padrão,
+  sempre do lado da Convocação. Hipótese mais provável: defeito na geração desses PDFs pela
+  Cebraspe (fonte/codificação daquele caractere acentuado no template de Convocação), não do
+  nosso extrator — o texto correto simplesmente não está no PDF de Convocação para ser
+  recuperado.
+- **3 de 10** são casos isolados sem padrão comum entre si: dois Editais que discordam de
+  verdade sobre o sobrenome de uma inscrição (16105688); um Edital com um sobrenome a menos que
+  o outro, texto genuinamente ausente na Convocação (16116602); um par que nem é do mesmo
+  triênio (2021/2023 vs 2022/2024, inscrição 21177086) com uma letra duplicada num dos dois
+  documentos-fonte.
+
+**Por que não é ticket de correção:** não existe, dentro do que o Edital disponibiliza, uma
+segunda fonte para decidir qual grafia está certa — corrigir exigiria um dado externo (ex.:
+base de matrícula da UnB), fora do escopo do pipeline de extração de Editais.
+
+**Achado colateral, sem ticket próprio:** a tabela "Reconciliação cruzada" de
+`relatorio_validacao.md` lista `nomes` (ordenado alfabeticamente) e `proveniências` (ordem de
+inserção) como colunas lado a lado que não são arrays paralelos — um leitor pode assumir
+erroneamente que a 1ª variante de nome corresponde à 1ª origem listada. Não afeta nenhum CSV de
+saída, só a legibilidade da tabela; ver `reconciliacao.reconciliar_nomes` se algum dia isso for
+mexido.
 
 ---
 
