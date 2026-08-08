@@ -119,13 +119,45 @@ defeito persiste — o código novo em `/auth/confirm` fica pronto mas não é e
 trocar o template, testar clicando o link tanto no mesmo navegador quanto num app de e-mail
 (Gmail/Outlook) para confirmar que o WebView também funciona.
 
-**Status:** ready-for-agent
+## Verificado ao vivo em produção — 2026-08-08
+
+O passo manual acima foi feito pelo dono do produto, e apareceram mais dois defeitos reais no
+caminho, achados só ao testar de verdade (não em código):
+
+1. **Template com `&` cru quebrava a substituição de variáveis.** O painel do Supabase cai
+   silenciosamente no template padrão (`{{ .ConfirmationURL }}`, o fluxo antigo baseado em `code`)
+   quando o HTML do template tem erro de sintaxe — e não avisa que isso aconteceu. `&` sem
+   escapar como `&amp;` dentro do `href` foi o gatilho aqui. Corrigido trocando por `&amp;` nos
+   dois links do template.
+2. **`{{ .RedirectTo }}` chega como URL absoluta, não como path.** `app/auth/confirm/route.ts`
+   fazia `${origin}${next}` incondicionalmente — com `next` já absoluto (`https://vetorpas.com.br/...`),
+   isso gerava uma URL com o domínio duplicado. Corrigido: só concatena `origin` quando `next` não
+   começa com `http`.
+3. **O middleware global atrapalhava a sessão de recovery.** `middleware.ts` chama
+   `supabase.auth.getUser()` em quase toda rota; rodando entre o `verifyOtp` (que acabou de
+   estabelecer a sessão) e a página de nova senha, ele guerreava com a sessão recém-criada antes do
+   cliente conseguir lê-la — sintoma: tela de nova senha carregava, mas `updateUser` falhava como se
+   não houvesse sessão. É uma causa documentada pela própria Supabase para esse padrão exato.
+   Corrigido excluindo `/auth/confirm` e `/auth/redefinir-senha` do matcher do middleware.
+4. **O erro genérico escondia a causa real por dois testes inteiros.** Depois dos três fixes acima,
+   o teste ainda mostrava "Não foi possível atualizar a senha. O link pode ter expirado." —
+   parecia a mesma falha de sempre. Um debug temporário (removido depois, ver commit seguinte)
+   revelou que a sessão estava presente e o erro real era `422 same_password: New password should
+   be different from the old password` — nada a ver com o link, o dono do produto só reusou a
+   senha antiga no teste. `RedefinirSenhaForm.tsx` agora trata esse código especificamente
+   ("A nova senha deve ser diferente da senha atual.") em vez de cair na mensagem genérica de link
+   expirado, que era enganosa para esse caso.
+
+Confirmado funcionando ponta a ponta em produção: reset pedido → e-mail aberto no Gmail (app
+Android e Safari) → sessão de recovery estabelecida → senha trocada com sucesso.
+
+**Status:** done
 
 - [x] Causa raiz confirmada — PKCE `code_verifier` ausente ao abrir o link num WebView diferente
       do navegador que pediu o reset (confirmado: teste em produção, link aberto no app do Gmail)
-- [ ] Clicar no link de redefinição de senha, do e-mail até o formulário de nova senha, funciona
+- [x] Clicar no link de redefinição de senha, do e-mail até o formulário de nova senha, funciona
       ponta a ponta em produção — inclusive abrindo o link num app de e-mail (Gmail, Outlook),
       não só copiando a URL para o mesmo navegador
-- [ ] `/auth/entrar` mostra uma mensagem quando chega com `?error=auth_callback_failed`, em vez de
+- [x] `/auth/entrar` mostra uma mensagem quando chega com `?error=auth_callback_failed`, em vez de
       falhar em silêncio
-- [ ] `pytest tests/`, `eslint` e `tsc --noEmit` verdes
+- [x] `pytest tests/`, `eslint` e `tsc --noEmit` verdes

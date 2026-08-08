@@ -28,14 +28,15 @@ export function RedefinirSenhaForm() {
     setError("");
 
     const supabase = createClient();
-    const { data: sessionData } = await supabase.auth.getSession();
     const { data, error: updateError } = await supabase.auth.updateUser({
       password,
     });
 
     if (updateError) {
       setError(
-        `[debug] sessão presente: ${Boolean(sessionData.session)} | erro: ${updateError.status ?? "?"} ${updateError.code ?? "?"} ${updateError.message}`
+        updateError.code === "same_password"
+          ? "A nova senha deve ser diferente da senha atual."
+          : "Não foi possível atualizar a senha. O link pode ter expirado."
       );
       setLoading(false);
       return;
