@@ -18,7 +18,7 @@ export function EsqueciSenhaForm() {
     setError("");
 
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=/auth/redefinir-senha`;
+    const redirectTo = `${window.location.origin}/auth/redefinir-senha`;
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,

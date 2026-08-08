@@ -89,6 +89,36 @@ painel do Supabase para forçar/inspecionar o resultado do `exchangeCodeForSessi
 **Blocked by:** Nenhum — pode começar imediatamente. Achado durante a investigação do ticket 18,
 mas é um defeito à parte.
 
+## Implementado — 2026-08-08
+
+Código do lado do app pronto, mas **falta um passo manual no painel do Supabase** para o fluxo
+funcionar ponta a ponta — este agente não tem acesso ao painel para fazer isso:
+
+1. `app/auth/confirm/route.ts` (novo) — troca `verifyOtp({ token_hash, type })` no lugar de
+   `exchangeCodeForSession(code)`. Não depende do `code_verifier` local, então funciona quando o
+   link é aberto num WebView diferente (app do Gmail, Outlook etc.).
+2. `EsqueciSenhaForm.tsx` — `redirectTo` agora aponta direto para `/auth/redefinir-senha` (antes
+   passava por `/auth/callback`). Esse valor vira `{{ .RedirectTo }}` no template de e-mail.
+3. `AlunoLoginForm.tsx` — lê `?error=auth_callback_failed` e mostra "O link expirou ou é
+   inválido — peça um novo." em vez de falhar em silêncio.
+4. `app/auth/callback/route.ts` (o antigo, baseado em `code`) foi mantido intacto — ainda é usado
+   pelo cadastro (`AlunoSignupForm.tsx`), que **não foi migrado** (fora do escopo/checklist deste
+   ticket, mas tem a mesma limitação estrutural de PKCE — abrir o e-mail de confirmação de
+   cadastro num WebView provavelmente quebra do mesmo jeito).
+
+**Passo manual pendente (bloqueia o critério de aceite "funciona ponta a ponta em produção"):**
+no painel do Supabase, `Authentication → Email Templates → Reset Password`, o template precisa
+apontar para a rota nova em vez do `{{ .ConfirmationURL }}` padrão:
+
+```
+{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next={{ .RedirectTo }}
+```
+
+Sem essa troca no template, o e-mail continua linkando para o fluxo antigo baseado em `code` e o
+defeito persiste — o código novo em `/auth/confirm` fica pronto mas não é exercitado. Depois de
+trocar o template, testar clicando o link tanto no mesmo navegador quanto num app de e-mail
+(Gmail/Outlook) para confirmar que o WebView também funciona.
+
 **Status:** ready-for-agent
 
 - [x] Causa raiz confirmada — PKCE `code_verifier` ausente ao abrir o link num WebView diferente

@@ -12,7 +12,11 @@ export function AlunoLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    searchParams.get("error") === "auth_callback_failed"
+      ? "O link expirou ou é inválido — peça um novo."
+      : ""
+  );
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
