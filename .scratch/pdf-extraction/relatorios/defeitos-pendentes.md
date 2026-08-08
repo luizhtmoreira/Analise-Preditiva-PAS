@@ -89,23 +89,27 @@ sinalizaria `campos_formato_invalido` no registro específico em vez de só neut
 efeito colateral na camada de buracos (que é o que o `_buracos_por_sistema` faz hoje, com o
 limite de plausibilidade `3× observado + 50`).
 
-## 3. 10ª classificação lida como número da página seguinte — pendente
+## 3. Número de página vazando para dentro de campos de registro — FECHADO pelo ticket 15
 
 **Onde foi encontrado:** `relatorios/06-deducao-das-cotas-declaradas.md`, §3.
 
-**O defeito:** quando um registro é o último de uma página e seu 22º campo (10ª classificação)
-só começa na página seguinte, `resultado_final._separar_registro` lê o número da página no
-lugar do valor real, porque o `pypdf` emite o número da página no início do texto de cada
-página e o parser trabalha sobre o blob já concatenado, sem noção de fronteira de página.
+**O defeito:** o `pypdf` emite o número da página como uma linha isolada no início do texto
+de cada página, e `resultado_final._construir_blob` concatenava as páginas sem removê-lo.
+Quando um campo de registro começava exatamente na fronteira de página, o parser lia esse
+número no lugar do valor real — não só na 10ª classificação (o sintoma que o ticket 06
+mediu via checagem de fecho de cota), mas em qualquer campo, colado sem separador quando o
+campo em si (não um novo registro) começava logo após o número.
 
-**Impacto medido:** 8 de 10 casos conhecidos no corpus (66.313 registros) são pegos pela
-checagem de fecho de cota e saem marcados com `cota_padrao_suspeito=True` — não silencioso.
-Os outros 2 caem em padrões que continuam sendo fecho válido (ex. `{1,9,10}`) e ficam
-invisíveis a essa camada.
-
-**O que falta fazer:** dar consciência de fronteira de página a `_separar_registro`
-(território dos tickets 01/05). Recomendado como ticket de follow-up próprio — misturar com o
-ticket 06 (dedução de cota) esconderia os dois problemas no mesmo commit.
+**Resolvido pelo ticket 15** (`relatorios/15-fronteira-de-pagina-no-parser.md`):
+`_sem_numero_de_pagina` remove o número no nível da página, antes da concatenação. Medido no
+corpus real (8 Editais, duas rodadas comparadas registro a registro): os 8 casos que a
+checagem de fecho já pegava e os 2 que ficavam invisíveis a ela (`{1,9,10}`, fecho válido
+tanto corrompido quanto correto) foram corrigidos — os 2 invisíveis só puderam ser
+confirmados comparando as duas rodadas, não pela checagem de fecho, que nunca teria como
+avisar sobre eles. Achado além do escopo original: mais 42 registros com colagem sem
+separador em outros campos, e 380 registros que eram descartados silenciosamente (o campo
+corrompido virava um valor não parseável) voltam a aparecer na saída — ver relatório do
+ticket 15, §4, para a medição completa.
 
 ## 4. Ponto cego de posição máxima em `_buracos_por_sistema` — limitação de técnica
 

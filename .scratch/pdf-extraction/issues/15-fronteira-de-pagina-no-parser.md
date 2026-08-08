@@ -20,14 +20,14 @@ página que caiu num lugar plausível.
 ticket 14 — `resultado_final._montar_registro`/`_separar_registro` — sem dependência lógica
 entre os dois; vale sequenciar a implementação pra evitar conflito de merge.)
 
-**Status:** ready-for-agent
+**Status:** concluído — ver `.scratch/pdf-extraction/relatorios/15-fronteira-de-pagina-no-parser.md`
 
-- [ ] `_separar_registro` (ou onde for a correção) tem consciência de fronteira de página, não
+- [x] `_separar_registro` (ou onde for a correção) tem consciência de fronteira de página, não
       só do blob de texto já concatenado
-- [ ] Os 8 casos conhecidos no corpus real passam a ter o valor correto na 10ª classificação em
+- [x] Os 8 casos conhecidos no corpus real passam a ter o valor correto na 10ª classificação em
       vez do número da página seguinte
-- [ ] Teste sintético reproduz um registro exatamente na borda de página (22º campo cai na
+- [x] Teste sintético reproduz um registro exatamente na borda de página (22º campo cai na
       página seguinte) e confirma que o valor correto é lido, não o número da página
-- [ ] Os 2 casos hoje invisíveis à checagem de fecho (padrão coincide com fecho válido) são
+- [x] Os 2 casos hoje invisíveis à checagem de fecho (padrão coincide com fecho válido) são
       reavaliados: se a correção de fronteira os resolve também, documentar; se não, manter
       como limitação conhecida e registrar isso em `defeitos-pendentes.md`

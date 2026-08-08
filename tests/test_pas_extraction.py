@@ -20,6 +20,7 @@ from pas_extraction.models import (  # type: ignore
 )
 from pas_extraction.cotas import CotaDeclarada, deduzir_cota_declarada  # type: ignore
 from pas_extraction.csv_writer import CSV_COLUMNS, escrever_csv  # type: ignore
+from pas_extraction.fixtures import gerar_pdf_texto_sintetico  # type: ignore
 from pas_extraction.schema import canonizar, classificar_familia  # type: ignore
 from pas_extraction.validacao import validar_sequencia_e_ordem  # type: ignore
 from pas_extraction import resultado_final  # type: ignore
@@ -889,34 +890,26 @@ class TestCotaDeclarada:
         suspeitos = [r.nome for r in resultado.registros if r.cota_declarada.padrao_suspeito]
         assert suspeitos == []
 
-    def test_padrao_suspeito_real_sobrevive_na_saida_com_a_marca(self):
-        # O caso real que a checagem de fecho pegou no corpus (8 ocorrências em 66.313
-        # registros, todas desta mesma forma): o Aluno é o último registro da página, seu
-        # 22º campo só começa na página seguinte, e o número dessa página — que a extração
-        # emite no início do texto dela — entra no lugar da 10ª classificação. O padrão
-        # resultante ({1, 10}) é impossível pela cascata da Lei 12.711: aparecer no
-        # subsistema que exige PcD sem aparecer no 9, que não exige nada.
-        #
-        # Este teste fixa o comportamento do ticket 06 (sinalizar, não descartar), não o
-        # bug de parse que o originou — esse é de outra camada e está fora deste ticket
-        # (ver relatório, seção de escopo). Quando ele for corrigido, o registro passa a
-        # ter padrão {1} e este teste falha de propósito: é o lembrete de revisitá-lo.
+    def test_registro_na_fronteira_de_pagina_nao_sai_mais_suspeito(self):
+        # Este era o único caso real, nas fixtures deste projeto, do bug corrigido pelo
+        # ticket 15: o Aluno é o último registro da página, seu 22º campo (a 10ª
+        # classificação) só começa na página seguinte, e antes da correção o número dessa
+        # página — que a extração emite no início do texto dela — entrava no lugar da 10ª
+        # classificação, produzindo o padrão impossível `{1, 10}` (checagem de fecho do
+        # ticket 06). Com `_separar_registro` consciente da fronteira de página, o Aluno
+        # (última inscrição da página 2 desta fixture) volta a ter só o padrão real `{1}` —
+        # Universal, o único Sistema em que de fato foi classificado.
         _pular_se_fixture_ausente(FIXTURE_COTA_SUSPEITA)
 
         resultado = extrair_edital(FIXTURE_COTA_SUSPEITA)
-        # Identificado pelo próprio sinal sob teste — é o único registro suspeito deste
-        # recorte (confirmado logo abaixo) — não precisa de inscrição para selecioná-lo.
-        aluno = next(r for r in resultado.registros if r.cota_declarada.padrao_suspeito)
+        aluno = [r for r in resultado.registros if r.proveniencia.pagina == 2][-1]
 
-        assert [i for i in range(1, 11) if aluno.classificacoes[i] is not None] == [1, 10]
-        assert aluno.cota_declarada.padrao_suspeito
-        # Não descartado: o registro continua na saída, com os atributos deduzidos do
-        # subsistema mais específico que foi observado.
-        assert aluno in resultado.registros
-        assert aluno.cota_declarada.pcd and aluno.cota_declarada.escola_publica
-        # E é o único do recorte — a marca não é ruído que atinge todo mundo.
-        suspeitos = [r for r in resultado.registros if r.cota_declarada.padrao_suspeito]
-        assert suspeitos == [aluno]
+        assert [i for i in range(1, 11) if aluno.classificacoes[i] is not None] == [1]
+        assert aluno.classificacoes[10] is None
+        assert not aluno.cota_declarada.padrao_suspeito
+        assert aluno.cota_declarada.perfil == "Universal"
+        # Nenhum registro deste recorte fica marcado suspeito depois da correção.
+        assert not any(r.cota_declarada.padrao_suspeito for r in resultado.registros)
 
     def test_as_seis_colunas_derivadas_saem_no_csv_junto_das_classificacoes_cruas(self, tmp_path):
         _pular_se_fixture_ausente(FIXTURE_CURSO_COMPLETO)
@@ -948,6 +941,85 @@ class TestCotaDeclarada:
         assert linha["sistema_negros"] == "False"
         assert linha["perfil_cota"] == "EP / Baixa Renda / PPI"
         assert linha["classificacao_sistema_2"] == "-"
+
+
+class TestFronteiraDePagina:
+    """Ticket 15: quando o 22º campo de um registro (a 10ª classificação) só é impresso
+    no início da página seguinte, `_separar_registro` não pode mais confundir o número de
+    página que o Edital imprime ali (achado do ticket 06, §3 do relatório) com o valor
+    real do campo.
+
+    Reproduz sinteticamente (não com fixture fatiada de PDF real, ver `fixtures.py`) porque
+    o que importa aqui é a *posição exata* da quebra de página dentro do registro — controlar
+    isso via `gerar_pdf_texto_sintetico([pagina1, pagina2], ...)` é mais direto e não exige
+    dado de Aluno real.
+    """
+
+    _CABECALHO = (
+        "UNIVERSIDADE DE BRASILIA (UnB)\n"
+        "EDITAL No 17 - PAS/UnB - TRIENIO 2023/2025\n"
+        "Os resultados finais serao publicados na seguinte ordem: Numero de inscricao, nome "
+        "do candidato, EB da Prova 1 da Etapa 1, EB da Prova 2 da Etapa 1, Nota da Redacao "
+        "da Etapa 1, EB da Prova 1 da Etapa 2, EB da Prova 2 da Etapa 2, Nota da Redacao da "
+        "Etapa 2, EB da Prova 1 da Etapa 3, EB da Prova 2 da Etapa 3, Nota da Redacao da "
+        "Etapa 3, Argumento Final, Classificacao em cada um dos Sistemas de Concorrencia.\n"
+        "1.1.1 CAMPUS DARCY RIBEIRO - DIURNO\n"
+        "1.1.1.1 MEDICINA (BACHARELADO)\n"
+    )
+    _NOTAS = "10.000, 20.000, 5.000, 10.000, 20.000, 5.000, 10.000, 20.000, 5.000"
+
+    def _pdf_com_registro_na_fronteira(self, tmp_path: Path, classificacao_10: str) -> Path:
+        # Registro 1: os 21 primeiros campos (até a classificação do Sistema 9) ficam na
+        # página 1; a classificação do Sistema 10 (o 22º campo) só entra na página 2 —
+        # exatamente o cenário do ticket. "83" é o número de página injetado pela extração,
+        # numa linha própria, do jeito confirmado no texto bruto de um Edital real.
+        campos_ate_sistema_9 = ", ".join(
+            ["20100001", "Fulano de Tal", self._NOTAS, "100.000"] + ["-"] * 9
+        )
+        pagina1 = self._CABECALHO + campos_ate_sistema_9 + ", "
+
+        registro_2 = ", ".join(
+            ["20100002", "Beltrano da Silva", self._NOTAS, "95.000"] + ["-"] * 10
+        )
+        pagina2 = f"83\n\n{classificacao_10} / {registro_2}"
+
+        return gerar_pdf_texto_sintetico([pagina1, pagina2], tmp_path / "fronteira.pdf")
+
+    def test_classificacao_na_borda_de_pagina_nao_vira_numero_da_pagina_seguinte(
+        self, tmp_path
+    ):
+        # Valor real e distinto tanto de "-" quanto do número de página ("83"), para que o
+        # teste não passe por acidente se a correção só tratasse o caso "-".
+        pdf = self._pdf_com_registro_na_fronteira(tmp_path, classificacao_10="7")
+
+        resultado = extrair_edital(pdf)
+        aluno = next(r for r in resultado.registros if r.inscricao == "20100001")
+
+        assert aluno.classificacoes[10] == 7
+        assert aluno.classificacoes[10] != 83
+
+    def test_classificacao_na_borda_de_pagina_com_traco_nao_vira_numero_da_pagina(
+        self, tmp_path
+    ):
+        # O caso observado no corpus real (relatório do ticket 06, §3): o Aluno não
+        # concorreu no Sistema 10 ("-"), e é justamente por cair na borda que o "-" vira
+        # "83" sem a correção.
+        pdf = self._pdf_com_registro_na_fronteira(tmp_path, classificacao_10="-")
+
+        resultado = extrair_edital(pdf)
+        aluno = next(r for r in resultado.registros if r.inscricao == "20100001")
+
+        assert aluno.classificacoes[10] is None
+
+    def test_o_registro_seguinte_apos_a_fronteira_continua_intacto(self, tmp_path):
+        pdf = self._pdf_com_registro_na_fronteira(tmp_path, classificacao_10="-")
+
+        resultado = extrair_edital(pdf)
+
+        assert len(resultado.registros) == 2
+        proximo = next(r for r in resultado.registros if r.inscricao == "20100002")
+        assert proximo.nome == "Beltrano da Silva"
+        assert all(v is None for v in proximo.classificacoes.values())
 
 
 if __name__ == "__main__":
