@@ -6,6 +6,7 @@ import { fetchCourses, fetchCoursesCutoff, fetchStrategy } from "@/lib/api";
 import type { StrategyResponse } from "@/lib/types";
 import { COTAS, ehCotaConhecida } from "@/lib/cotas";
 import { createClient } from "@/lib/supabase/client";
+import { useWakingUp } from "@/lib/useWakingUp";
 
 /* ─── constants & palette ────────────────────────────────────────── */
 
@@ -256,6 +257,7 @@ export function CalculadoraPage() {
   const [result, setResult] = useState<StrategyResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { waking, start: startWaking, stop: stopWaking } = useWakingUp();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -359,6 +361,7 @@ export function CalculadoraPage() {
     setLoading(true);
     setError("");
     setResult(null);
+    startWaking();
 
     const body = {
       p1_pas1: Number(pas1.p1) || 0,
@@ -406,6 +409,7 @@ export function CalculadoraPage() {
       setError("Serviço indisponível. Verifique se a API está rodando.");
     } finally {
       setLoading(false);
+      stopWaking();
     }
   }
 
@@ -641,7 +645,9 @@ export function CalculadoraPage() {
                 className="calc-cta vp-btn vp-btn-cyan"
                 style={{ height: 52, fontSize: 15, fontWeight: 700 }}
               >
-                {loading ? "Calculando rota de aprovação..." : "Traçar Rota de Aprovação"}
+                {loading
+                  ? (waking ? "Acordando o serviço (pode levar até 40s)…" : "Calculando rota de aprovação...")
+                  : "Traçar Rota de Aprovação"}
               </button>
             </form>
 

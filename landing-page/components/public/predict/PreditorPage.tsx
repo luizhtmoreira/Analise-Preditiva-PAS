@@ -6,6 +6,7 @@ import { PublicHeader } from "@/components/public/PublicHeader";
 import { fetchPredict, fetchCourses, fetchCorteEvolucao, fetchCourseChamadas } from "@/lib/api";
 import type { PredictResponse, CourseResult, CorteEvolucao, ChamadaCorte } from "@/lib/types";
 import { COTAS, ehCotaConhecida } from "@/lib/cotas";
+import { useWakingUp } from "@/lib/useWakingUp";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
@@ -687,6 +688,7 @@ export function PreditorPage() {
   const [result, setResult] = useState<PredictResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { waking, start: startWaking, stop: stopWaking } = useWakingUp();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   // Sem estado de "carregando" para estes dois: nenhuma parte da tela o lia, e ligá-lo dentro do
@@ -772,6 +774,7 @@ export function PreditorPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true); setError(""); setResult(null);
+    startWaking();
     try {
       const data = await fetchPredict({
         p1_pas1: Number(pas1.p1), p2_pas1: Number(pas1.p2), red_pas1: Number(pas1.red),
@@ -804,6 +807,7 @@ export function PreditorPage() {
       setError("Serviço indisponível. Verifique se a API está rodando.");
     } finally {
       setLoading(false);
+      stopWaking();
     }
   }
 
@@ -991,7 +995,7 @@ export function PreditorPage() {
               {/* CTA */}
               <button type="submit" disabled={loading} className="pred-cta vp-btn vp-btn-cyan"
                 style={{ width: "100%", padding: "16px", fontSize: 15, fontWeight: 700 }}>
-                {loading ? "Calculando previsão…" : "Calcular minha previsão →"}
+                {loading ? (waking ? "Acordando o serviço (pode levar até 40s)…" : "Calculando previsão…") : "Calcular minha previsão →"}
               </button>
             </form>
 

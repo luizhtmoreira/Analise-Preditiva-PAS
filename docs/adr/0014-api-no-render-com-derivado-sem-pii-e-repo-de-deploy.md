@@ -89,6 +89,15 @@ dá TLS gratuito em domínio próprio em todos os planos.
   **quebram com erro**, não ficam lentas — e só em produção, só depois de ociosidade. As chamadas
   client-side (Preditor, Calculadora) não têm esse problema. O timeout precisa ser conferido e
   configurado.
+  **Resolvido no ticket 08d (2026-08-08):** Boot Frio medido contra `api.vetorpas.com.br/health`
+  hibernada de verdade (não estimado de terceiro): **32,4 s**. O timeout de Function no plano Hobby
+  (confirmado na documentação oficial da Vercel, sem `vercel.json` neste repo que o reduza) é **300
+  s, fixo** — não é um valor a configurar aqui, é o teto do plano. Margem de quase 10×; a folga
+  contra o piso documentado de 30–50 s também se sustenta mesmo num boot mais lento do que o medido
+  numa única amostra. Não há gatilho para antecipar o Starter de $7/mês por este motivo. O
+  `/temporal` ganhou proteção extra por já usar `revalidate: 3600` — uma regeneração que falhar por
+  Boot Frio serve a página estática anterior em vez de erro. Relatório completo em
+  `.scratch/publicar-site/relatorios/08d-boot-frio-medido-e-o-frontend-que-sabe-esperar.md`.
 - **O Starter de $7/mês é a saída documentada, com gatilho escrito:** sem spin-down, 0,5 vCPU. O
   gatilho é o lançamento — não "quando doer".
 - **O `CMD` passa a ler `$PORT`** (o Render injeta, default 10000) em vez do `7860` cravado. O

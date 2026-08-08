@@ -2,6 +2,19 @@
 
 **Label:** `wayfinder:map`
 **Criado:** 2026-07-29
+**Status: RODADA FECHADA em 2026-08-01** — ticket 14 concluído: merge de `feat/pdf-extraction` na
+`main` (commit `01cae1b`), deploy automático da Vercel configurado (Git conectado, Root Directory
+corrigido), verificado num navegador real contra `api.vetorpas.com.br`. Relatório em
+`relatorios/14-publicacao-main-no-ar-contra-a-api-hospedada.md`.
+**Atualizado:** 2026-08-08 — `08d`: Boot Frio medido contra o serviço no ar (**32,4 s**, API real
+hibernada, não estimado), Function Max Duration da Vercel conferido na doc oficial (Hobby: 300 s
+fixo, ~10× de folga) — **não estourou**, o plano gratuito segue viável e não há gatilho para
+antecipar o Starter de $7/mês. Preditor e Calculadora ganharam estado "acordando" no botão
+(`useWakingUp`); `/temporal` testado ao vivo com a API fria (sem quebrar, mas via cache ISR — não
+provou o caminho bloqueante). **Gestão/Escola/Comparação ficaram sem teste ao vivo** — exigem
+sessão autenticada com dados carregados, fora do alcance de um teste por linha de comando; a
+confiança de que não quebram é inferência do mesmo mecanismo, não observação. Relatório em
+`relatorios/08d-boot-frio-medido-e-o-frontend-que-sabe-esperar.md`.
 **Atualizado:** 2026-07-31 — `08b` entregue: Dockerfile na forma do Render (porta via `$PORT`,
 secret em `/etc/secrets/HF_TOKEN` — verificado, não de memória) e `publicar_space.py` publicando
 por `git push` num Repo de Deploy que nasce vazio. `08a` e `08b` estão os dois em código; falta
@@ -304,6 +317,7 @@ arquivo, nunca aqui: esta seção só ordena e diz quem precisa de você.
 | 12 | [Ano-Âncora: cinco anos reais na tela](issues/12-ano-ancora-cinco-anos-reais-na-tela.md) | em parte — é tela nova | Opus, médio |
 | 13 | [Língua por Etapa, ponta a ponta](issues/13-lingua-por-etapa-ponta-a-ponta.md) | não — o contrato já está escrito | Sonnet, médio |
 | 14 | [Publicação: a `main` no ar](issues/14-publicacao-main-no-ar-contra-a-api-hospedada.md) | **sim** — vai ao ar | Opus, médio |
+| 16 | [Os dez Sistemas de Concorrência na tela](issues/16-as-dez-cotas-na-tela.md) | **sim, antes de codar** — os rótulos `L1/L2/L9/L10` precisam ser conferidos contra o Edital | Sonnet, médio |
 
 **Bloqueador externo:** o ticket 9 depende do
 [ticket 14 da frente de extração](../pdf-extraction/issues/14-validacao-formato-classificacao.md)
