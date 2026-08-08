@@ -12,7 +12,8 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const destination = next.startsWith("http") ? next : `${origin}${next}`;
+      return NextResponse.redirect(destination);
     }
   }
 
