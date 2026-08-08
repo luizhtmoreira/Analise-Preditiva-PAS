@@ -122,6 +122,16 @@ sem uma fonte de dado externa (fora do escopo declarado). Documentado e testado
 explicitamente (`test_registro_de_posicao_maxima_perdido_e_um_ponto_cego_conhecido`) em vez
 de escondido.
 
+**Investigado pelo ticket 16 (spike, 2026-08-08):** o documento "Demanda de candidato por
+vaga" — cogitado como possível fonte independente de N — foi obtido e medido
+(`relatorios/16-spike-documento-candidatos-por-vaga.md`). Reporta candidatos na granularidade
+certa (curso × campus × turno × Sistema de Concorrência), mas com uma definição de "candidato"
+incompatível: `Inscritos` conta quem se inscreveu antes da eliminação, tipicamente dezenas a
+centenas a mais por curso que `max(posições observadas)` no Resultado Final (medido: +49 a
++131 candidatos em 4 pares curso/turno do triênio 2021/2023). Uma fonte que já diverge por
+dezenas não detecta a perda de 1 registro. **Continua sem fonte independente disponível** —
+limitação confirmada, não uma lacuna de investigação.
+
 ## 5. Falta de teste ponta a ponta para Nota de Corte — FECHADO pelo ticket 17
 
 **Onde foi encontrado:** `relatorios/10-notas-de-corte-por-sistema-de-concorrencia.md`,
