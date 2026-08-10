@@ -1,18 +1,40 @@
 site_name: Vetor PAS
-site_description: Análise Preditiva PAS - Inteligência de dados para aprovação.
-site_author: Squad Vetor PAS
+site_description: Inteligência de dados para o PAS/UnB — previsão de aprovação para escolas e alunos.
+site_author: Vetor PAS
+site_url: https://vetorpas.com.br/docs/
 
 theme:
   name: material
+  language: pt-BR
   palette:
-    primary: indigo
-    accent: indigo
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Modo escuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Modo claro
   features:
     - navigation.instant
     - navigation.tracking
     - navigation.tabs
     - navigation.sections
-    - toc.integrate
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+    - search.suggest
+    - toc.follow
+
+plugins:
+  - search:
+      lang: pt
 
 markdown_extensions:
   - admonition
@@ -30,26 +52,54 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.tasklist:
       custom_checkbox: true
+  - tables
   - attr_list
   - md_in_html
 
 nav:
-  - 🌐 Acessar Sistema (Web): https://vetorpas.streamlit.app
-  - 🚀 Landing Page Comercial: http://localhost:3000
-  - Home: index.md
-  - Arquitetura Geral: architecture.md
-  - Requisitos do Sistema: requirements.md
-  - Identidade Visual: identidade-visual.md
-  - Módulos do Sistema:
-    - Dashboard (Streamlit): modules/app.md
-    - Motor de Inteligência: modules/pas_intelligence.md
-    - Extratores de Dados: modules/parsers.md
-    - Gerador de PDF: modules/pdf_generator.md
-  - Decisões de Arquitetura (ADR):
-    - Monorepo Next.js Unificado: adr/0001-monorepo-nextjs-unificado.md
-    - FastAPI como Backend Python: adr/0002-fastapi-backend-python.md
-    - Split Features Público vs. B2B: adr/0003-split-features-publico-b2b.md
-    - Deploy Vercel + Hugging Face Spaces: adr/0004-deploy-vercel-hugging-face-spaces.md
-    - shadcn + Recharts: adr/0005-shadcn-recharts.md
-    - Soft Gate no Segundo Curso: adr/0006-soft-gate-segundo-curso.md
-    - Baseline dos Modelos v1: adr/0007-baseline-modelos-v1.md
+  - Início: index.md
+
+  - Para a escola:
+    - O que a escola recebe: escola/o-que-a-escola-recebe.md
+    - Privacidade e dados dos alunos: escola/privacidade.md
+    - O que ainda não fazemos: limites.md
+
+  - Por que confiar:
+    - De onde vêm os dados: confianca/de-onde-vem-os-dados.md
+    - Como sabemos que acerta: confianca/como-sabemos-que-acerta.md
+    - Vocabulário do PAS: vocabulario.md
+
+  - Referência técnica:
+    - Arquitetura: referencia/arquitetura.md
+    - Motor de previsão: referencia/motor-de-previsao.md
+    - Leitura dos editais: referencia/leitura-de-editais.md
+    - Portal web: referencia/portal.md
+    - Relatórios em PDF: referencia/relatorios-pdf.md
+    - Requisitos do sistema: referencia/requisitos.md
+    - Identidade visual: referencia/identidade-visual.md
+
+  - Decisões de arquitetura:
+    - Visão geral: adr/index.md
+    - Produto e interface:
+      - 0001 · Monorepo Next.js unificado: adr/0001-monorepo-nextjs-unificado.md
+      - 0002 · FastAPI como backend Python: adr/0002-fastapi-backend-python.md
+      - 0003 · Split de features público vs. B2B: adr/0003-split-features-publico-b2b.md
+      - 0005 · shadcn/ui + Recharts: adr/0005-shadcn-recharts.md
+      - 0006 · Soft gate no segundo curso: adr/0006-soft-gate-segundo-curso.md
+    - Modelo e medição:
+      - 0008 · Aluno sem Etapa 1 é atendido: adr/0008-aluno-sem-etapa-1-atendido-com-funcao-propria.md
+      - 0009 · O alvo canônico é o Argumento da Etapa 3: adr/0009-alvo-canonico-argumento-da-etapa-3.md
+      - 0010 · Validação deslizante com holdout lacrado: adr/0010-validacao-deslizante-com-holdout-lacrado.md
+      - 0011 · LightGBM único substitui o ensemble: adr/0011-lightgbm-unico-com-faltante-nativo-substitui-o-ensemble.md
+      - 0012 · Largura de incerteza fixa por classe: adr/0012-largura-fixa-por-classe-em-vez-de-incerteza-por-aluno.md
+      - 0013 · Parte 1 misturada e procedência: adr/0013-parte-1-misturada-e-procedencia-no-official-stats.md
+      - 0007 · Baseline v1 (superscrito): adr/0007-baseline-modelos-v1.md
+    - Publicação:
+      - 0014 · API no Render, derivado sem PII: adr/0014-api-no-render-com-derivado-sem-pii-e-repo-de-deploy.md
+      - 0004 · Vercel + Hugging Face (substituído): adr/0004-deploy-vercel-hugging-face-spaces.md
+
+extra:
+  social:
+    - icon: material/web
+      link: https://vetorpas.com.br
+      name: vetorpas.com.br

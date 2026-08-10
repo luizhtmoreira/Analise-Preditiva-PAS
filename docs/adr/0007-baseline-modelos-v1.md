@@ -1,7 +1,17 @@
 # ADR 0007 — Baseline dos Modelos v1
 
+> **Status: inválido, mantido apenas como registro histórico.** Os números deste ADR foram
+> produzidos com o vetor de features montado na ordem errada — cinco das seis features em posição
+> trocada — e por isso não descrevem o desempenho de modelo nenhum. Os sintomas (`R² = −83,4`,
+> `MAPE = 1,25e+19`, erro máximo de 31.293 num alvo que vai de 0 a 92) são o retrato disso.
+>
+> A linha de base válida do projeto é a do
+> [ADR-0010](0010-validacao-deslizante-com-holdout-lacrado.md), medida por validação deslizante,
+> e o modelo em produção é o do
+> [ADR-0011](0011-lightgbm-unico-com-faltante-nativo-substitui-o-ensemble.md).
+
 **Data:** 2026-07-20  
-**Status:** Registrado (não reversível)  
+**Status:** Superscrito (ver nota acima)  
 **Autor:** Gerado automaticamente por `scripts/baseline_avaliacao.py`
 
 ---

@@ -1,0 +1,5 @@
+# Dependências do site de documentação (mkdocs.yml).
+# Build local:  .venv/bin/python -m mkdocs serve
+# Build final:  .venv/bin/python -m mkdocs build --strict
+mkdocs==1.6.1
+mkdocs-material==9.7.6
