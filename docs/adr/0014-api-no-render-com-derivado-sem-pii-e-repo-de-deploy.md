@@ -76,14 +76,19 @@ dá TLS gratuito em domínio próprio em todos os planos.
   **0,1 vCPU**. O spin-up de 30–50 s que outros medem é o piso, não a estimativa.
 - **O keep-alive é otimização descartável, nunca dependência.** O Render **não suporta oficialmente**
   manter serviço gratuito acordado; a posição deles é "migre para plano pago". Esta seção citava
-  UptimeRobot "desde o dia 1" — nunca foi de fato configurado; o mecanismo real, resolvido no
-  ticket 08e (2026-08-10), é um workflow do GitHub Actions
-  (`.github/workflows/keep-alive.yml`) com `cron: "*/10 * * * *"` batendo em `/health`. Ele não
-  elimina Boot Frio — só o torna raro. Deploy, restart da plataforma, OOM kill, o próprio GitHub
-  atrasando um cron sob carga, ou o workflow sendo desabilitado (o GitHub desliga cron de
-  repositório sem commit há 60 dias) continuam produzindo boot do zero — o produto volta ao
-  comportamento do ticket 08d, não quebra. Apoiar a experiência do Aluno nele seria repetir o
-  ADR-0004 com outro fornecedor.
+  UptimeRobot "desde o dia 1" — nunca foi de fato configurado. O ticket 08e (2026-08-10) tentou
+  primeiro um workflow do GitHub Actions (`.github/workflows/keep-alive.yml`, `cron: "*/10 * * * *"`)
+  e **mediu que ele falha na prática**: em 7 h de observação os disparos vieram a cada 50–90 min, não
+  a cada 10 — GitHub não garante pontualidade de `schedule`, e o gap supera o limiar de hibernação de
+  15 min do Render (`/health` voltou a bater 32 s de Boot Frio com o workflow ativo). O mecanismo real
+  é o **cron-job.org**, configurado manualmente pelo dono do produto (não por automação — é conta e
+  senha de terceiro), batendo em `/health` a cada 5 min. Verificado contra o serviço em produção após
+  duas janelas ociosas de ~25 min sem nenhuma chamada minha: `/health` respondeu em 1,25 s e depois em
+  0,35 s — nunca subiu para a casa dos 30 s. O workflow do GitHub Actions continua no repositório como
+  camada redundante (não atrapalha, só não é confiável sozinho). Nenhum dos dois elimina Boot Frio —
+  só o torna raro. Deploy, restart da plataforma, OOM kill, ou a conta do cron-job.org sendo
+  desativada continuam produzindo boot do zero — o produto volta ao comportamento do ticket 08d, não
+  quebra. Apoiar a experiência do Aluno nele seria repetir o ADR-0004 com outro fornecedor.
 - **Um único serviço gratuito por workspace, com folga apertada.** Sempre-acordado num mês de 31
   dias consome **744 das 750 horas/mês** — 6 h de folga (0,8%), não os ~730 h citados antes (essa
   conta era otimista; a folga real varia com o mês: 30 h num mês de 30 dias, 78 h em fevereiro). Um

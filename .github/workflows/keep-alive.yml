@@ -1,10 +1,14 @@
 name: keep-alive da API
 
-# Ping periódico em /health para evitar o Boot Frio do plano gratuito do Render (limiar de
-# hibernação: 15 min ociosos — ver ADR-0014 e ticket 08e). Isto é otimização descartável, não
-# contrato: se este workflow for apagado, desabilitado (o GitHub desliga cron de repositório sem
-# commit há 60 dias) ou o Render mudar a política, o produto volta a pagar Boot Frio — comportamento
-# já medido e suportado pelo frontend no ticket 08d. Nada no produto depende deste workflow rodar.
+# Camada REDUNDANTE, não a principal — o keep-alive de verdade é o cron-job.org (conta do dono do
+# produto, ver ADR-0014). Medido no ticket 08e: o `schedule` do GitHub Actions não é pontual (gaps
+# de 50-90 min observados contra o `*/10 * * * *` declarado abaixo), maior que o limiar de
+# hibernação do Render (15 min ociosos) — sozinho, este workflow NÃO mantém o serviço acordado.
+# Fica no repositório como pinger extra sem custo, não como garantia. Isto é otimização
+# descartável, não contrato: se este workflow for apagado, desabilitado (o GitHub desliga cron de
+# repositório sem commit há 60 dias) ou o Render mudar a política, o produto volta a pagar Boot Frio
+# — comportamento já medido e suportado pelo frontend no ticket 08d. Nada no produto depende deste
+# workflow rodar.
 on:
   schedule:
     - cron: "*/10 * * * *"
