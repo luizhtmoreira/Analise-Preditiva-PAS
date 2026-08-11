@@ -75,13 +75,20 @@ dá TLS gratuito em domínio próprio em todos os planos.
   `pandas + scipy + lightgbm`; os 4,5 MB do Derivado economizam imagem e download, **não RAM**), com
   **0,1 vCPU**. O spin-up de 30–50 s que outros medem é o piso, não a estimativa.
 - **O keep-alive é otimização descartável, nunca dependência.** O Render **não suporta oficialmente**
-  manter serviço gratuito acordado; a posição deles é "migre para plano pago". O ping do UptimeRobot
-  entra desde o dia 1 e a aritmética fecha (~730 h de 750), mas ele não elimina Boot Frio — só o
-  torna raro. Deploy, restart da plataforma, OOM kill e falha do próprio pinger continuam produzindo
-  boot do zero. Apoiar a experiência do Aluno nele seria repetir o ADR-0004 com outro fornecedor.
-- **Um único serviço gratuito por workspace.** Sempre-acordado consome 730 das 750 horas/mês. Um
+  manter serviço gratuito acordado; a posição deles é "migre para plano pago". Esta seção citava
+  UptimeRobot "desde o dia 1" — nunca foi de fato configurado; o mecanismo real, resolvido no
+  ticket 08e (2026-08-10), é um workflow do GitHub Actions
+  (`.github/workflows/keep-alive.yml`) com `cron: "*/10 * * * *"` batendo em `/health`. Ele não
+  elimina Boot Frio — só o torna raro. Deploy, restart da plataforma, OOM kill, o próprio GitHub
+  atrasando um cron sob carga, ou o workflow sendo desabilitado (o GitHub desliga cron de
+  repositório sem commit há 60 dias) continuam produzindo boot do zero — o produto volta ao
+  comportamento do ticket 08d, não quebra. Apoiar a experiência do Aluno nele seria repetir o
+  ADR-0004 com outro fornecedor.
+- **Um único serviço gratuito por workspace, com folga apertada.** Sempre-acordado num mês de 31
+  dias consome **744 das 750 horas/mês** — 6 h de folga (0,8%), não os ~730 h citados antes (essa
+  conta era otimista; a folga real varia com o mês: 30 h num mês de 30 dias, 78 h em fevereiro). Um
   segundo serviço (staging, cron) estoura a cota e suspende tudo até virar o mês.
-- **`/health` precisa ser barato de propósito** — ele é batido a cada 5 minutos, nos seus 0,1 vCPU,
+- **`/health` precisa ser barato de propósito** — ele é batido a cada 10 minutos, nos seus 0,1 vCPU,
   e não pode tocar no modelo nem nos CSVs.
 - **Risco concreto no frontend:** metade das chamadas de `landing-page/lib/api.ts` é server-side
   (`process.env.API_URL` — Gestão, Analytics, `/api/temporal`) e passa por uma Function da Vercel,

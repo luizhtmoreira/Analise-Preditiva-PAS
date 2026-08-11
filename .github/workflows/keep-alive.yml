@@ -1,0 +1,21 @@
+name: keep-alive da API
+
+# Ping periódico em /health para evitar o Boot Frio do plano gratuito do Render (limiar de
+# hibernação: 15 min ociosos — ver ADR-0014 e ticket 08e). Isto é otimização descartável, não
+# contrato: se este workflow for apagado, desabilitado (o GitHub desliga cron de repositório sem
+# commit há 60 dias) ou o Render mudar a política, o produto volta a pagar Boot Frio — comportamento
+# já medido e suportado pelo frontend no ticket 08d. Nada no produto depende deste workflow rodar.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /health
+        run: |
+          codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://api.vetorpas.com.br/health)
+          echo "status=$codigo"
+          test "$codigo" = "200"
