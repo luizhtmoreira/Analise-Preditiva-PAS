@@ -380,7 +380,7 @@ const PASSOS = [
     numero: "03",
     titulo: "O resultado, sem filtro",
     descricao:
-      "Nessa prova cega, entre os 7.449 alunos cujo curso-alvo tinha nota de corte publicada, o sistema errou sobre passar ou não passar em 5,4% dos casos — ou seja, acertou o veredito em mais de 94 de cada 100. É esse número, medido contra gente de verdade, que aparece na sua tela.",
+      "Nessa prova cega, entre os 7.438 alunos cujo curso-alvo tinha nota de corte publicada, o sistema errou sobre passar ou não passar em 5,4% dos casos — ou seja, acertou o veredito em mais de 94 de cada 100. É esse número, medido contra gente de verdade, que aparece na sua tela.",
     acento: {
       borderTop: "border-t-[#002147]",
       text: "text-[#002147]",

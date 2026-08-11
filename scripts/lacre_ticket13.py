@@ -110,8 +110,13 @@ def _cortes_do_lacre(caminho_cortes: Path, af_min: float, af_max: float) -> pd.D
     Mesma limpeza do relatório 11 §6: só `Universal`, só chamada não parcial, e corte dentro da
     faixa de Argumento Final observada — o filtro que remove os defeitos conhecidos dos tickets
     14/15 do mapa `pdf-extraction` (`199.162,872` e `−23.317,084`).
+
+    "Sub judice" é convocação por decisão judicial, à parte da concorrência normal do curso —
+    mesmo filtro de `api/services/gestao_service.py::_normalizar_cortes`, aqui porque este script
+    lê o CSV cru direto, sem passar por ela.
     """
     cortes = pd.read_csv(caminho_cortes)
+    cortes = cortes[~cortes["curso"].astype(str).str.contains("SUB JUDICE", case=False, na=False)]
     cortes = cortes[
         (cortes["trienio"] == TRIENIO_LACRADO)
         & (cortes["sistema_nome"] == "Universal")

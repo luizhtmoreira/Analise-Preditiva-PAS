@@ -263,6 +263,9 @@ def verificar_curso_proxy_corte(df: pd.DataFrame) -> None:
     residuo_por_curso = tmp.groupby("curso")["residuo"].mean()
 
     c = pd.read_csv(CORTES)
+    # "Sub judice" é convocação por decisão judicial, à parte da concorrência normal do curso —
+    # mesmo filtro de `api/services/gestao_service.py::_normalizar_cortes`.
+    c = c[~c["curso"].astype(str).str.contains("SUB JUDICE", case=False, na=False)]
     c = c[c["checksum_fecha"] & ~c["parcial"] & (c["sistema_nome"] == "Universal")]
     corte_por_curso = c.groupby("curso")["nota_corte"].mean()
 

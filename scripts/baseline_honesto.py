@@ -185,6 +185,9 @@ def menor_corte_por_aluno(df: pd.DataFrame) -> pd.DataFrame:
     que é a definição literal da Nota de Corte, não ruído. Custo evitado: 34 pontos de cobertura.
     """
     c = pd.read_csv(RAIZ / CORTES)
+    # "Sub judice" é convocação por decisão judicial, à parte da concorrência normal do curso —
+    # mesmo filtro de `api/services/gestao_service.py::_normalizar_cortes`.
+    c = c[~c["curso"].astype(str).str.contains("SUB JUDICE", case=False, na=False)]
     c = c[c["checksum_fecha"] & ~c["parcial"] & (c["convocados_com_argumento"] >= 1)]
     menor = (
         c.groupby(["trienio", "campus", "curso", "turno", "sistema_nome"], dropna=False)[

@@ -43,7 +43,7 @@ O lacre foi aberto **uma única vez**, em 28 de julho de 2026. O que está abaix
 
 ## O resultado
 
-**Em 7.449 alunos do triênio lacrado, o veredito de aprovação foi acertado em 94,6% dos casos.**
+**Em 7.438 alunos do triênio lacrado, o veredito de aprovação foi acertado em 94,6% dos casos.**
 
 Esse número precisa das letras miúdas, e elas são estas:
 
@@ -52,7 +52,7 @@ Esse número precisa das letras miúdas, e elas são estas:
 | Mais de 2 larguras | **99,9%** | 72,4% |
 | Entre 1 e 2 larguras | **91,5%** | 13,2% |
 | Entre 0,5 e 1 largura | **80,5%** | 6,5% |
-| Menos de meia largura | **63,0%** | 7,9% |
+| Menos de meia largura | **63,3%** | 7,8% |
 | **Todos** | **94,6%** | 100% |
 
 !!! info "Largura"
