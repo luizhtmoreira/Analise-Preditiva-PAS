@@ -704,6 +704,17 @@ export function PreditorPage() {
         setIsLoggedIn(true);
         setUserId(user.id);
 
+        // A cota declarada vive em user_metadata (perfil do Aluno), não em alunos_perfis —
+        // separado de propósito da cota selecionada nesta simulação (ticket 17).
+        const cotaDeclarada = user.user_metadata?.cota;
+        if (cotaDeclarada) {
+          if (ehCotaConhecida(cotaDeclarada)) {
+            setCota(cotaDeclarada);
+          } else {
+            setCotaSalvaDesconhecida(true);
+          }
+        }
+
         // Carrega notas e configuração salvas
         supabase
           .from("alunos_perfis")
@@ -722,13 +733,6 @@ export function PreditorPage() {
                 p2: String(profile.p2_pas2 ?? 0),
                 red: String(profile.red_pas2 ?? 0),
               });
-              if (profile.cota) {
-                if (ehCotaConhecida(profile.cota)) {
-                  setCota(profile.cota);
-                } else {
-                  setCotaSalvaDesconhecida(true);
-                }
-              }
               if (profile.trienio) setTrienio(profile.trienio);
               if (profile.curso_alvo) setCursoAlvo(profile.curso_alvo);
             }
@@ -786,7 +790,8 @@ export function PreditorPage() {
       });
       setResult(data);
 
-      // Salva notas e configuração do aluno se estiver logado
+      // Salva notas e configuração do aluno se estiver logado. `cota` fica de fora — é a cota
+      // selecionada nesta simulação, não a cota declarada do Aluno (que só muda no perfil, ticket 17).
       if (isLoggedIn && userId) {
         const supabase = createClient();
         await supabase.from("alunos_perfis").upsert({
@@ -797,7 +802,6 @@ export function PreditorPage() {
           p1_pas2: Number(pas2.p1),
           p2_pas2: Number(pas2.p2),
           red_pas2: Number(pas2.red),
-          cota: cota,
           trienio: trienio,
           curso_alvo: cursoAlvo.trim() || null,
           updated_at: new Date().toISOString()

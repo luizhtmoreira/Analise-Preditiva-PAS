@@ -270,6 +270,17 @@ export function CalculadoraPage() {
         setIsLoggedIn(true);
         setUserId(user.id);
 
+        // A cota declarada vive em user_metadata (perfil do Aluno), não em alunos_perfis —
+        // separado de propósito da cota selecionada nesta simulação (ticket 17).
+        const cotaDeclarada = user.user_metadata?.cota;
+        if (cotaDeclarada) {
+          if (ehCotaConhecida(cotaDeclarada)) {
+            setCota(cotaDeclarada);
+          } else {
+            setCotaSalvaDesconhecida(true);
+          }
+        }
+
         supabase
           .from("alunos_perfis")
           .select("*")
@@ -287,13 +298,6 @@ export function CalculadoraPage() {
                 p2: String(profile.p2_pas2 ?? 0),
                 red: String(profile.red_pas2 ?? 0),
               });
-              if (profile.cota) {
-                if (ehCotaConhecida(profile.cota)) {
-                  setCota(profile.cota);
-                } else {
-                  setCotaSalvaDesconhecida(true);
-                }
-              }
               if (profile.trienio) setTrienio(profile.trienio);
               if (profile.curso_alvo) setCursoAlvo(profile.curso_alvo);
             }
@@ -388,7 +392,8 @@ export function CalculadoraPage() {
       const data = await fetchStrategy(body);
       setResult(data);
 
-      // Save grades to Supabase if logged in
+      // Save grades to Supabase if logged in. `cota` fica de fora — é a cota selecionada nesta
+      // simulação, não a cota declarada do Aluno (que só muda na tela de perfil, ticket 17).
       if (isLoggedIn && userId) {
         const supabase = createClient();
         await supabase.from("alunos_perfis").upsert({
@@ -399,7 +404,6 @@ export function CalculadoraPage() {
           p1_pas2: body.p1_pas2,
           p2_pas2: body.p2_pas2,
           red_pas2: body.red_pas2,
-          cota,
           trienio,
           curso_alvo: cursoAlvo.trim() || null,
           updated_at: new Date().toISOString(),

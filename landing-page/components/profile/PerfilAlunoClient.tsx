@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Building2, LogOut, ShieldCheck, CheckCircle2, Save, KeyRound } from "lucide-react";
+import { User, Building2, Landmark, LogOut, ShieldCheck, CheckCircle2, Save, KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { EscolaCombobox } from "@/components/auth/AlunoSignupForm";
+import { COTAS, ehCotaConhecida } from "@/lib/cotas";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export function PerfilAlunoClient() {
@@ -15,6 +16,9 @@ export function PerfilAlunoClient() {
   const [escola, setEscola] = useState("");
   const [savingEscola, setSavingEscola] = useState(false);
   const [escolaSavedMsg, setEscolaSavedMsg] = useState("");
+  const [cota, setCota] = useState("");
+  const [savingCota, setSavingCota] = useState(false);
+  const [cotaSavedMsg, setCotaSavedMsg] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -25,6 +29,8 @@ export function PerfilAlunoClient() {
       } else {
         setUser(user);
         setEscola(user.user_metadata?.escola || "");
+        const cotaDeclarada = user.user_metadata?.cota;
+        setCota(ehCotaConhecida(cotaDeclarada) ? cotaDeclarada : "");
       }
       setLoading(false);
     });
@@ -47,6 +53,25 @@ export function PerfilAlunoClient() {
       setTimeout(() => setEscolaSavedMsg(""), 3500);
     }
     setSavingEscola(false);
+  }
+
+  async function handleSaveCota(e: React.FormEvent) {
+    e.preventDefault();
+    if (!ehCotaConhecida(cota)) return;
+
+    setSavingCota(true);
+    setCotaSavedMsg("");
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({
+      data: { cota },
+    });
+
+    if (!error) {
+      setCotaSavedMsg("Sistema de Concorrência atualizado com sucesso!");
+      setTimeout(() => setCotaSavedMsg(""), 3500);
+    }
+    setSavingCota(false);
   }
 
   async function handleLogout() {
@@ -138,6 +163,52 @@ export function PerfilAlunoClient() {
             >
               <Save size={15} />
               {savingEscola ? "Salvando…" : "Salvar Alterações"}
+            </button>
+          </form>
+        </div>
+
+        {/* Cota Update Card */}
+        <div className="vp-card p-6 space-y-4">
+          <div>
+            <h3 className="text-base font-bold text-[#002147] flex items-center gap-2">
+              <Landmark size={18} className="text-[#00AEEF]" />
+              Sistema de Concorrência
+            </h3>
+            <p className="text-xs text-[#4A5568] mt-1 leading-relaxed">
+              Declare sua cota real aqui. Ela vira o padrão do Preditor e da Calculadora — trocar
+              o sistema numa simulação para comparar cenários não altera o que está declarado.
+            </p>
+          </div>
+
+          <form onSubmit={handleSaveCota} className="space-y-4">
+            <div>
+              <label className="vp-label block mb-2">Selecione seu Sistema de Concorrência</label>
+              <select
+                className="vp-input"
+                value={cota}
+                onChange={(e) => setCota(e.target.value)}
+              >
+                <option value="" disabled>Selecione…</option>
+                {COTAS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {cotaSavedMsg && (
+              <div className="p-3 rounded-xl bg-[#00843D]/8 border border-[#00843D]/25 text-[#00843D] text-xs flex items-center gap-2">
+                <CheckCircle2 size={16} />
+                <span>{cotaSavedMsg}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={savingCota || !ehCotaConhecida(cota)}
+              className="vp-btn vp-btn-cyan px-5 py-2.5 text-xs"
+            >
+              <Save size={15} />
+              {savingCota ? "Salvando…" : "Salvar Alterações"}
             </button>
           </form>
         </div>
